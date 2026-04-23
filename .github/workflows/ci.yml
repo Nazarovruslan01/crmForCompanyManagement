@@ -122,6 +122,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r crm_backend/requirements/local.txt
 
+      - name: Create static directory
+        run: mkdir -p crm_backend/static
+
       - name: Django system check
         working-directory: crm_backend
         run: python manage.py check
