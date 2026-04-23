@@ -12,6 +12,9 @@ class TicketAdmin(admin.ModelAdmin):
     date_hierarchy = 'created_at'
     readonly_fields = ['created_at', 'updated_at', 'resolved_at']
     raw_id_fields = ['apartment', 'assigned_worker', 'created_by']
+    autocomplete_lookup_fields = {
+        'fk': ['apartment', 'assigned_worker', 'created_by'],
+    }
 
 
 @admin.register(TicketComment)
@@ -19,6 +22,7 @@ class TicketCommentAdmin(admin.ModelAdmin):
     list_display = ['ticket', 'author', 'created_at']
     search_fields = ['ticket__title', 'author__username']
     readonly_fields = ['created_at']
+    raw_id_fields = ['ticket', 'author']
 
 
 @admin.register(TicketAttachment)
@@ -27,3 +31,4 @@ class TicketAttachmentAdmin(admin.ModelAdmin):
     list_filter = ['file_type']
     search_fields = ['file_name', 'ticket__title']
     readonly_fields = ['uploaded_at']
+    raw_id_fields = ['ticket', 'uploaded_by']
