@@ -1,7 +1,7 @@
 """Custom throttle classes for rate limiting."""
-from typing import Any
-
 from rest_framework.throttling import SimpleRateThrottle
+from rest_framework.request import Request
+from rest_framework.views import APIView
 
 
 class LoginRateThrottle(SimpleRateThrottle):
@@ -10,13 +10,13 @@ class LoginRateThrottle(SimpleRateThrottle):
     """
     scope = 'login'
 
-    def get_cache_key(self, request: Any, view: Any) -> str | None:
+    def get_cache_key(self, request: Request, view: APIView) -> str | None:
         username = request.data.get('username')
         if not username:
             return None
         return f"throttle_login:{self.get_ident(request)}:{username}"
 
-    def get_ident(self, request: Any) -> str:
+    def get_ident(self, request: Request) -> str:
         """Get client IP from X-Forwarded-For or REMOTE_ADDR."""
         xff = request.META.get('HTTP_X_FORWARDED_FOR')
         if xff:
@@ -30,7 +30,7 @@ class PasswordResetRateThrottle(SimpleRateThrottle):
     """
     scope = 'password_reset'
 
-    def get_cache_key(self, request: Any, view: Any) -> str | None:
+    def get_cache_key(self, request: Request, view: APIView) -> str | None:
         email = request.data.get('email')
         if not email:
             return None
