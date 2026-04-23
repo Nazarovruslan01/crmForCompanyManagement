@@ -1,0 +1,28 @@
+"""Admin configuration for residents app."""
+from django.contrib import admin
+
+from .models import Ownership, PersonalAccount, Resident
+
+
+@admin.register(Resident)
+class ResidentAdmin(admin.ModelAdmin):
+    list_display = ['full_name', 'owner_type', 'tc_kimlik_no', 'phone', 'is_foreign_owner']
+    list_filter = ['owner_type', 'is_foreign_owner']
+    search_fields = ['name', 'surname', 'tc_kimlik_no', 'passport_no', 'email']
+    readonly_fields = ['created_at', 'updated_at']
+
+
+@admin.register(PersonalAccount)
+class PersonalAccountAdmin(admin.ModelAdmin):
+    list_display = ['account_number', 'apartment', 'balance', 'is_active']
+    list_filter = ['is_active']
+    search_fields = ['account_number', 'apartment__apartment_number', 'apartment__building__name']
+    readonly_fields = ['created_at', 'updated_at']
+
+
+@admin.register(Ownership)
+class OwnershipAdmin(admin.ModelAdmin):
+    list_display = ['resident', 'apartment', 'role', 'share_ratio_num', 'share_ratio_denom', 'is_primary']
+    list_filter = ['role', 'is_primary']
+    search_fields = ['resident__name', 'resident__surname', 'apartment__apartment_number']
+    readonly_fields = ['created_at']
