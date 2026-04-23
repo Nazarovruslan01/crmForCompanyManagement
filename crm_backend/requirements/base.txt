@@ -1,0 +1,32 @@
+# Django Core
+django>=5.0,<6.0
+djangorestframework>=3.15,<4.0
+djangorestframework-simplejwt>=5.3,<6.0
+django-filter>=24.0,<25.0
+django-cors-headers>=4.0,<5.0
+django-storages>=1.14,<2.0
+
+# Async Task Queue
+celery>=5.4,<6.0
+redis>=5.0,<6.0
+
+# Database
+psycopg2-binary>=2.9,<3.0
+
+# PDF Generation
+reportlab>=4.0,<5.0
+
+# API Documentation
+drf-spectacular>=0.27,<1.0
+
+# Image handling
+Pillow>=10.0,<11.0
+
+# Turkish SMS Gateway
+# Netgsm or İleti Merkezi SDK (handled via HTTP requests)
+
+# Turkish Payment Gateway (İyzico)
+# iyzico>=1.0 (or HTTP API integration)
+
+# Utilities
+python-dateutil>=2.8,<3.0
