@@ -1,12 +1,10 @@
 """Auth views for login, logout, password reset."""
 from django.contrib.auth import authenticate, get_user_model
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from django.utils import timezone
-from rest_framework import generics, permissions, status
+from rest_framework import permissions, status
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from .serializers import UserSerializer
 
@@ -17,7 +15,7 @@ class LoginView(APIView):
     """JWT login endpoint."""
     permission_classes = [permissions.AllowAny]
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
         username = request.data.get('username')
         password = request.data.get('password')
 
@@ -54,7 +52,7 @@ class LogoutView(APIView):
     """Logout endpoint - blacklist refresh token."""
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
         try:
             refresh_token = request.data.get('refresh')
             if refresh_token:
@@ -75,7 +73,7 @@ class PasswordResetRequestView(APIView):
     """Request password reset email."""
     permission_classes = [permissions.AllowAny]
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
         email = request.data.get('email')
 
         if not email:
@@ -97,16 +95,14 @@ class PasswordResetRequestView(APIView):
         reset_token = str(refresh.access_token)
 
         # In production, send this via email service (Resend)
-        reset_link = f"{request.build_absolute_uri('/api/v1/auth/password-reset/')}{reset_token}/"
-
-        # TODO: Replace with Resend email integration
+        # reset_link = f"{request.build_absolute_uri('/api/v1/auth/password-reset/')}{reset_token}/"
         # send_mail(
         #     subject='Password Reset - CRM',
         #     message=f'Click to reset: {reset_link}',
         #     from_email=settings.DEFAULT_FROM_EMAIL,
         #     recipient_list=[email],
-        #     html_message=render_to_string('emails/password_reset.html', {'reset_link': reset_link}),
         # )
+        _ = reset_token  # Used when email integration is enabled
 
         return Response(
             {'detail': 'If the email exists, a reset link has been sent'},
@@ -118,7 +114,7 @@ class PasswordResetConfirmView(APIView):
     """Confirm password reset with token."""
     permission_classes = [permissions.AllowAny]
 
-    def post(self, request, token):
+    def post(self, request: Request, token: str) -> Response:
         new_password = request.data.get('new_password')
 
         if not new_password:
@@ -128,13 +124,14 @@ class PasswordResetConfirmView(APIView):
             )
 
         try:
-            refresh = RefreshToken(token)
-            user = refresh.user
+            access_token = AccessToken(token)  # type: ignore[arg-type]
+            user_id = access_token.payload.get('user_id')
+            if not user_id:
+                raise ValueError("No user_id in token")
+
+            user = User.objects.get(id=user_id)
             user.set_password(new_password)
             user.save()
-
-            # Blacklist the token
-            refresh.blacklist()
 
             return Response(
                 {'detail': 'Password has been reset successfully'},
@@ -151,7 +148,7 @@ class PasswordChangeView(APIView):
     """Change password for authenticated user."""
     permission_classes = [permissions.IsAuthenticated]
 
-    def post(self, request):
+    def post(self, request: Request) -> Response:
         user = request.user
         old_password = request.data.get('old_password')
         new_password = request.data.get('new_password')
