@@ -1,4 +1,6 @@
 """Management command to create test users for development."""
+from typing import Any
+
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
@@ -43,7 +45,7 @@ TEST_USERS = [
 class Command(BaseCommand):
     help = 'Create test users for development'
 
-    def handle(self, *args, **options) -> None:
+    def handle(self, *args: Any, **options: Any) -> None:
         created = 0
         updated = 0
 
