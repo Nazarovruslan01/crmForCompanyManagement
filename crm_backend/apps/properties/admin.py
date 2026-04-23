@@ -15,7 +15,7 @@ class BuildingAdmin(admin.ModelAdmin):
 
 @admin.register(Apartment)
 class ApartmentAdmin(admin.ModelAdmin):
-    list_display = ['apartment_number', 'building', 'block', 'floor', 'square_meters', 'room_count', 'status', 'created_at']
+    list_display = ['apartment_number', 'building', 'block', 'floor', 'square_meters', 'status', 'created_at']
     list_filter = ['status', 'building', 'block']
     search_fields = ['apartment_number', 'building__name', 'tapu_number']
     readonly_fields = ['created_at', 'updated_at']

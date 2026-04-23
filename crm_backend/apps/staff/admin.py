@@ -6,9 +6,8 @@ from .models import Department, Employee, Task
 
 @admin.register(Department)
 class DepartmentAdmin(admin.ModelAdmin):
-    list_display = ['name', 'description', 'created_at']
+    list_display = ['name', 'description']
     search_fields = ['name']
-    readonly_fields = ['created_at']
 
 
 @admin.register(Employee)

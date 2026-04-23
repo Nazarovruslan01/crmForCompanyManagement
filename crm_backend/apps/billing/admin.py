@@ -36,6 +36,6 @@ class PaymentAdmin(admin.ModelAdmin):
 
 @admin.register(Receipt)
 class ReceiptAdmin(admin.ModelAdmin):
-    list_display = ['payment', 'pdf_url', 'generated_at', 'created_at']
+    list_display = ['payment', 'pdf_url', 'generated_at']
     search_fields = ['payment__receipt_number']
-    readonly_fields = ['generated_at', 'created_at']
+    readonly_fields = ['generated_at']
