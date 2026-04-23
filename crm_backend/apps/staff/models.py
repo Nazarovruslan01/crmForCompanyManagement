@@ -49,6 +49,9 @@ class Employee(models.Model):
     class Meta:
         verbose_name = 'Employee'
         verbose_name_plural = 'Employees'
+        indexes = [
+            models.Index(fields=['department', 'is_active']),
+        ]
 
     def __str__(self) -> str:
         return f"{self.user.get_full_name() or self.user.username} - {self.get_role_display()}"
@@ -99,6 +102,10 @@ class Task(models.Model):
         verbose_name = 'Task'
         verbose_name_plural = 'Tasks'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['assigned_to', 'status']),
+            models.Index(fields=['-created_at']),
+        ]
 
     def __str__(self) -> str:
         return self.title
