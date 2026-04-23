@@ -15,4 +15,4 @@ ignore = [
 
 [lint.per-file-ignores]
 "*/migrations/*" = ["E501", "F401"]
-"config/settings/*" = ["F405", "F403"]
+"config/settings/*" = ["F401", "F403", "F405"]

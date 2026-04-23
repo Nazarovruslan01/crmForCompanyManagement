@@ -1,6 +1,6 @@
 """Tickets app models for Turkish HOA CRM"""
-from django.db import models
 from django.conf import settings
+from django.db import models
 
 
 class Ticket(models.Model):
@@ -81,7 +81,7 @@ class Ticket(models.Model):
             models.Index(fields=['priority']),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"#{self.id} - {self.title[:50]}"
 
 
@@ -107,7 +107,7 @@ class TicketComment(models.Model):
         verbose_name_plural = 'Ticket Comments'
         ordering = ['created_at']
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Comment on Ticket #{self.ticket.id}"
 
 
@@ -133,5 +133,5 @@ class TicketAttachment(models.Model):
         verbose_name = 'Ticket Attachment'
         verbose_name_plural = 'Ticket Attachments'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.file_name

@@ -1,6 +1,8 @@
 """Billing app models for Turkish HOA CRM (Aidat = Monthly Fee)"""
-from django.db import models
 from decimal import Decimal
+
+from django.db import models
+from django.utils import timezone
 
 
 class AidatCharge(models.Model):
@@ -62,7 +64,7 @@ class AidatCharge(models.Model):
             models.Index(fields=['status', 'due_date']),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Aidat {self.apartment} - {self.billing_period_start}"
 
     def calculate_late_fee(self, days_overdue: int) -> Decimal:
@@ -111,7 +113,7 @@ class ExtraordinaryCharge(models.Model):
         verbose_name = 'Extraordinary Charge'
         verbose_name_plural = 'Extraordinary Charges'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.description} - {self.total_amount} TRY"
 
 
@@ -164,22 +166,21 @@ class Payment(models.Model):
             models.Index(fields=['apartment', 'paid_at']),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.receipt_number or 'N/A'} - {self.amount} {self.currency}"
 
-    def save(self, *args, **kwargs):
+    def save(self, *args: object, **kwargs: object) -> None:
         # Auto-generate receipt number if not set
         if not self.receipt_number:
-            from django.utils import timezone
             year = timezone.now().year
             month = f"{timezone.now().month:02d}"
-            # Get last receipt number for this month
-            last_receipt = Payment.objects.filter(
+            # Get last receipt for this month to determine next sequence number
+            last_payment = Payment.objects.filter(
                 receipt_number__startswith=f'{year}{month}'
             ).order_by('-receipt_number').first()
 
-            if last_receipt:
-                last_seq = int(last_receipt.receipt_number[6:])
+            if last_payment and last_payment.receipt_number:
+                last_seq = int(last_payment.receipt_number[6:])
                 new_seq = last_seq + 1
             else:
                 new_seq = 1
@@ -204,5 +205,5 @@ class Receipt(models.Model):
         verbose_name = 'Receipt'
         verbose_name_plural = 'Receipts'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Makbuz {self.payment.receipt_number}"

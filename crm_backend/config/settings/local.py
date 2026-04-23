@@ -1,7 +1,9 @@
 """
 Local / CI settings — inherits from base.
 """
-from .base import *
+import os
+
+from .base import *  # noqa: F401, F403
 
 DEBUG = True
 
@@ -11,12 +13,11 @@ ALLOWED_HOSTS = ['*']
 
 # Use SQLite for local dev if no DATABASE_URL is set;
 # CI overrides via DATABASE_URL env var.
-import os as _os
-if not _os.getenv('DATABASE_URL'):
+if not os.getenv('DATABASE_URL'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'NAME': str(BASE_DIR / 'db.sqlite3'),
         }
     }
 

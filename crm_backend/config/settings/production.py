@@ -1,8 +1,10 @@
 """
 Production settings - inherits from base
 """
-from .base import *
+import os
 from urllib.parse import urlparse
+
+from .base import *  # noqa: F401, F403
 
 DEBUG = False
 
@@ -11,17 +13,15 @@ SECRET_KEY = os.getenv('DJANGO_SECRET_KEY')
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 # Database URL parsing
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://crm_user:changeme@localhost:5432/crm_db')
-db_url = urlparse(DATABASE_URL)
-
+_db_url = urlparse(os.getenv('DATABASE_URL', 'postgresql://crm_user:changeme@localhost:5432/crm_db'))
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': db_url.path[1:],
-        'USER': db_url.username,
-        'PASSWORD': db_url.password,
-        'HOST': db_url.hostname,
-        'PORT': db_url.port or 5432,
+        'NAME': _db_url.path[1:],
+        'USER': _db_url.username,
+        'PASSWORD': _db_url.password,
+        'HOST': _db_url.hostname,
+        'PORT': _db_url.port or 5432,
     }
 }
 
@@ -42,7 +42,7 @@ X_FRAME_OPTIONS = 'DENY'
 STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.manifest.staticfiles.Storage'
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
-# AWS S3 / Backblaze B2
+# AWS S3 / MinIO / Backblaze B2
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')

@@ -1,7 +1,7 @@
 """Residents app models for Turkish HOA CRM"""
-from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
+from django.db import models
 
 
 class Resident(models.Model):
@@ -60,14 +60,14 @@ class Resident(models.Model):
         verbose_name_plural = 'Residents'
         ordering = ['surname', 'name']
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.name} {self.surname}"
 
     @property
-    def full_name(self):
+    def full_name(self) -> str:
         return f"{self.name} {self.surname}"
 
-    def clean(self):
+    def clean(self) -> None:
         from django.core.exceptions import ValidationError
         if not self.tc_kimlik_no and not self.passport_no:
             raise ValidationError('Either TC Kimlik No or Passport No is required')
@@ -96,7 +96,7 @@ class PersonalAccount(models.Model):
         verbose_name = 'Personal Account'
         verbose_name_plural = 'Personal Accounts'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.account_number} - {self.apartment}"
 
 
@@ -140,5 +140,5 @@ class Ownership(models.Model):
         verbose_name_plural = 'Ownerships'
         unique_together = ['resident', 'apartment', 'role']
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.resident} - {self.apartment} ({self.get_role_display()})"

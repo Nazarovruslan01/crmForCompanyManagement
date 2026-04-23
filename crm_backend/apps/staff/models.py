@@ -1,6 +1,6 @@
 """Staff app models for Turkish HOA CRM"""
-from django.db import models
 from django.conf import settings
+from django.db import models
 
 
 class Department(models.Model):
@@ -12,7 +12,7 @@ class Department(models.Model):
         verbose_name = 'Department'
         verbose_name_plural = 'Departments'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -50,7 +50,7 @@ class Employee(models.Model):
         verbose_name = 'Employee'
         verbose_name_plural = 'Employees'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.user.get_full_name() or self.user.username} - {self.get_role_display()}"
 
 
@@ -100,5 +100,5 @@ class Task(models.Model):
         verbose_name_plural = 'Tasks'
         ordering = ['-created_at']
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.title

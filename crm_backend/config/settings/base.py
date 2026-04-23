@@ -2,8 +2,8 @@
 Django settings for CRM project.
 """
 import os
-from pathlib import Path
 from datetime import timedelta
+from pathlib import Path
 from urllib.parse import urlparse
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent

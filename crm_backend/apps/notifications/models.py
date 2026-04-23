@@ -1,6 +1,5 @@
 """Notifications app models for Turkish HOA CRM"""
 from django.db import models
-from django.conf import settings
 
 
 class NotificationTemplate(models.Model):
@@ -41,7 +40,7 @@ class NotificationTemplate(models.Model):
         verbose_name = 'Notification Template'
         verbose_name_plural = 'Notification Templates'
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.name} ({self.get_channel_display()})"
 
 
@@ -94,5 +93,5 @@ class NotificationLog(models.Model):
             models.Index(fields=['recipient', 'created_at']),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.recipient} - {self.channel} - {self.get_status_display()}"

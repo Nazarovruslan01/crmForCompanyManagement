@@ -1,7 +1,8 @@
 """Properties app models for Turkish HOA CRM"""
-from django.db import models
-from django.core.validators import MinValueValidator
 from decimal import Decimal
+
+from django.core.validators import MinValueValidator
+from django.db import models
 
 
 class Building(models.Model):
@@ -35,7 +36,7 @@ class Building(models.Model):
         verbose_name_plural = 'Buildings'
         ordering = ['name']
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
@@ -96,7 +97,7 @@ class Apartment(models.Model):
         unique_together = ['building', 'apartment_number']
         ordering = ['building', 'block', 'apartment_number']
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.building.name} - Daire {self.apartment_number}"
 
     def get_share_ratio(self) -> Decimal:
