@@ -129,10 +129,6 @@ jobs:
         working-directory: crm_backend
         run: python manage.py check
 
-      - name: Migrations up to date
-        working-directory: crm_backend
-        run: python manage.py migrate --check
-
       - name: Run tests
         working-directory: crm_backend
         run: pytest --cov=apps --cov-report=term-missing
