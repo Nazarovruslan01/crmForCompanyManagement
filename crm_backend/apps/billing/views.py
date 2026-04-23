@@ -1,6 +1,7 @@
 """Billing app views for REST API."""
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from .models import AidatCharge, ExtraordinaryCharge, Payment, Receipt
@@ -12,7 +13,7 @@ from .serializers import (
 )
 
 
-class AidatChargeViewSet(viewsets.ModelViewSet):
+class AidatChargeViewSet(viewsets.ModelViewSet[AidatCharge]):
     queryset = AidatCharge.objects.select_related('apartment__building').all()
     serializer_class = AidatChargeSerializer
     filterset_fields = ['status', 'apartment']
@@ -20,14 +21,14 @@ class AidatChargeViewSet(viewsets.ModelViewSet):
     ordering_fields = ['billing_period_start', 'due_date', 'base_amount']
 
     @action(detail=False, methods=['get'])
-    def overdue(self, request):
+    def overdue(self, request: Request) -> Response:
         """Get all overdue charges."""
         overdue = self.queryset.filter(status='overdue')
         serializer = self.get_serializer(overdue, many=True)
         return Response(serializer.data)
 
 
-class ExtraordinaryChargeViewSet(viewsets.ModelViewSet):
+class ExtraordinaryChargeViewSet(viewsets.ModelViewSet[ExtraordinaryCharge]):
     queryset = ExtraordinaryCharge.objects.select_related('building').all()
     serializer_class = ExtraordinaryChargeSerializer
     filterset_fields = ['status', 'building']
@@ -35,7 +36,7 @@ class ExtraordinaryChargeViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at', 'total_amount']
 
 
-class PaymentViewSet(viewsets.ModelViewSet):
+class PaymentViewSet(viewsets.ModelViewSet[Payment]):
     queryset = Payment.objects.select_related('apartment__building').all()
     serializer_class = PaymentSerializer
     filterset_fields = ['payment_method', 'apartment']
@@ -43,7 +44,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
     ordering_fields = ['paid_at', 'amount']
 
 
-class ReceiptViewSet(viewsets.ModelViewSet):
+class ReceiptViewSet(viewsets.ModelViewSet[Receipt]):
     queryset = Receipt.objects.select_related('payment__apartment__building').all()
     serializer_class = ReceiptSerializer
     filterset_fields = ['payment']

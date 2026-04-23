@@ -5,12 +5,12 @@ from .models import Department, Employee, Task
 from .serializers import DepartmentSerializer, EmployeeSerializer, TaskSerializer
 
 
-class DepartmentViewSet(viewsets.ModelViewSet):
+class DepartmentViewSet(viewsets.ModelViewSet[Department]):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
 
 
-class EmployeeViewSet(viewsets.ModelViewSet):
+class EmployeeViewSet(viewsets.ModelViewSet[Employee]):
     queryset = Employee.objects.select_related('user', 'department').all()
     serializer_class = EmployeeSerializer
     filterset_fields = ['role', 'department', 'is_active']
@@ -18,7 +18,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     ordering_fields = ['hire_date', 'created_at']
 
 
-class TaskViewSet(viewsets.ModelViewSet):
+class TaskViewSet(viewsets.ModelViewSet[Task]):
     queryset = Task.objects.select_related('ticket', 'assigned_to', 'created_by').all()
     serializer_class = TaskSerializer
     filterset_fields = ['status', 'assigned_to']

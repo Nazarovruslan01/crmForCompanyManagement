@@ -5,7 +5,7 @@ from .models import Apartment, Building
 from .serializers import ApartmentMinimalSerializer, ApartmentSerializer, BuildingSerializer
 
 
-class BuildingViewSet(viewsets.ModelViewSet):
+class BuildingViewSet(viewsets.ModelViewSet[Building]):
     queryset = Building.objects.all()
     serializer_class = BuildingSerializer
     filterset_fields = ['management_type', 'city', 'district']
@@ -13,7 +13,7 @@ class BuildingViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name', 'created_at']
 
 
-class ApartmentViewSet(viewsets.ModelViewSet):
+class ApartmentViewSet(viewsets.ModelViewSet[Apartment]):
     queryset = Apartment.objects.select_related('building').all()
     serializer_class = ApartmentSerializer
     filterset_fields = ['status', 'building', 'block']
@@ -24,7 +24,7 @@ class ApartmentViewSet(viewsets.ModelViewSet):
 class ApartmentMinimalViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
-    viewsets.GenericViewSet
+    viewsets.GenericViewSet[Apartment],
 ):
     """Minimal viewset for nested representations."""
     queryset = Apartment.objects.select_related('building').all()

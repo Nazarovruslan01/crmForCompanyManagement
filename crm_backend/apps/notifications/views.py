@@ -1,13 +1,14 @@
 """Notifications app views for REST API."""
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from .models import NotificationLog, NotificationTemplate
 from .serializers import NotificationLogSerializer, NotificationTemplateSerializer
 
 
-class NotificationTemplateViewSet(viewsets.ModelViewSet):
+class NotificationTemplateViewSet(viewsets.ModelViewSet[NotificationTemplate]):
     queryset = NotificationTemplate.objects.all()
     serializer_class = NotificationTemplateSerializer
     filterset_fields = ['channel', 'notification_type', 'is_active']
@@ -15,7 +16,7 @@ class NotificationTemplateViewSet(viewsets.ModelViewSet):
     ordering_fields = ['name']
 
     @action(detail=False, methods=['get'])
-    def by_type(self, request):
+    def by_type(self, request: Request) -> Response:
         """Get templates by notification type."""
         notification_type = request.query_params.get('type')
         if not notification_type:
@@ -25,7 +26,7 @@ class NotificationTemplateViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class NotificationLogViewSet(viewsets.ModelViewSet):
+class NotificationLogViewSet(viewsets.ModelViewSet[NotificationLog]):
     queryset = NotificationLog.objects.select_related('recipient', 'template').all()
     serializer_class = NotificationLogSerializer
     filterset_fields = ['status', 'channel', 'recipient']

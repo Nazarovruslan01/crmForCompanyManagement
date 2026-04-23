@@ -1,6 +1,7 @@
 """Tickets app views for REST API."""
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.request import Request
 from rest_framework.response import Response
 
 from .models import Ticket, TicketAttachment, TicketComment
@@ -12,7 +13,7 @@ from .serializers import (
 )
 
 
-class TicketViewSet(viewsets.ModelViewSet):
+class TicketViewSet(viewsets.ModelViewSet[Ticket]):
     queryset = Ticket.objects.select_related(
         'apartment__building', 'assigned_worker', 'created_by'
     ).all()
@@ -21,13 +22,13 @@ class TicketViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'description', 'apartment__apartment_number']
     ordering_fields = ['priority', 'created_at', 'updated_at']
 
-    def get_serializer_class(self):
+    def get_serializer_class(self) -> type[TicketSerializer | TicketDetailSerializer]:
         if self.action == 'retrieve':
             return TicketDetailSerializer
         return TicketSerializer
 
     @action(detail=True, methods=['post'])
-    def resolve(self, request, pk=None):
+    def resolve(self, request: Request, pk: int | None = None) -> Response:
         """Mark ticket as resolved."""
         ticket = self.get_object()
         ticket.status = Ticket.Status.RESOLVED
@@ -36,7 +37,7 @@ class TicketViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
-    def close(self, request, pk=None):
+    def close(self, request: Request, pk: int | None = None) -> Response:
         """Mark ticket as closed."""
         ticket = self.get_object()
         ticket.status = Ticket.Status.CLOSED
@@ -45,13 +46,13 @@ class TicketViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class TicketCommentViewSet(viewsets.ModelViewSet):
+class TicketCommentViewSet(viewsets.ModelViewSet[TicketComment]):
     queryset = TicketComment.objects.select_related('author', 'ticket').all()
     serializer_class = TicketCommentSerializer
     filterset_fields = ['ticket']
 
 
-class TicketAttachmentViewSet(viewsets.ModelViewSet):
+class TicketAttachmentViewSet(viewsets.ModelViewSet[TicketAttachment]):
     queryset = TicketAttachment.objects.select_related('uploaded_by', 'ticket').all()
     serializer_class = TicketAttachmentSerializer
     filterset_fields = ['ticket', 'file_type']
