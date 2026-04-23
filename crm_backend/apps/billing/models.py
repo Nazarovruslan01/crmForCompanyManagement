@@ -1,4 +1,5 @@
 """Billing app models for Turkish HOA CRM (Aidat = Monthly Fee)"""
+from collections.abc import Iterable
 from decimal import Decimal
 
 from django.db import models
@@ -169,7 +170,13 @@ class Payment(models.Model):
     def __str__(self) -> str:
         return f"{self.receipt_number or 'N/A'} - {self.amount} {self.currency}"
 
-    def save(self, *args: object, **kwargs: object) -> None:
+    def save(
+        self,
+        force_insert: bool | tuple[type[models.Model], ...] = False,
+        force_update: bool = False,
+        using: str | None = None,
+        update_fields: Iterable[str] | None = None,
+    ) -> None:
         # Auto-generate receipt number if not set
         if not self.receipt_number:
             year = timezone.now().year
@@ -187,7 +194,7 @@ class Payment(models.Model):
 
             self.receipt_number = f'{year}{month}{new_seq:04d}'
 
-        super().save(*args, **kwargs)
+        super().save(force_insert, force_update, using, update_fields)
 
 
 class Receipt(models.Model):
