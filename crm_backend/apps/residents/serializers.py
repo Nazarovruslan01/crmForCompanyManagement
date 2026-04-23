@@ -1,6 +1,8 @@
 """Residents app serializers for REST API."""
 from rest_framework import serializers
 
+from common.validators import validate_email, validate_phone_turkey, validate_tc_kimlik_no
+
 from .models import Ownership, PersonalAccount, Resident
 
 
@@ -16,6 +18,21 @@ class ResidentSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at']
+
+    def validate_email(self, value: str | None) -> str | None:
+        if value:
+            return validate_email(value)
+        return value
+
+    def validate_phone(self, value: str | None) -> str | None:
+        if value:
+            return validate_phone_turkey(value)
+        return value
+
+    def validate_tc_kimlik_no(self, value: str | None) -> str | None:
+        if value:
+            return validate_tc_kimlik_no(value)
+        return value
 
 
 class PersonalAccountSerializer(serializers.ModelSerializer):
