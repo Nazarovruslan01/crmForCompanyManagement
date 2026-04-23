@@ -3,7 +3,6 @@ import pytest
 
 from apps.staff.models import Employee, Task
 
-
 pytestmark = pytest.mark.django_db
 
 
@@ -61,8 +60,10 @@ class TestTask:
         assert Task.Status.CANCELLED == 'cancelled'
 
     def test_task_with_due_date(self, user):
-        from datetime import datetime, timedelta
-        due = datetime.now() + timedelta(days=7)
+        from datetime import timedelta
+
+        from django.utils import timezone
+        due = timezone.now() + timedelta(days=7)
         task = Task.objects.create(
             title='Task with due date',
             description='Test',

@@ -6,7 +6,6 @@ import pytest
 
 from apps.billing.models import AidatCharge, ExtraordinaryCharge, Payment, Receipt
 
-
 pytestmark = pytest.mark.django_db
 
 

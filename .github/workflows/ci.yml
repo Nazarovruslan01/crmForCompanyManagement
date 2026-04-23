@@ -21,7 +21,9 @@ jobs:
           cache-dependency-path: crm_backend/requirements/local.txt
 
       - run: pip install ruff
-      - run: ruff check crm_backend/
+      - name: Run ruff
+        working-directory: crm_backend
+        run: ruff check .
 
   # ─── 2. Static type checking ──────────────────────────────────────────────
   typecheck:

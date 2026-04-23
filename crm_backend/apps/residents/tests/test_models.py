@@ -4,7 +4,6 @@ from django.core.exceptions import ValidationError
 
 from apps.residents.models import Ownership, PersonalAccount, Resident
 
-
 pytestmark = pytest.mark.django_db
 
 
@@ -78,7 +77,9 @@ class TestOwnership:
         assert ownership.is_primary
 
     def test_ownership_str(self, ownership):
-        assert 'owner' in str(ownership).lower()
+        s = str(ownership)
+        # role display returns Turkish 'Mal Sahibi', 'Kiracı', etc.
+        assert 'Mal Sahibi' in s or 'Kiracı' in s or 'İkamet' in s
 
     def test_unique_together_resident_apartment_role(self, ownership, resident, apartment):
         with pytest.raises(Exception):  # IntegrityError

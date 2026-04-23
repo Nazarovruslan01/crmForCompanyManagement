@@ -2,10 +2,8 @@
 from decimal import Decimal
 
 import pytest
-from django.db import IntegrityError
 
-from apps.properties.models import Building, Apartment
-
+from apps.properties.models import Apartment, Building
 
 pytestmark = pytest.mark.django_db
 
@@ -49,11 +47,14 @@ class TestApartment:
         ratio = apartment.get_share_ratio()
         assert ratio == Decimal('0.01')
 
-    def test_unique_apartment_per_building(self, building):
+    def test_unique_apartment_per_building(self, building, apartment):
+        # apartment fixture already creates '101' for this building.
+        # Trying to create another with same number must fail.
+        from django.db import IntegrityError
         with pytest.raises(IntegrityError):
             Apartment.objects.create(
                 building=building,
-                apartment_number='101'
+                apartment_number=apartment.apartment_number,
             )
 
     def test_apartment_status_choices(self):

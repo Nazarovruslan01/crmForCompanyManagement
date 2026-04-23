@@ -3,7 +3,6 @@ import pytest
 
 from apps.notifications.models import NotificationLog, NotificationTemplate
 
-
 pytestmark = pytest.mark.django_db
 
 

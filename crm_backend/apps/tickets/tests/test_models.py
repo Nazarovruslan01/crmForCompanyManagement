@@ -1,8 +1,7 @@
 """Tests for tickets app models."""
 import pytest
 
-from apps.tickets.models import Ticket, TicketComment, TicketAttachment
-
+from apps.tickets.models import Ticket, TicketAttachment, TicketComment
 
 pytestmark = pytest.mark.django_db
 
