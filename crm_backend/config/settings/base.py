@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_spectacular',
     # Local apps
+    'apps.accounts',
     'apps.properties',
     'apps.residents',
     'apps.tickets',
@@ -36,6 +37,9 @@ INSTALLED_APPS = [
     'apps.staff',
     'apps.notifications',
 ]
+
+# Custom user model — must be set before first migration
+AUTH_USER_MODEL = 'accounts.User'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

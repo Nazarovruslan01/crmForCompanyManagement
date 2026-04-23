@@ -2,9 +2,9 @@
 from datetime import date, timedelta
 
 import pytest
-from django.contrib.auth.models import User
 from django.utils import timezone
 
+from apps.accounts.models import User
 from apps.billing.models import AidatCharge, Payment
 from apps.notifications.models import NotificationTemplate
 from apps.properties.models import Apartment, Building
@@ -18,7 +18,21 @@ def user(db):
     return User.objects.create_user(
         username='testuser',
         email='test@example.com',
-        password='testpass123'
+        password='testpass123',
+        role=User.Role.RESIDENT
+    )
+
+
+@pytest.fixture
+def admin_user(db):
+    """Create an admin user."""
+    return User.objects.create_user(
+        username='adminuser',
+        email='admin@example.com',
+        password='testpass123',
+        role=User.Role.ADMIN,
+        first_name='Admin',
+        last_name='User'
     )
 
 
@@ -29,6 +43,7 @@ def staff_user(db):
         username='staffuser',
         email='staff@example.com',
         password='testpass123',
+        role=User.Role.WORKER,
         first_name='Staff',
         last_name='User'
     )

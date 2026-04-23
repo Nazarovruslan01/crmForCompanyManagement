@@ -1,5 +1,5 @@
 """Residents app models for Turkish HOA CRM"""
-from django.contrib.auth.models import User
+from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 
@@ -13,7 +13,7 @@ class Resident(models.Model):
         RESIDENT = 'resident', 'İkamet Eden'
 
     user = models.OneToOneField(
-        User,
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
