@@ -1,0 +1,7 @@
+[bandit]
+# Scan severity: MEDIUM and above (skips LOW noise)
+# -ll flag in CI = report MEDIUM + HIGH
+exclude_dirs = apps/*/migrations,apps/*/tests
+skips =
+    # B101: assert used — fine in tests and Django checks
+    B101
