@@ -1,8 +1,10 @@
 """Notifications app views for REST API."""
-from rest_framework import viewsets
+from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
+
+from common.permissions import IsAdminOrManager
 
 from .models import NotificationLog, NotificationTemplate
 from .serializers import NotificationLogSerializer, NotificationTemplateSerializer
@@ -11,6 +13,7 @@ from .serializers import NotificationLogSerializer, NotificationTemplateSerializ
 class NotificationTemplateViewSet(viewsets.ModelViewSet[NotificationTemplate]):
     queryset = NotificationTemplate.objects.all()
     serializer_class = NotificationTemplateSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     filterset_fields = ['channel', 'notification_type', 'is_active']
     search_fields = ['name', 'subject']
     ordering_fields = ['name']
@@ -29,6 +32,7 @@ class NotificationTemplateViewSet(viewsets.ModelViewSet[NotificationTemplate]):
 class NotificationLogViewSet(viewsets.ModelViewSet[NotificationLog]):
     queryset = NotificationLog.objects.select_related('recipient', 'template').all()
     serializer_class = NotificationLogSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     filterset_fields = ['status', 'channel', 'recipient']
     search_fields = ['recipient__name', 'external_id']
     ordering_fields = ['created_at', 'sent_at']

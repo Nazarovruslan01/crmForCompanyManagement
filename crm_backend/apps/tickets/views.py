@@ -1,8 +1,10 @@
 """Tickets app views for REST API."""
-from rest_framework import viewsets
+from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
+
+from common.permissions import IsAdminOrManager
 
 from .models import Ticket, TicketAttachment, TicketComment
 from .serializers import (
@@ -18,6 +20,7 @@ class TicketViewSet(viewsets.ModelViewSet[Ticket]):
         'apartment__building', 'assigned_worker', 'created_by'
     ).all()
     serializer_class = TicketSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     filterset_fields = ['status', 'priority', 'category', 'assigned_worker']
     search_fields = ['title', 'description', 'apartment__apartment_number']
     ordering_fields = ['priority', 'created_at', 'updated_at']
@@ -49,10 +52,12 @@ class TicketViewSet(viewsets.ModelViewSet[Ticket]):
 class TicketCommentViewSet(viewsets.ModelViewSet[TicketComment]):
     queryset = TicketComment.objects.select_related('author', 'ticket').all()
     serializer_class = TicketCommentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     filterset_fields = ['ticket']
 
 
 class TicketAttachmentViewSet(viewsets.ModelViewSet[TicketAttachment]):
     queryset = TicketAttachment.objects.select_related('uploaded_by', 'ticket').all()
     serializer_class = TicketAttachmentSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     filterset_fields = ['ticket', 'file_type']

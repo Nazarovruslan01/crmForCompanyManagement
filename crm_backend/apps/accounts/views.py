@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from common.permissions import IsAdminOrManager
+
 from .serializers import UserCreateSerializer, UserSerializer
 
 User = get_user_model()
@@ -13,6 +15,7 @@ User = get_user_model()
 class UserViewSet(viewsets.ModelViewSet[User]):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     filterset_fields = ['role', 'is_active', 'is_staff']
     search_fields = ['username', 'email', 'first_name', 'last_name']
     ordering_fields = ['username', 'date_joined']
@@ -20,7 +23,7 @@ class UserViewSet(viewsets.ModelViewSet[User]):
     def get_permissions(self) -> list[permissions.BasePermission]:
         if self.action == 'create':
             return [permissions.AllowAny()]
-        return super().get_permissions()
+        return [permissions.IsAuthenticated(), IsAdminOrManager()]
 
     def get_serializer_class(self) -> type[UserSerializer | UserCreateSerializer]:
         if self.action == 'create':
