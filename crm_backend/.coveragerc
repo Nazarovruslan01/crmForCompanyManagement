@@ -1,0 +1,25 @@
+[run]
+source = common,apps
+omit =
+    # Migrations - auto-generated, don't test
+    */migrations/*
+    # URL configs - thin wrappers, no logic
+    */urls.py
+    # Django app configs - no logic
+    */apps.py
+    # Django admin configs - thin wrappers
+    */admin.py
+    # API views - would require API integration tests
+    */views.py
+    # Serializers - would require API integration tests
+    */serializers.py
+    # Init files
+    */__init__.py
+
+[report]
+precision = 2
+show_missing = True
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
