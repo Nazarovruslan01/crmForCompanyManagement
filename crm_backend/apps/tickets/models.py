@@ -79,6 +79,9 @@ class Ticket(models.Model):
             models.Index(fields=['apartment']),
             models.Index(fields=['status']),
             models.Index(fields=['priority']),
+            models.Index(fields=['assigned_worker', 'status']),
+            models.Index(fields=['created_by', 'status']),
+            models.Index(fields=['-created_at']),
         ]
 
     def __str__(self) -> str:
@@ -106,6 +109,9 @@ class TicketComment(models.Model):
         verbose_name = 'Ticket Comment'
         verbose_name_plural = 'Ticket Comments'
         ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['ticket', 'created_at']),
+        ]
 
     def __str__(self) -> str:
         return f"Comment on Ticket #{self.ticket.id}"

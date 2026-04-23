@@ -139,6 +139,9 @@ class Ownership(models.Model):
         verbose_name = 'Ownership'
         verbose_name_plural = 'Ownerships'
         unique_together = ['resident', 'apartment', 'role']
+        indexes = [
+            models.Index(fields=['apartment', 'is_primary']),
+        ]
 
     def __str__(self) -> str:
         return f"{self.resident} - {self.apartment} ({self.get_role_display()})"

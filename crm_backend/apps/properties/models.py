@@ -35,6 +35,9 @@ class Building(models.Model):
         verbose_name = 'Building'
         verbose_name_plural = 'Buildings'
         ordering = ['name']
+        indexes = [
+            models.Index(fields=['city', 'district']),
+        ]
 
     def __str__(self) -> str:
         return self.name
@@ -96,6 +99,9 @@ class Apartment(models.Model):
         verbose_name_plural = 'Apartments'
         unique_together = ['building', 'apartment_number']
         ordering = ['building', 'block', 'apartment_number']
+        indexes = [
+            models.Index(fields=['building', 'status']),
+        ]
 
     def __str__(self) -> str:
         return f"{self.building.name} - Daire {self.apartment_number}"
