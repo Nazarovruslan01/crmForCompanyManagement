@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_spectacular',
     # Local apps
+    'core',
     'apps.accounts',
     'apps.properties',
     'apps.residents',
