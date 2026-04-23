@@ -5,6 +5,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from common.permissions import IsAdminOrManager
+from common.throttles import UserReadThrottle, UserWriteThrottle
 
 from .models import NotificationLog, NotificationTemplate
 from .serializers import NotificationLogSerializer, NotificationTemplateSerializer
@@ -17,6 +18,7 @@ class NotificationTemplateViewSet(viewsets.ModelViewSet[NotificationTemplate]):
     filterset_fields = ['channel', 'notification_type', 'is_active']
     search_fields = ['name', 'subject']
     ordering_fields = ['name']
+    throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
     @action(detail=False, methods=['get'])
     def by_type(self, request: Request) -> Response:
@@ -36,3 +38,4 @@ class NotificationLogViewSet(viewsets.ModelViewSet[NotificationLog]):
     filterset_fields = ['status', 'channel', 'recipient']
     search_fields = ['recipient__name', 'external_id']
     ordering_fields = ['created_at', 'sent_at']
+    throttle_classes = [UserReadThrottle, UserWriteThrottle]

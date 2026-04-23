@@ -138,6 +138,8 @@ REST_FRAMEWORK = {
         'anon': '100/hour',
         'login': '5/m',
         'password_reset': '3/m',
+        'user_read': '1000/hour',
+        'user_write': '100/hour',
     },
 }
 

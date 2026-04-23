@@ -2,6 +2,7 @@
 from rest_framework import permissions, viewsets
 
 from common.permissions import IsAdminOrManager
+from common.throttles import UserReadThrottle, UserWriteThrottle
 
 from .models import Department, Employee, Task
 from .serializers import DepartmentSerializer, EmployeeSerializer, TaskSerializer
@@ -11,6 +12,7 @@ class DepartmentViewSet(viewsets.ModelViewSet[Department]):
     queryset = Department.objects.all()
     serializer_class = DepartmentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
+    throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
 
 class EmployeeViewSet(viewsets.ModelViewSet[Employee]):
@@ -20,6 +22,7 @@ class EmployeeViewSet(viewsets.ModelViewSet[Employee]):
     filterset_fields = ['role', 'department', 'is_active']
     search_fields = ['user__username', 'user__first_name', 'user__last_name']
     ordering_fields = ['hire_date', 'created_at']
+    throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
 
 class TaskViewSet(viewsets.ModelViewSet[Task]):
@@ -29,3 +32,4 @@ class TaskViewSet(viewsets.ModelViewSet[Task]):
     filterset_fields = ['status', 'assigned_to']
     search_fields = ['title', 'ticket__title']
     ordering_fields = ['due_date', 'created_at']
+    throttle_classes = [UserReadThrottle, UserWriteThrottle]

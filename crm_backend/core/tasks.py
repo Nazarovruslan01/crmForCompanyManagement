@@ -1,7 +1,7 @@
 """Celery tasks for async operations."""
 import logging
 from datetime import timedelta
-from typing import Any
+from typing import Any, TypedDict
 
 import requests
 from celery import shared_task
@@ -12,6 +12,25 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
+class EmailResult(TypedDict):
+    success: bool
+    recipients: list[str]
+
+
+class SmsResult(TypedDict):
+    success: bool
+    phone: str | None
+    error: str | None
+
+
+class CleanupResult(TypedDict):
+    cleaned_tokens: int
+
+
+class TicketCloseResult(TypedDict):
+    closed_tickets: int
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_email_async(
     self: Any,
@@ -19,7 +38,7 @@ def send_email_async(
     message: str,
     recipient_list: list[str],
     fail_silently: bool = False,
-) -> dict[str, Any]:
+) -> EmailResult:
     """
     Send email asynchronously via Celery.
 
@@ -41,7 +60,7 @@ def send_email_async(
             fail_silently=fail_silently,
         )
         logger.info("Email sent successfully to %s", recipient_list)
-        return {'success': True, 'recipients': recipient_list}
+        return EmailResult(success=True, recipients=recipient_list)
     except Exception as exc:
         logger.error("Failed to send email to %s: %s", recipient_list, exc)
         raise self.retry(exc=exc)
@@ -53,7 +72,7 @@ def send_sms_async(
     phone: str,
     message: str,
     fail_silently: bool = False,
-) -> dict[str, Any]:
+) -> SmsResult:
     """
     Send SMS asynchronously via Celery.
 
@@ -72,11 +91,11 @@ def send_sms_async(
 
     if not sms_url:
         logger.warning("SMS API not configured, skipping SMS")
-        return {'success': False, 'error': 'SMS API not configured'}
+        return SmsResult(success=False, phone=None, error='SMS API not configured')
 
     if not all([api_key, api_secret]):
         logger.warning("SMS API credentials not configured, skipping SMS")
-        return {'success': False, 'error': 'SMS API credentials not configured'}
+        return SmsResult(success=False, phone=None, error='SMS API credentials not configured')
 
     payload = {
         'request': {
@@ -101,16 +120,16 @@ def send_sms_async(
         response = requests.post(str(sms_url), json=payload, timeout=30)
         response.raise_for_status()
         logger.info("SMS sent successfully to %s", phone)
-        return {'success': True, 'phone': phone}
+        return SmsResult(success=True, phone=phone, error=None)
     except Exception as exc:
         logger.error("Failed to send SMS to %s: %s", phone, exc)
         if fail_silently:
-            return {'success': False, 'error': str(exc)}
+            return SmsResult(success=False, phone=None, error=str(exc))
         raise self.retry(exc=exc)
 
 
 @shared_task
-def cleanup_expired_tokens() -> dict[str, Any]:
+def cleanup_expired_tokens() -> CleanupResult:
     """
     Cleanup expired JWT tokens and sessions.
     Runs daily via Celery beat.
@@ -132,11 +151,11 @@ def cleanup_expired_tokens() -> dict[str, Any]:
     old_tokens.delete()
 
     logger.info("Cleaned up %d expired tokens", cleaned)
-    return {'cleaned_tokens': cleaned}
+    return CleanupResult(cleaned_tokens=cleaned)
 
 
 @shared_task
-def ticket_auto_close() -> dict[str, Any]:
+def ticket_auto_close() -> TicketCloseResult:
     """
     Auto-close tickets that have been resolved for more than 7 days.
     Runs daily via Celery beat.
@@ -154,4 +173,4 @@ def ticket_auto_close() -> dict[str, Any]:
     ).update(status=Ticket.Status.CLOSED)
 
     logger.info("Auto-closed %d tickets", closed_count)
-    return {'closed_tickets': closed_count}
+    return TicketCloseResult(closed_tickets=closed_count)

@@ -5,6 +5,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from common.permissions import IsAdminOrManager
+from common.throttles import UserReadThrottle, UserWriteThrottle
 
 from .models import Ownership, PersonalAccount, Resident
 from .serializers import (
@@ -21,6 +22,7 @@ class ResidentViewSet(viewsets.ModelViewSet[Resident]):
     filterset_fields = ['owner_type', 'is_foreign_owner']
     search_fields = ['name', 'surname', 'tc_kimlik_no', 'passport_no']
     ordering_fields = ['surname', 'name', 'created_at']
+    throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
 
 class PersonalAccountViewSet(viewsets.ModelViewSet[PersonalAccount]):
@@ -30,6 +32,7 @@ class PersonalAccountViewSet(viewsets.ModelViewSet[PersonalAccount]):
     filterset_fields = ['is_active']
     search_fields = ['account_number', 'apartment__apartment_number']
     ordering_fields = ['account_number', 'balance']
+    throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
 
 class OwnershipViewSet(viewsets.ModelViewSet[Ownership]):
@@ -39,6 +42,7 @@ class OwnershipViewSet(viewsets.ModelViewSet[Ownership]):
     filterset_fields = ['role', 'is_primary']
     search_fields = ['resident__name', 'resident__surname', 'apartment__apartment_number']
     ordering_fields = ['created_at']
+    throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
     @action(detail=False, methods=['get'])
     def by_apartment(self, request: Request) -> Response:
