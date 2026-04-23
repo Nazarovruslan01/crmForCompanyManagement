@@ -5,8 +5,14 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from core.health import HealthCheckView, ReadinessCheckView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # Health checks (for K8s probes)
+    path('api/health/', HealthCheckView.as_view(), name='health'),
+    path('api/ready/', ReadinessCheckView.as_view(), name='readiness'),
 
     # API v1
     path('api/v1/', include([
