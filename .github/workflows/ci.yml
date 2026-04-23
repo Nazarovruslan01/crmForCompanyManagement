@@ -66,7 +66,13 @@ jobs:
         run: |
           bandit -r crm_backend/ \
             -ll -iii \
-            --exclude crm_backend/apps/*/migrations \
+            -x "crm_backend/apps/accounts/migrations" \
+            -x "crm_backend/apps/billing/migrations" \
+            -x "crm_backend/apps/notifications/migrations" \
+            -x "crm_backend/apps/properties/migrations" \
+            -x "crm_backend/apps/residents/migrations" \
+            -x "crm_backend/apps/staff/migrations" \
+            -x "crm_backend/apps/tickets/migrations" \
             -f txt
 
   # ─── 4. Security — dependency CVE scan ───────────────────────────────────
