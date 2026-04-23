@@ -14,6 +14,9 @@ urlpatterns = [
     path('api/health/', HealthCheckView.as_view(), name='health'),
     path('api/ready/', ReadinessCheckView.as_view(), name='readiness'),
 
+    # Prometheus metrics
+    path('', include('django_prometheus.urls')),
+
     # API v1
     path('api/v1/', include([
         path('accounts/', include('apps.accounts.urls')),
