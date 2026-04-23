@@ -144,6 +144,9 @@ REST_FRAMEWORK = {
         'user_read': '1000/hour',
         'user_write': '100/hour',
     },
+    'DEFAULT_VERSION': 'v2',
+    'ALLOWED_VERSIONS': ['v1', 'v2'],
+    'VERSION_PARAM': 'version',
 }
 
 # JWT Settings
