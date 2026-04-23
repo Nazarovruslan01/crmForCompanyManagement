@@ -3,6 +3,7 @@ from collections.abc import Iterable
 from decimal import Decimal
 
 from django.db import models
+from django.db.models.base import ModelBase
 from django.utils import timezone
 
 
@@ -172,7 +173,8 @@ class Payment(models.Model):
 
     def save(
         self,
-        force_insert: bool | tuple[type[models.Model], ...] = False,
+        *,
+        force_insert: bool | tuple[ModelBase, ...] = False,
         force_update: bool = False,
         using: str | None = None,
         update_fields: Iterable[str] | None = None,
@@ -194,7 +196,12 @@ class Payment(models.Model):
 
             self.receipt_number = f'{year}{month}{new_seq:04d}'
 
-        super().save(force_insert, force_update, using, update_fields)
+        super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using=using,
+            update_fields=update_fields,
+        )
 
 
 class Receipt(models.Model):
