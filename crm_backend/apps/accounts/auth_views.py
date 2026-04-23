@@ -6,6 +6,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
+from common.throttles import LoginRateThrottle, PasswordResetRateThrottle
+
 from .serializers import UserSerializer
 
 User = get_user_model()
@@ -14,6 +16,7 @@ User = get_user_model()
 class LoginView(APIView):
     """JWT login endpoint."""
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [LoginRateThrottle]
 
     def post(self, request: Request) -> Response:
         username = request.data.get('username')
@@ -72,6 +75,7 @@ class LogoutView(APIView):
 class PasswordResetRequestView(APIView):
     """Request password reset email."""
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [PasswordResetRateThrottle]
 
     def post(self, request: Request) -> Response:
         email = request.data.get('email')
