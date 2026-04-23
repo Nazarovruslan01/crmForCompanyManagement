@@ -5,6 +5,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from common.permissions import IsAdminOrManager
+from common.throttles import UserReadThrottle, UserWriteThrottle
 
 from .models import Ticket, TicketAttachment, TicketComment
 from .serializers import (
@@ -24,6 +25,7 @@ class TicketViewSet(viewsets.ModelViewSet[Ticket]):
     filterset_fields = ['status', 'priority', 'category', 'assigned_worker']
     search_fields = ['title', 'description', 'apartment__apartment_number']
     ordering_fields = ['priority', 'created_at', 'updated_at']
+    throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
     def get_serializer_class(self) -> type[TicketSerializer | TicketDetailSerializer]:
         if self.action == 'retrieve':
@@ -54,6 +56,7 @@ class TicketCommentViewSet(viewsets.ModelViewSet[TicketComment]):
     serializer_class = TicketCommentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     filterset_fields = ['ticket']
+    throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
 
 class TicketAttachmentViewSet(viewsets.ModelViewSet[TicketAttachment]):
@@ -61,3 +64,4 @@ class TicketAttachmentViewSet(viewsets.ModelViewSet[TicketAttachment]):
     serializer_class = TicketAttachmentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     filterset_fields = ['ticket', 'file_type']
+    throttle_classes = [UserReadThrottle, UserWriteThrottle]

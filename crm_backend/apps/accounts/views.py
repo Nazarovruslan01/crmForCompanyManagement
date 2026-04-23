@@ -1,11 +1,13 @@
 """Accounts app views for REST API."""
 from django.contrib.auth import get_user_model
 from rest_framework import generics, permissions, status, viewsets
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from common.permissions import IsAdminOrManager
+from common.throttles import UserReadThrottle, UserWriteThrottle
 
 from .serializers import UserCreateSerializer, UserSerializer
 
@@ -19,6 +21,7 @@ class UserViewSet(viewsets.ModelViewSet[User]):
     filterset_fields = ['role', 'is_active', 'is_staff']
     search_fields = ['username', 'email', 'first_name', 'last_name']
     ordering_fields = ['username', 'date_joined']
+    throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
     def get_permissions(self) -> list[permissions.BasePermission]:
         if self.action == 'create':
@@ -33,8 +36,9 @@ class UserViewSet(viewsets.ModelViewSet[User]):
 
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [UserWriteThrottle]
 
-    def post(self, request) -> Response:
+    def post(self, request: Request) -> Response:
         try:
             refresh_token = request.data.get('refresh')
             if refresh_token:
@@ -49,6 +53,7 @@ class UserMeView(generics.RetrieveUpdateAPIView[User]):
     """Get or update current user profile."""
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
     def get_object(self) -> User:
         return self.request.user

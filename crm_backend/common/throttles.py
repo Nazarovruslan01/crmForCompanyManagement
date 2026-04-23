@@ -1,12 +1,12 @@
 """Custom throttle classes for rate limiting."""
-from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.request import Request
+from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
 
 class LoginRateThrottle(SimpleRateThrottle):
     """
-    Rate limit login attempts: 5 attempts per 15 minutes per IP + username.
+    Rate limit login attempts: 5 attempts per minute per IP + username.
     """
     scope = 'login'
 
@@ -26,7 +26,7 @@ class LoginRateThrottle(SimpleRateThrottle):
 
 class PasswordResetRateThrottle(SimpleRateThrottle):
     """
-    Rate limit password reset requests: 3 attempts per 15 minutes per email.
+    Rate limit password reset requests: 3 attempts per minute per email.
     """
     scope = 'password_reset'
 
@@ -35,3 +35,29 @@ class PasswordResetRateThrottle(SimpleRateThrottle):
         if not email:
             return None
         return f"throttle_password_reset:{email}"
+
+
+class UserReadThrottle(SimpleRateThrottle):
+    """
+    Rate limit read operations for authenticated users: 1000/hour.
+    Used for list and retrieve actions.
+    """
+    scope = 'user_read'
+
+    def get_cache_key(self, request: Request, view: APIView) -> str | None:
+        if request.user.is_authenticated:
+            return f"throttle_user_read:{request.user.pk}"
+        return None
+
+
+class UserWriteThrottle(SimpleRateThrottle):
+    """
+    Rate limit write operations for authenticated users: 100/hour.
+    Used for create, update, delete actions.
+    """
+    scope = 'user_write'
+
+    def get_cache_key(self, request: Request, view: APIView) -> str | None:
+        if request.user.is_authenticated:
+            return f"throttle_user_write:{request.user.pk}"
+        return None

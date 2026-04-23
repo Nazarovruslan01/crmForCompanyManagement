@@ -1,6 +1,7 @@
 """Audit logging middleware and decorators."""
 import functools
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from django.contrib.auth import user_logged_in, user_logged_out
 from django.dispatch import receiver
