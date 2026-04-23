@@ -2,8 +2,7 @@
 import pytest
 from django.core.exceptions import ValidationError
 
-from apps.residents.models import Resident, PersonalAccount, Ownership
-from apps.properties.models import Building, Apartment
+from apps.residents.models import Ownership, PersonalAccount, Resident
 
 
 pytestmark = pytest.mark.django_db
@@ -39,8 +38,8 @@ class TestResident:
         r.clean()  # Should not raise
 
     def test_resident_ordering(self, db):
-        r1 = Resident.objects.create(name='Alice', surname='Smith', tc_kimlik_no='11111111111')
-        r2 = Resident.objects.create(name='Bob', surname='Jones', tc_kimlik_no='22222222222')
+        Resident.objects.create(name='Alice', surname='Smith', tc_kimlik_no='11111111111')
+        Resident.objects.create(name='Bob', surname='Jones', tc_kimlik_no='22222222222')
         residents = list(Resident.objects.all())
         assert residents[0].surname == 'Jones'
         assert residents[1].surname == 'Smith'

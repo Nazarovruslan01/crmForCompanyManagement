@@ -1,7 +1,7 @@
 """Tests for notifications app models."""
 import pytest
 
-from apps.notifications.models import NotificationTemplate, NotificationLog
+from apps.notifications.models import NotificationLog, NotificationTemplate
 
 
 pytestmark = pytest.mark.django_db

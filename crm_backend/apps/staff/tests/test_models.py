@@ -1,7 +1,7 @@
 """Tests for staff app models."""
 import pytest
 
-from apps.staff.models import Department, Employee, Task
+from apps.staff.models import Employee, Task
 
 
 pytestmark = pytest.mark.django_db

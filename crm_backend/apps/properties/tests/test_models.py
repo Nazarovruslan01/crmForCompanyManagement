@@ -22,7 +22,7 @@ class TestBuilding:
         assert str(building) == 'Test Building'
 
     def test_building_ordering(self, building):
-        b2 = Building.objects.create(
+        Building.objects.create(
             name='Alpha Building',
             address='456 Street',
             city='Ankara',

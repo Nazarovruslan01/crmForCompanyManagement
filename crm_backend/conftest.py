@@ -1,13 +1,15 @@
 """Pytest configuration and shared fixtures for CRM backend tests."""
+from datetime import date, timedelta
+
 import pytest
 from django.contrib.auth.models import User
+from django.utils import timezone
 
-from apps.properties.models import Building, Apartment
-from apps.residents.models import Resident, PersonalAccount, Ownership
-from apps.tickets.models import Ticket, TicketComment
-from apps.staff.models import Employee, Department
 from apps.billing.models import AidatCharge, Payment
-from apps.notifications.models import NotificationTemplate, NotificationLog
+from apps.notifications.models import NotificationTemplate
+from apps.properties.models import Apartment, Building
+from apps.residents.models import Ownership, PersonalAccount, Resident
+from apps.staff.models import Department, Employee
 
 
 @pytest.fixture
@@ -161,7 +163,6 @@ def notification_template(db):
 @pytest.fixture
 def aidat_charge(db, apartment):
     """Create a test aidat charge."""
-    from datetime import date, timedelta
     start = date(2026, 1, 1)
     end = date(2026, 1, 31)
     return AidatCharge.objects.create(
@@ -178,8 +179,6 @@ def aidat_charge(db, apartment):
 @pytest.fixture
 def paid_aidat_charge(db, apartment):
     """Create a paid aidat charge."""
-    from datetime import date, timedelta
-    from django.utils import timezone
     start = date(2025, 12, 1)
     end = date(2025, 12, 31)
     paid_dt = timezone.now()

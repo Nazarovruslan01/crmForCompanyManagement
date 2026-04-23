@@ -1,6 +1,6 @@
 """Tests for billing app models."""
+from datetime import date
 from decimal import Decimal
-from datetime import date, timedelta
 
 import pytest
 
