@@ -4,6 +4,7 @@ Django settings for CRM project.
 import os
 from pathlib import Path
 from datetime import timedelta
+from urllib.parse import urlparse
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -69,15 +70,15 @@ WSGI_APPLICATION = 'config.wsgi.application'
 ASGI_APPLICATION = 'config.asgi.application'
 
 # Database
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://crm_user:changeme@localhost:5432/crm_db')
+_db_url = urlparse(os.getenv('DATABASE_URL', 'postgresql://crm_user:changeme@localhost:5432/crm_db'))
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': DATABASE_URL.path[1:],
-        'USER': DATABASE_URL.username,
-        'PASSWORD': DATABASE_URL.password,
-        'HOST': DATABASE_URL.hostname,
-        'PORT': DATABASE_URL.port or 5432,
+        'NAME': _db_url.path[1:],
+        'USER': _db_url.username,
+        'PASSWORD': _db_url.password,
+        'HOST': _db_url.hostname,
+        'PORT': _db_url.port or 5432,
     }
 }
 
