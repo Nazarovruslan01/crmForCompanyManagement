@@ -1,5 +1,6 @@
 """Auth views for login, logout, password reset."""
 from django.contrib.auth import authenticate, get_user_model
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -18,6 +19,29 @@ class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_classes = [LoginRateThrottle]
 
+    @extend_schema(
+        request={
+            'type': 'object',
+            'properties': {
+                'username': {'type': 'string'},
+                'password': {'type': 'string'},
+            },
+            'required': ['username', 'password'],
+        },
+        responses={
+            200: {
+                'type': 'object',
+                'properties': {
+                    'access': {'type': 'string'},
+                    'refresh': {'type': 'string'},
+                    'user': {'$ref': '#/components/schemas/User'},
+                },
+            },
+            400: {'description': 'Username and password are required'},
+            401: {'description': 'Invalid credentials'},
+            403: {'description': 'Account is disabled'},
+        },
+    )
     def post(self, request: Request) -> Response:
         username = request.data.get('username')
         password = request.data.get('password')
@@ -55,6 +79,18 @@ class LogoutView(APIView):
     """Logout endpoint - blacklist refresh token."""
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        request={
+            'type': 'object',
+            'properties': {
+                'refresh': {'type': 'string'},
+            },
+        },
+        responses={
+            200: {'description': 'Successfully logged out'},
+            400: {'description': 'Invalid token'},
+        },
+    )
     def post(self, request: Request) -> Response:
         try:
             refresh_token = request.data.get('refresh')
@@ -77,6 +113,19 @@ class PasswordResetRequestView(APIView):
     permission_classes = [permissions.AllowAny]
     throttle_classes = [PasswordResetRateThrottle]
 
+    @extend_schema(
+        request={
+            'type': 'object',
+            'properties': {
+                'email': {'type': 'string', 'format': 'email'},
+            },
+            'required': ['email'],
+        },
+        responses={
+            200: {'description': 'If the email exists, a reset link has been sent'},
+            400: {'description': 'Email is required'},
+        },
+    )
     def post(self, request: Request) -> Response:
         email = request.data.get('email')
 
@@ -118,6 +167,19 @@ class PasswordResetConfirmView(APIView):
     """Confirm password reset with token."""
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(
+        request={
+            'type': 'object',
+            'properties': {
+                'new_password': {'type': 'string'},
+            },
+            'required': ['new_password'],
+        },
+        responses={
+            200: {'description': 'Password has been reset successfully'},
+            400: {'description': 'Invalid or expired token'},
+        },
+    )
     def post(self, request: Request, token: str) -> Response:
         new_password = request.data.get('new_password')
 
@@ -152,6 +214,20 @@ class PasswordChangeView(APIView):
     """Change password for authenticated user."""
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        request={
+            'type': 'object',
+            'properties': {
+                'old_password': {'type': 'string'},
+                'new_password': {'type': 'string'},
+            },
+            'required': ['old_password', 'new_password'],
+        },
+        responses={
+            200: {'description': 'Password has been changed successfully'},
+            400: {'description': 'Old and new password are required or invalid old password'},
+        },
+    )
     def post(self, request: Request) -> Response:
         user = request.user
         old_password = request.data.get('old_password')

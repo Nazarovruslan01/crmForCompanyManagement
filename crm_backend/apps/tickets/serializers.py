@@ -4,8 +4,8 @@ from rest_framework import serializers
 from .models import Ticket, TicketAttachment, TicketComment
 
 
-class ApartmentMinimalSerializer(serializers.Serializer):
-    """Minimal apartment serializer for nested representations."""
+class TicketApartmentMinimalSerializer(serializers.Serializer):
+    """Minimal apartment serializer for nested representations in tickets."""
     id = serializers.IntegerField()
     building_name = serializers.CharField()
     apartment_number = serializers.CharField()
@@ -37,7 +37,7 @@ class TicketAttachmentSerializer(serializers.ModelSerializer):
 
 
 class TicketSerializer(serializers.ModelSerializer):
-    apartment_detail = ApartmentMinimalSerializer(source='apartment', read_only=True)
+    apartment_detail = TicketApartmentMinimalSerializer(source='apartment', read_only=True)
     assigned_worker_display = serializers.CharField(
         source='assigned_worker.__str__', read_only=True
     )
