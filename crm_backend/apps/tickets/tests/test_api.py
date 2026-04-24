@@ -12,7 +12,7 @@ class TestTicketViewSet:
 
     def test_list_tickets(self, admin_client, apartment):
         """Admin can list tickets."""
-        ticket = Ticket.objects.create(
+        Ticket.objects.create(
             apartment=apartment,
             title='Test Ticket',
             description='Test Description',
@@ -21,6 +21,7 @@ class TestTicketViewSet:
         response = admin_client.get('/api/v2/tickets/tickets/')
         assert response.status_code == status.HTTP_200_OK
         assert 'results' in response.data
+        assert len(response.data['results']) >= 1
 
     def test_list_tickets_unauthenticated(self, api_client):
         """Unauthenticated request returns 401."""
@@ -131,7 +132,7 @@ class TestTicketCommentViewSet:
 
     def test_list_comments(self, admin_client, apartment):
         """Admin can list comments."""
-        ticket = Ticket.objects.create(
+        Ticket.objects.create(
             apartment=apartment,
             title='Comment Test',
             description='Test',

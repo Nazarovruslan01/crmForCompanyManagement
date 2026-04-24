@@ -12,7 +12,6 @@ from apps.properties.models import Apartment, Building
 from apps.residents.models import Ownership, PersonalAccount, Resident
 from apps.staff.models import Department, Employee
 
-
 # =============================================================================
 # API Client Fixtures
 # =============================================================================

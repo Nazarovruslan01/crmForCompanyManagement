@@ -89,8 +89,8 @@ class TestNotificationLogViewSet:
 
     def test_list_notification_logs(self, admin_client, notification_template):
         """Admin can list notification logs."""
-        from apps.notifications.models import NotificationLog
         from apps.accounts.models import User
+        from apps.notifications.models import NotificationLog
 
         user = User.objects.create_user(
             username='loguser',
@@ -114,7 +114,6 @@ class TestNotificationLogViewSet:
 
     def test_create_notification_log(self, admin_client, notification_template):
         """Admin can create a notification log."""
-        from apps.notifications.models import NotificationLog
         from apps.accounts.models import User
 
         user = User.objects.create_user(
@@ -133,8 +132,8 @@ class TestNotificationLogViewSet:
 
     def test_retrieve_notification_log(self, admin_client, notification_template):
         """Admin can retrieve a specific notification log."""
-        from apps.notifications.models import NotificationLog
         from apps.accounts.models import User
+        from apps.notifications.models import NotificationLog
 
         user = User.objects.create_user(
             username='loguser3',

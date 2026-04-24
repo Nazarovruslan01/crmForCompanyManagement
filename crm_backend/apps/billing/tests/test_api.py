@@ -68,7 +68,7 @@ class TestAidatChargeViewSet:
     def test_overdue_action(self, admin_client, apartment):
         """Admin can get overdue charges via action."""
         from datetime import date, timedelta
-        from django.utils import timezone
+
 
         # Create an overdue charge
         start = date(2025, 12, 1)
