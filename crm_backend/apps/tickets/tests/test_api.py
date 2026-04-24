@@ -1,11 +1,29 @@
 """Tests for tickets endpoints."""
 
+import sys
+from unittest.mock import MagicMock
+
 import pytest
 from rest_framework import status
 
 from apps.tickets.models import Ticket
 
 pytestmark = pytest.mark.django_db
+
+# Provide fake boto3 / botocore modules so presigned URL tests run
+# without the real AWS SDK installed in the test environment.
+if "boto3" not in sys.modules:
+    _fake_boto3 = MagicMock()
+    _fake_boto3.client = MagicMock(return_value=MagicMock(
+        generate_presigned_url=MagicMock(
+            return_value="https://minio.example.com/test-bucket/uploads/tickets/fake/file.png?signature=abc"
+        )
+    ))
+    sys.modules["boto3"] = _fake_boto3
+
+if "botocore" not in sys.modules:
+    sys.modules["botocore"] = MagicMock()
+    sys.modules["botocore.config"] = MagicMock(Config=MagicMock)
 
 
 class TestTicketViewSet:
@@ -193,3 +211,74 @@ class TestTicketAttachmentViewSet:
         }
         response = admin_client.post("/api/v2/tickets/attachments/", payload, format="json")
         assert response.status_code == status.HTTP_201_CREATED
+
+
+class TestPresignedUploadView:
+    """Tests for /api/v2/tickets/upload/presigned/ endpoint."""
+
+    @pytest.fixture(autouse=True)
+    def _mock_s3_settings(self, settings):
+        """Provide fake S3 credentials for presigned URL generation."""
+        settings.AWS_STORAGE_BUCKET_NAME = "test-bucket"
+        settings.AWS_ACCESS_KEY_ID = "test-key"
+        settings.AWS_SECRET_ACCESS_KEY = "test-secret"
+        settings.AWS_S3_ENDPOINT_URL = "https://minio.example.com"
+        settings.AWS_S3_REGION_NAME = "us-east-1"
+
+    def test_presigned_upload_success(self, admin_client):
+        """Authenticated user gets a presigned URL with valid payload."""
+        payload = {
+            "file_name": "file.png",
+            "content_type": "image/png",
+            "file_size": 1024,
+        }
+        response = admin_client.post("/api/v2/tickets/upload/presigned/", payload, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        assert "upload_url" in response.data
+        assert "file_url" in response.data
+        assert "key" in response.data
+        assert response.data["expires_in"] == 300
+
+    def test_presigned_upload_unauthenticated(self, api_client):
+        """Unauthenticated request returns 401."""
+        payload = {
+            "file_name": "file.png",
+            "content_type": "image/png",
+            "file_size": 1024,
+        }
+        response = api_client.post("/api/v2/tickets/upload/presigned/", payload, format="json")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_presigned_upload_invalid_content_type(self, admin_client):
+        """Disallowed content type returns 400."""
+        payload = {
+            "file_name": "file.exe",
+            "content_type": "application/octet-stream",
+            "file_size": 1024,
+        }
+        response = admin_client.post("/api/v2/tickets/upload/presigned/", payload, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_presigned_upload_file_too_large(self, admin_client):
+        """File size over 10 MB returns 400."""
+        payload = {
+            "file_name": "file.png",
+            "content_type": "image/png",
+            "file_size": 11 * 1024 * 1024,
+        }
+        response = admin_client.post("/api/v2/tickets/upload/presigned/", payload, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_presigned_upload_s3_not_configured(self, admin_client, settings):
+        """Missing S3 credentials return 503."""
+        settings.AWS_STORAGE_BUCKET_NAME = None
+        settings.AWS_ACCESS_KEY_ID = None
+        settings.AWS_SECRET_ACCESS_KEY = None
+
+        payload = {
+            "file_name": "file.png",
+            "content_type": "image/png",
+            "file_size": 1024,
+        }
+        response = admin_client.post("/api/v2/tickets/upload/presigned/", payload, format="json")
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
