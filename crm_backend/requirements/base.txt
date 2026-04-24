@@ -37,6 +37,9 @@ Pillow>=12.2.0,<13.0
 # Turkish Payment Gateway (İyzico)
 # iyzico>=1.0 (or HTTP API integration)
 
+# WSGI server
+gunicorn>=22.0,<23.0
+
 # Utilities
 python-dateutil>=2.8,<3.0
 requests>=2.31,<3.0

@@ -281,7 +281,7 @@ jobs:
           cache: pip
           cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
       - run: pip install bandit
-      - name: Run bandit (SARIF)
+      - name: Run bandit
         run: |
           bandit -r ${{ env.WORKING_DIRECTORY }}/ \
             -ll -iii \
@@ -292,12 +292,13 @@ jobs:
             -x "${{ env.WORKING_DIRECTORY }}/apps/residents/migrations" \
             -x "${{ env.WORKING_DIRECTORY }}/apps/staff/migrations" \
             -x "${{ env.WORKING_DIRECTORY }}/apps/tickets/migrations" \
-            -f sarif \
-            -o bandit-results.sarif
-      - name: Upload SARIF
-        uses: github/codeql-action/upload-sarif@v3
+            -f json \
+            -o bandit-results.json
+      - name: Upload bandit results
+        uses: actions/upload-artifact@v4
         with:
-          sarif_file: bandit-results.sarif
+          name: bandit-results
+          path: bandit-results.json
 
   security-deps:
     name: Security deps (pip-audit)
