@@ -1,6 +1,5 @@
 """Tests for Redis caching on properties endpoints."""
 import pytest
-from django.core.cache import cache
 from django.urls import reverse
 from rest_framework.test import APIClient
 
