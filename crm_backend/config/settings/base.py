@@ -3,6 +3,7 @@ Django settings for CRM project.
 """
 import os
 from datetime import timedelta
+from decimal import Decimal
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -189,6 +190,10 @@ SMS_API_URL = 'https://www.iletimerkezi.com/jsonapi/sms'
 SMS_API_KEY = os.getenv('SMS_API_KEY')
 SMS_API_SECRET = os.getenv('SMS_API_SECRET')
 SMS_SENDER = os.getenv('SMS_SENDER', 'CRM')
+
+# Aidat (Monthly Fee) Defaults
+AIDAT_DEFAULT_BASE_AMOUNT = Decimal('500.00')  # TRY
+AIDAT_DEFAULT_LATE_FEE_RATE = Decimal('0.001')  # 0.1% per day
 
 # Spectacular (OpenAPI)
 SPECTACULAR_SETTINGS = {
