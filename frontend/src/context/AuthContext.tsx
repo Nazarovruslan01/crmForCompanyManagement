@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { User } from '../types';
 import { api } from '../lib/api';
 
@@ -10,31 +11,31 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const checkAuth = useCallback(async () => {
-    if (!api.getAccessToken()) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      const userData = await api.getCurrentUser() as User;
-      setUser(userData);
-    } catch {
-      api.clearTokens();
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    const checkAuth = async () => {
+      if (!api.getAccessToken()) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const userData = await api.getCurrentUser() as User;
+        setUser(userData);
+      } catch {
+        api.clearTokens();
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void checkAuth();
+  }, []);
 
   const login = useCallback(async (username: string, password: string) => {
     const response = await api.login(username, password);
@@ -59,12 +60,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
 }

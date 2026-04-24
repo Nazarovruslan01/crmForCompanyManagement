@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 
 export function LoginPage() {
@@ -20,7 +20,7 @@ export function LoginPage() {
     try {
       await login(username, password);
       navigate('/dashboard');
-    } catch (err) {
+    } catch {
       setError('Invalid username or password');
     } finally {
       setIsLoading(false);
