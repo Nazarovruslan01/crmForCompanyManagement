@@ -1,7 +1,23 @@
 """Admin configuration for staff app."""
 from django.contrib import admin
+from django.utils import timezone
 
 from .models import Department, Employee, Task
+
+
+@admin.action(description='Activate selected employees')
+def activate_employees(modeladmin, request, queryset):  # noqa: ARG001
+    queryset.update(is_active=True)
+
+
+@admin.action(description='Deactivate selected employees')
+def deactivate_employees(modeladmin, request, queryset):  # noqa: ARG001
+    queryset.update(is_active=False)
+
+
+@admin.action(description='Mark selected tasks as completed')
+def complete_tasks(modeladmin, request, queryset):  # noqa: ARG001
+    queryset.update(status=Task.Status.COMPLETED, completed_at=timezone.now())
 
 
 @admin.register(Department)
@@ -17,6 +33,7 @@ class EmployeeAdmin(admin.ModelAdmin):
     search_fields = ['user__username', 'user__first_name', 'user__last_name', 'user__email']
     readonly_fields = ['created_at', 'updated_at']
     raw_id_fields = ['user', 'department']
+    actions = [activate_employees, deactivate_employees]
 
 
 @admin.register(Task)
@@ -27,3 +44,4 @@ class TaskAdmin(admin.ModelAdmin):
     date_hierarchy = 'created_at'
     readonly_fields = ['created_at', 'updated_at', 'completed_at']
     raw_id_fields = ['ticket', 'assigned_to', 'created_by']
+    actions = [complete_tasks]

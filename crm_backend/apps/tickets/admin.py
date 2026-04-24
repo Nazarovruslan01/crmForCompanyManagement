@@ -1,7 +1,18 @@
 """Admin configuration for tickets app."""
 from django.contrib import admin
+from django.utils import timezone
 
 from .models import Ticket, TicketAttachment, TicketComment
+
+
+@admin.action(description='Mark selected tickets as resolved')
+def make_resolved(modeladmin, request, queryset):
+    queryset.update(status=Ticket.Status.RESOLVED, resolved_at=timezone.now())
+
+
+@admin.action(description='Mark selected tickets as closed')
+def make_closed(modeladmin, request, queryset):
+    queryset.update(status=Ticket.Status.CLOSED)
 
 
 @admin.register(Ticket)
@@ -15,6 +26,7 @@ class TicketAdmin(admin.ModelAdmin):
     autocomplete_lookup_fields = {
         'fk': ['apartment', 'assigned_worker', 'created_by'],
     }
+    actions = [make_resolved, make_closed]
 
 
 @admin.register(TicketComment)
