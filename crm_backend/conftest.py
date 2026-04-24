@@ -24,55 +24,33 @@ def api_client():
 
 
 @pytest.fixture
-def authenticated_client(db):
+def authenticated_client(user):
     """Return API client authenticated as a regular resident user."""
-    user = User.objects.create_user(
-        username='testuser',
-        email='test@example.com',
-        password='testpass123',
-        role=User.Role.RESIDENT
-    )
     client = APIClient()
     client.force_authenticate(user=user)
     return client
 
 
 @pytest.fixture
-def admin_client(db):
+def admin_client(admin_user):
     """Return API client authenticated as an admin user."""
-    user = User.objects.create_user(
-        username='adminuser',
-        email='admin@example.com',
-        password='testpass123',
-        role=User.Role.ADMIN,
-        first_name='Admin',
-        last_name='User'
-    )
     client = APIClient()
-    client.force_authenticate(user=user)
+    client.force_authenticate(user=admin_user)
     return client
 
 
 @pytest.fixture
-def staff_client(db):
+def staff_client(staff_user):
     """Return API client authenticated as a staff (worker) user."""
-    user = User.objects.create_user(
-        username='staffuser',
-        email='staff@example.com',
-        password='testpass123',
-        role=User.Role.WORKER,
-        first_name='Staff',
-        last_name='User'
-    )
     client = APIClient()
-    client.force_authenticate(user=user)
+    client.force_authenticate(user=staff_user)
     return client
 
 
 @pytest.fixture
 def manager_client(db):
     """Return API client authenticated as a manager user."""
-    user = User.objects.create_user(
+    manager = User.objects.create_user(
         username='manageruser',
         email='manager@example.com',
         password='testpass123',
@@ -81,7 +59,7 @@ def manager_client(db):
         last_name='User'
     )
     client = APIClient()
-    client.force_authenticate(user=user)
+    client.force_authenticate(user=manager)
     return client
 
 

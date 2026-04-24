@@ -26,7 +26,7 @@ class TestResidentViewSet:
             'surname': 'Resident',
             'phone': '+905551119999',
             'email': 'newresident@example.com',
-            'tc_kimlik_no': '12345678903',
+            'tc_kimlik_no': '11111111190',
             'owner_type': 'owner',
         }
         response = admin_client.post('/api/v2/residents/residents/', payload, format='json')

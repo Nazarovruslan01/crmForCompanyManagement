@@ -111,6 +111,7 @@ class TestNotificationLogViewSet:
             'recipient': resident.id,
             'template': notification_template.id,
             'channel': 'email',
+            'body': 'Dear Test Resident, your aidat is due.',
             'status': 'pending',
         }
         response = admin_client.post('/api/v2/notifications/logs/', payload, format='json')

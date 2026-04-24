@@ -9,7 +9,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from common.permissions import IsAdminOrManager
 from common.throttles import UserReadThrottle, UserWriteThrottle
 
-from .serializers import UserCreateSerializer, UserSerializer
+from .serializers import UserCreateSerializer, UserMeSerializer, UserSerializer
 
 User = get_user_model()
 
@@ -33,6 +33,13 @@ class UserViewSet(viewsets.ModelViewSet[User]):
             return UserCreateSerializer
         return UserSerializer
 
+    def destroy(self, request: Request, *args: object, **kwargs: object) -> Response:
+        """Soft-delete: deactivate instead of hard-delete."""
+        user = self.get_object()
+        user.is_active = False
+        user.save(update_fields=['is_active'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -51,7 +58,7 @@ class LogoutView(APIView):
 
 class UserMeView(generics.RetrieveUpdateAPIView[User]):
     """Get or update current user profile."""
-    serializer_class = UserSerializer
+    serializer_class = UserMeSerializer
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
 

@@ -55,15 +55,19 @@ class LoginView(APIView):
         user = authenticate(username=username, password=password)
 
         if not user:
+            # authenticate() returns None for inactive users; check explicitly
+            try:
+                potential = User.objects.get(username=username)
+                if not potential.is_active and potential.check_password(password):
+                    return Response(
+                        {'error': 'Account is disabled'},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+            except User.DoesNotExist:
+                pass
             return Response(
                 {'error': 'Invalid credentials'},
                 status=status.HTTP_401_UNAUTHORIZED
-            )
-
-        if not user.is_active:
-            return Response(
-                {'error': 'Account is disabled'},
-                status=status.HTTP_403_FORBIDDEN
             )
 
         refresh = RefreshToken.for_user(user)
