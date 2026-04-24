@@ -18,8 +18,11 @@ help:
 	@echo "  make collectstatic    Collect Django static files"
 	@echo "  make run              Start Django dev server"
 	@echo "  make run-celery       Start Celery worker"
+	@echo "  make run-flower       Start Flower monitoring UI"
 	@echo "  make docker-up        Start Docker Compose stack"
 	@echo "  make docker-down      Stop Docker Compose stack"
+	@echo "  make docker-logs      Follow Docker Compose logs"
+	@echo "  make docker-logs-flower Follow Flower logs"
 	@echo "  make clean            Remove cache files and artifacts"
 	@echo "  make check            Run lint + format + typecheck + test"
 
@@ -53,6 +56,9 @@ run:
 
 run-celery:
 	cd crm_backend && celery -A config.celery worker --loglevel=info
+
+run-flower:
+	cd crm_backend && celery -A config.celery flower --port=5555
 
 # ─── Testing ───────────────────────────────────────────────────────────────────
 test:
@@ -93,6 +99,9 @@ docker-down:
 
 docker-logs:
 	docker compose logs -f
+
+docker-logs-flower:
+	docker compose logs -f flower
 
 # ─── Maintenance ───────────────────────────────────────────────────────────────
 clean:
