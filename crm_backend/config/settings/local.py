@@ -23,4 +23,7 @@ if not os.getenv('DATABASE_URL'):
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
+# Run Celery tasks synchronously in local / test mode
+CELERY_TASK_ALWAYS_EAGER = True
+
 CORS_ALLOW_ALL_ORIGINS = True
