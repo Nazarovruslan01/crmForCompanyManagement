@@ -6,7 +6,6 @@ from common.permissions import (
     IsAdminOrManagerOrWorker,
     IsManager,
     IsOwnerOrAdmin,
-    IsResident,
     IsWorker,
 )
 
@@ -99,28 +98,6 @@ class TestIsWorker:
         assert not IsWorker().has_permission(request, MockView())
 
 
-class TestIsResident:
-    def test_admin_allowed(self) -> None:
-        request = MockRequest(MockUser(role='admin'))
-        assert IsResident().has_permission(request, MockView()) is True
-
-    def test_manager_allowed(self) -> None:
-        request = MockRequest(MockUser(role='manager'))
-        assert IsResident().has_permission(request, MockView()) is True
-
-    def test_worker_allowed(self) -> None:
-        request = MockRequest(MockUser(role='worker'))
-        assert IsResident().has_permission(request, MockView()) is True
-
-    def test_resident_allowed(self) -> None:
-        request = MockRequest(MockUser(role='resident'))
-        assert IsResident().has_permission(request, MockView()) is True
-
-    def test_unauthenticated_denied(self) -> None:
-        request = MockRequest(None)
-        assert not IsResident().has_permission(request, MockView())
-
-
 class TestIsAdminOrManager:
     def test_admin_allowed(self) -> None:
         request = MockRequest(MockUser(role='admin'))
@@ -168,6 +145,16 @@ class TestIsAdminOrManagerOrWorker:
 
 
 class TestIsOwnerOrAdmin:
+    def test_has_permission_allows_authenticated(self) -> None:
+        """has_permission allows any authenticated user (object check is separate)."""
+        request = MockRequest(MockUser(id=1, role='resident'))
+        assert IsOwnerOrAdmin().has_permission(request, MockView()) is True
+
+    def test_has_permission_denies_unauthenticated(self) -> None:
+        """has_permission denies anonymous users."""
+        request = MockRequest(None)
+        assert IsOwnerOrAdmin().has_permission(request, MockView()) is False
+
     def test_admin_can_access_any_object(self) -> None:
         request = MockRequest(MockUser(id=999, role='admin'))
         obj = MockObj(user=MockUser(id=1))
@@ -191,6 +178,18 @@ class TestIsOwnerOrAdmin:
     def test_owner_field_none_means_denied(self) -> None:
         request = MockRequest(MockUser(id=42, role='resident'))
         obj = MockObj(owner=None)
+        assert IsOwnerOrAdmin().has_object_permission(request, MockView(), obj) is False
+
+    def test_user_none_owner_set(self) -> None:
+        """user is None but owner is set — should still match owner."""
+        request = MockRequest(MockUser(id=42, role='resident'))
+        obj = MockObj(user=None, owner=MockUser(id=42))
+        assert IsOwnerOrAdmin().has_object_permission(request, MockView(), obj) is True
+
+    def test_user_none_owner_mismatch(self) -> None:
+        """user is None and owner mismatch — should deny."""
+        request = MockRequest(MockUser(id=42, role='resident'))
+        obj = MockObj(user=None, owner=MockUser(id=1))
         assert IsOwnerOrAdmin().has_object_permission(request, MockView(), obj) is False
 
     def test_string_id_comparison(self) -> None:

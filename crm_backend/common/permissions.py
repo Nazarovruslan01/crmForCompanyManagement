@@ -33,13 +33,6 @@ class IsWorker(BasePermission):
         return role in ('admin', 'manager', 'worker')
 
 
-class IsResident(BasePermission):
-    """Allow resident role (read-only on own data)."""
-
-    def has_permission(self, request: Any, view: Any) -> bool:
-        return bool(request.user and request.user.is_authenticated)
-
-
 class IsAdminOrManager(BasePermission):
     """Allow admin or manager to create, others read-only."""
 
@@ -68,6 +61,9 @@ class IsAdminOrManagerOrWorker(BasePermission):
 
 class IsOwnerOrAdmin(BasePermission):
     """Allow owner of the object or admin to modify."""
+
+    def has_permission(self, request: Any, view: Any) -> bool:
+        return bool(request.user and request.user.is_authenticated)
 
     def has_object_permission(self, request: Any, view: Any, obj: object) -> bool:
         if not (request.user and request.user.is_authenticated):
