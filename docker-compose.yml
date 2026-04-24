@@ -69,6 +69,19 @@ services:
       redis:
         condition: service_healthy
 
+  flower:
+    image: mher/flower:2.0
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      FLOWER_BASIC_AUTH: ${FLOWER_BASIC_AUTH:-admin:changeme}
+    ports:
+      - "5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+      celery:
+        condition: service_started
+
   nginx:
     image: nginx:alpine
     ports:
@@ -80,6 +93,7 @@ services:
       - media_data:/app/media
     depends_on:
       - web
+      - flower
 
 volumes:
   postgres_data:
