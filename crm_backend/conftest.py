@@ -3,6 +3,7 @@ from datetime import date, timedelta
 
 import pytest
 from django.utils import timezone
+from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.billing.models import AidatCharge, Payment
@@ -10,6 +11,61 @@ from apps.notifications.models import NotificationTemplate
 from apps.properties.models import Apartment, Building
 from apps.residents.models import Ownership, PersonalAccount, Resident
 from apps.staff.models import Department, Employee
+
+# =============================================================================
+# API Client Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def api_client():
+    """Return unauthenticated API client."""
+    return APIClient()
+
+
+@pytest.fixture
+def authenticated_client(user):
+    """Return API client authenticated as a regular resident user."""
+    client = APIClient()
+    client.force_authenticate(user=user)
+    return client
+
+
+@pytest.fixture
+def admin_client(admin_user):
+    """Return API client authenticated as an admin user."""
+    client = APIClient()
+    client.force_authenticate(user=admin_user)
+    return client
+
+
+@pytest.fixture
+def staff_client(staff_user):
+    """Return API client authenticated as a staff (worker) user."""
+    client = APIClient()
+    client.force_authenticate(user=staff_user)
+    return client
+
+
+@pytest.fixture
+def manager_client(db):
+    """Return API client authenticated as a manager user."""
+    manager = User.objects.create_user(
+        username='manageruser',
+        email='manager@example.com',
+        password='testpass123',
+        role=User.Role.MANAGER,
+        first_name='Manager',
+        last_name='User'
+    )
+    client = APIClient()
+    client.force_authenticate(user=manager)
+    return client
+
+
+# =============================================================================
+# User Fixtures
+# =============================================================================
 
 
 @pytest.fixture
