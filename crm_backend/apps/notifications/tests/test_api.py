@@ -85,76 +85,69 @@ class TestNotificationTemplateViewSet:
 
 
 class TestNotificationLogViewSet:
-    """Tests for /api/v2/notifications/notification-logs/ endpoints."""
+    """Tests for /api/v2/notifications/logs/ endpoints."""
 
-    def test_list_notification_logs(self, admin_client, notification_template):
+    def test_list_notification_logs(self, admin_client, notification_template, resident):
         """Admin can list notification logs."""
-        from apps.accounts.models import User
         from apps.notifications.models import NotificationLog
-
-        user = User.objects.create_user(
-            username='loguser',
-            email='loguser@example.com',
-            password='TestPass123!',
-        )
         NotificationLog.objects.create(
-            recipient=user,
+            recipient=resident,
             template=notification_template,
             channel=notification_template.channel,
             status='sent',
         )
-        response = admin_client.get('/api/v2/notifications/notification-logs/')
+        response = admin_client.get('/api/v2/notifications/logs/')
         assert response.status_code == status.HTTP_200_OK
         assert 'results' in response.data
 
     def test_list_notification_logs_unauthenticated(self, api_client):
         """Unauthenticated request returns 401."""
-        response = api_client.get('/api/v2/notifications/notification-logs/')
+        response = api_client.get('/api/v2/notifications/logs/')
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
-    def test_create_notification_log(self, admin_client, notification_template):
+    def test_create_notification_log(self, admin_client, notification_template, resident):
         """Admin can create a notification log."""
-        from apps.accounts.models import User
-
-        user = User.objects.create_user(
-            username='loguser2',
-            email='loguser2@example.com',
-            password='TestPass123!',
-        )
         payload = {
-            'recipient': user.id,
+            'recipient': resident.id,
             'template': notification_template.id,
             'channel': 'email',
             'status': 'pending',
         }
-        response = admin_client.post('/api/v2/notifications/notification-logs/', payload, format='json')
+        response = admin_client.post('/api/v2/notifications/logs/', payload, format='json')
         assert response.status_code == status.HTTP_201_CREATED
 
-    def test_retrieve_notification_log(self, admin_client, notification_template):
+    def test_retrieve_notification_log(self, admin_client, notification_template, resident):
         """Admin can retrieve a specific notification log."""
-        from apps.accounts.models import User
         from apps.notifications.models import NotificationLog
-
-        user = User.objects.create_user(
-            username='loguser3',
-            email='loguser3@example.com',
-            password='TestPass123!',
-        )
         log = NotificationLog.objects.create(
-            recipient=user,
+            recipient=resident,
             template=notification_template,
             channel='email',
             status='sent',
         )
-        response = admin_client.get(f'/api/v2/notifications/notification-logs/{log.id}/')
+        response = admin_client.get(f'/api/v2/notifications/logs/{log.id}/')
         assert response.status_code == status.HTTP_200_OK
 
-    def test_filter_logs_by_status(self, admin_client, notification_template):
+    def test_filter_logs_by_status(self, admin_client, notification_template, resident):
         """Admin can filter logs by status."""
-        response = admin_client.get('/api/v2/notifications/notification-logs/', {'status': 'sent'})
+        from apps.notifications.models import NotificationLog
+        NotificationLog.objects.create(
+            recipient=resident,
+            template=notification_template,
+            channel='email',
+            status='sent',
+        )
+        response = admin_client.get('/api/v2/notifications/logs/', {'status': 'sent'})
         assert response.status_code == status.HTTP_200_OK
 
-    def test_filter_logs_by_channel(self, admin_client, notification_template):
+    def test_filter_logs_by_channel(self, admin_client, notification_template, resident):
         """Admin can filter logs by channel."""
-        response = admin_client.get('/api/v2/notifications/notification-logs/', {'channel': 'email'})
+        from apps.notifications.models import NotificationLog
+        NotificationLog.objects.create(
+            recipient=resident,
+            template=notification_template,
+            channel='email',
+            status='sent',
+        )
+        response = admin_client.get('/api/v2/notifications/logs/', {'channel': 'email'})
         assert response.status_code == status.HTTP_200_OK

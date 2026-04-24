@@ -156,8 +156,7 @@ class TestReceiptViewSet:
         from apps.billing.models import Receipt
         Receipt.objects.create(
             payment=payment,
-            receipt_number='RCP-001',
-            issued_to='Test',
+            pdf_url='https://example.com/receipt.pdf',
         )
         response = admin_client.get('/api/v2/billing/receipts/')
         assert response.status_code == status.HTTP_200_OK
@@ -172,8 +171,7 @@ class TestReceiptViewSet:
         """Admin can create a receipt."""
         payload = {
             'payment': payment.id,
-            'receipt_number': 'RCP-NEW-001',
-            'issued_to': 'New Recipient',
+            'pdf_url': 'https://example.com/new-receipt.pdf',
         }
         response = admin_client.post('/api/v2/billing/receipts/', payload, format='json')
         assert response.status_code == status.HTTP_201_CREATED

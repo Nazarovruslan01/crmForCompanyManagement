@@ -7,7 +7,7 @@ from .models import Ticket, TicketAttachment, TicketComment
 class TicketApartmentMinimalSerializer(serializers.Serializer):
     """Minimal apartment serializer for nested representations in tickets."""
     id = serializers.IntegerField()
-    building_name = serializers.CharField()
+    building_name = serializers.CharField(source='building.name')
     apartment_number = serializers.CharField()
     block = serializers.CharField()
 
