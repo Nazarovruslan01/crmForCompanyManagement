@@ -1,4 +1,6 @@
 """Tickets app models for Turkish HOA CRM"""
+from typing import Any
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
@@ -133,7 +135,7 @@ class Ticket(models.Model):
         }
         return transitions.get(old_status, [])
 
-    def save(self, *args: object, **kwargs: object) -> None:
+    def save(self, *args: Any, **kwargs: Any) -> None:
         self.clean()
         if self.status == self.Status.RESOLVED and not self.resolved_at:
             self.resolved_at = timezone.now()
