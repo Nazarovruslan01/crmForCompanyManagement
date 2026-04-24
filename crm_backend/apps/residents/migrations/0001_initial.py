@@ -7,71 +7,136 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('properties', '0001_initial'),
+        ("properties", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='PersonalAccount',
+            name="PersonalAccount",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('account_number', models.CharField(max_length=50, unique=True)),
-                ('balance', models.DecimalField(decimal_places=2, default=0, max_digits=12, verbose_name='Balance (TRY)')),
-                ('is_active', models.BooleanField(default=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('apartment', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='personal_account', to='properties.apartment')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("account_number", models.CharField(max_length=50, unique=True)),
+                (
+                    "balance",
+                    models.DecimalField(decimal_places=2, default=0, max_digits=12, verbose_name="Balance (TRY)"),
+                ),
+                ("is_active", models.BooleanField(default=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "apartment",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="personal_account",
+                        to="properties.apartment",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Personal Account',
-                'verbose_name_plural': 'Personal Accounts',
+                "verbose_name": "Personal Account",
+                "verbose_name_plural": "Personal Accounts",
             },
         ),
         migrations.CreateModel(
-            name='Resident',
+            name="Resident",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('tc_kimlik_no', models.CharField(blank=True, max_length=11, null=True, unique=True, validators=[django.core.validators.RegexValidator(message='TC Kimlik No must be 11 digits', regex='^[0-9]{11}$')], verbose_name='TC Kimlik No')),
-                ('passport_no', models.CharField(blank=True, max_length=50, null=True, unique=True, verbose_name='Passport No (Yabancılar için)')),
-                ('name', models.CharField(max_length=100, verbose_name='Name')),
-                ('surname', models.CharField(max_length=100, verbose_name='Surname')),
-                ('phone', models.CharField(blank=True, max_length=20, null=True)),
-                ('email', models.EmailField(blank=True, max_length=254, null=True)),
-                ('is_foreign_owner', models.BooleanField(default=False, verbose_name='Foreign Owner (Yabancı Mal Sahibi)')),
-                ('owner_type', models.CharField(choices=[('owner', 'Mal Sahibi'), ('tenant', 'Kiracı'), ('resident', 'İkamet Eden')], default='owner', max_length=20)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('user', models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='resident_profile', to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "tc_kimlik_no",
+                    models.CharField(
+                        blank=True,
+                        max_length=11,
+                        null=True,
+                        unique=True,
+                        validators=[
+                            django.core.validators.RegexValidator(
+                                message="TC Kimlik No must be 11 digits", regex="^[0-9]{11}$"
+                            )
+                        ],
+                        verbose_name="TC Kimlik No",
+                    ),
+                ),
+                (
+                    "passport_no",
+                    models.CharField(
+                        blank=True, max_length=50, null=True, unique=True, verbose_name="Passport No (Yabancılar için)"
+                    ),
+                ),
+                ("name", models.CharField(max_length=100, verbose_name="Name")),
+                ("surname", models.CharField(max_length=100, verbose_name="Surname")),
+                ("phone", models.CharField(blank=True, max_length=20, null=True)),
+                ("email", models.EmailField(blank=True, max_length=254, null=True)),
+                (
+                    "is_foreign_owner",
+                    models.BooleanField(default=False, verbose_name="Foreign Owner (Yabancı Mal Sahibi)"),
+                ),
+                (
+                    "owner_type",
+                    models.CharField(
+                        choices=[("owner", "Mal Sahibi"), ("tenant", "Kiracı"), ("resident", "İkamet Eden")],
+                        default="owner",
+                        max_length=20,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "user",
+                    models.OneToOneField(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="resident_profile",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Resident',
-                'verbose_name_plural': 'Residents',
-                'ordering': ['surname', 'name'],
+                "verbose_name": "Resident",
+                "verbose_name_plural": "Residents",
+                "ordering": ["surname", "name"],
             },
         ),
         migrations.CreateModel(
-            name='Ownership',
+            name="Ownership",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('role', models.CharField(choices=[('owner', 'Mal Sahibi'), ('tenant', 'Kiracı'), ('resident', 'İkamet Eden')], max_length=20)),
-                ('share_ratio_num', models.PositiveIntegerField(default=1, help_text='Ownership share numerator')),
-                ('share_ratio_denom', models.PositiveIntegerField(default=1, help_text='Ownership share denominator')),
-                ('start_date', models.DateField(blank=True, null=True)),
-                ('end_date', models.DateField(blank=True, null=True)),
-                ('is_primary', models.BooleanField(default=False, help_text='Primary residence/ownership')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('apartment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ownerships', to='properties.apartment')),
-                ('resident', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ownerships', to='residents.resident')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "role",
+                    models.CharField(
+                        choices=[("owner", "Mal Sahibi"), ("tenant", "Kiracı"), ("resident", "İkamet Eden")],
+                        max_length=20,
+                    ),
+                ),
+                ("share_ratio_num", models.PositiveIntegerField(default=1, help_text="Ownership share numerator")),
+                ("share_ratio_denom", models.PositiveIntegerField(default=1, help_text="Ownership share denominator")),
+                ("start_date", models.DateField(blank=True, null=True)),
+                ("end_date", models.DateField(blank=True, null=True)),
+                ("is_primary", models.BooleanField(default=False, help_text="Primary residence/ownership")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "apartment",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="ownerships",
+                        to="properties.apartment",
+                    ),
+                ),
+                (
+                    "resident",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="ownerships", to="residents.resident"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Ownership',
-                'verbose_name_plural': 'Ownerships',
-                'unique_together': {('resident', 'apartment', 'role')},
+                "verbose_name": "Ownership",
+                "verbose_name_plural": "Ownerships",
+                "unique_together": {("resident", "apartment", "role")},
             },
         ),
     ]

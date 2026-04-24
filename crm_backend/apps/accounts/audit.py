@@ -1,4 +1,5 @@
 """Audit logging middleware and decorators."""
+
 import functools
 from collections.abc import Callable
 from typing import Any, TypeVar
@@ -10,7 +11,7 @@ from rest_framework.response import Response
 
 from apps.accounts.models import AuditAction, AuditLog
 
-F = TypeVar('F', bound=Callable[..., Response])
+F = TypeVar("F", bound=Callable[..., Response])
 
 
 def audit_action(
@@ -25,6 +26,7 @@ def audit_action(
         def post(self, request):
             ...
     """
+
     def decorator(func: F) -> F:
         @functools.wraps(func)
         def wrapper(self: Any, request: Request, *args: Any, **kwargs: Any) -> Response:
@@ -37,20 +39,22 @@ def audit_action(
                     user=request.user if request.user.is_authenticated else None,
                     content_object=content_object,
                     ip_address=_get_client_ip(request),
-                    user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],
+                    user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
                 )
 
             return response
+
         return wrapper  # type: ignore[return-value]
+
     return decorator
 
 
 def _get_client_ip(request: Request) -> str | None:
     """Extract client IP from request."""
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
     if x_forwarded_for:
-        return str(x_forwarded_for.split(',')[0].strip())
-    ip = request.META.get('REMOTE_ADDR')
+        return str(x_forwarded_for.split(",")[0].strip())
+    ip = request.META.get("REMOTE_ADDR")
     return str(ip) if ip else None
 
 
@@ -67,7 +71,7 @@ def audit_login(
         action=AuditAction.LOGIN,
         user=user,
         ip_address=_get_client_ip(request),
-        user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],
+        user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
     )
 
 
@@ -84,5 +88,5 @@ def audit_logout(
             action=AuditAction.LOGOUT,
             user=user,
             ip_address=_get_client_ip(request),
-            user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],
+            user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
         )

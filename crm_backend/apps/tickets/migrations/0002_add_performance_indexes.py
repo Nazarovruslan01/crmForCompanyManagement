@@ -5,29 +5,28 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('properties', '0002_add_performance_indexes'),
-        ('staff', '0003_add_performance_indexes'),
-        ('tickets', '0001_initial'),
+        ("properties", "0002_add_performance_indexes"),
+        ("staff", "0003_add_performance_indexes"),
+        ("tickets", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddIndex(
-            model_name='ticket',
-            index=models.Index(fields=['assigned_worker', 'status'], name='tickets_tic_assigne_ad76e9_idx'),
+            model_name="ticket",
+            index=models.Index(fields=["assigned_worker", "status"], name="tickets_tic_assigne_ad76e9_idx"),
         ),
         migrations.AddIndex(
-            model_name='ticket',
-            index=models.Index(fields=['created_by', 'status'], name='tickets_tic_created_d1e02b_idx'),
+            model_name="ticket",
+            index=models.Index(fields=["created_by", "status"], name="tickets_tic_created_d1e02b_idx"),
         ),
         migrations.AddIndex(
-            model_name='ticket',
-            index=models.Index(fields=['-created_at'], name='tickets_tic_created_c2132d_idx'),
+            model_name="ticket",
+            index=models.Index(fields=["-created_at"], name="tickets_tic_created_c2132d_idx"),
         ),
         migrations.AddIndex(
-            model_name='ticketcomment',
-            index=models.Index(fields=['ticket', 'created_at'], name='tickets_tic_ticket__254c10_idx'),
+            model_name="ticketcomment",
+            index=models.Index(fields=["ticket", "created_at"], name="tickets_tic_ticket__254c10_idx"),
         ),
     ]

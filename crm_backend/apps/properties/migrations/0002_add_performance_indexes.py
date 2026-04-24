@@ -4,18 +4,17 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('properties', '0001_initial'),
+        ("properties", "0001_initial"),
     ]
 
     operations = [
         migrations.AddIndex(
-            model_name='apartment',
-            index=models.Index(fields=['building', 'status'], name='properties__buildin_429891_idx'),
+            model_name="apartment",
+            index=models.Index(fields=["building", "status"], name="properties__buildin_429891_idx"),
         ),
         migrations.AddIndex(
-            model_name='building',
-            index=models.Index(fields=['city', 'district'], name='properties__city_db7bf6_idx'),
+            model_name="building",
+            index=models.Index(fields=["city", "district"], name="properties__city_db7bf6_idx"),
         ),
     ]

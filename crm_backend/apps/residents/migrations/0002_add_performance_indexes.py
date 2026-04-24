@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('properties', '0002_add_performance_indexes'),
-        ('residents', '0001_initial'),
+        ("properties", "0002_add_performance_indexes"),
+        ("residents", "0001_initial"),
     ]
 
     operations = [
         migrations.AddIndex(
-            model_name='ownership',
-            index=models.Index(fields=['apartment', 'is_primary'], name='residents_o_apartme_01debb_idx'),
+            model_name="ownership",
+            index=models.Index(fields=["apartment", "is_primary"], name="residents_o_apartme_01debb_idx"),
         ),
     ]

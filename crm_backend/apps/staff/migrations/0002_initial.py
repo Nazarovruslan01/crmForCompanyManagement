@@ -5,18 +5,23 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('staff', '0001_initial'),
-        ('tickets', '0001_initial'),
+        ("staff", "0001_initial"),
+        ("tickets", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='task',
-            name='ticket',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='tasks', to='tickets.ticket'),
+            model_name="task",
+            name="ticket",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="tasks",
+                to="tickets.ticket",
+            ),
         ),
     ]
