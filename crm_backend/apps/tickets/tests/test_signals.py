@@ -1,12 +1,8 @@
 """Tests for ticket signals (email/SMS notifications)."""
-from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
-from django.utils import timezone
 
-from apps.billing.models import AidatCharge
-from apps.notifications.models import NotificationLog, NotificationTemplate
 from apps.properties.models import Apartment, Building
 from apps.residents.models import Ownership, Resident
 from apps.tickets.models import Ticket
@@ -40,7 +36,7 @@ class TestTicketEmailNotifications:
         )
 
         with patch('apps.tickets.signals.send_email_async') as mock_email:
-            ticket = Ticket.objects.create(
+            Ticket.objects.create(
                 title='Leaky Pipe',
                 description='Bathroom sink leaking',
                 apartment=apartment,
