@@ -4,19 +4,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('billing', '0001_initial'),
-        ('properties', '0002_add_performance_indexes'),
+        ("billing", "0001_initial"),
+        ("properties", "0002_add_performance_indexes"),
     ]
 
     operations = [
         migrations.RemoveIndex(
-            model_name='aidatcharge',
-            name='billing_aid_apartme_129271_idx',
+            model_name="aidatcharge",
+            name="billing_aid_apartme_129271_idx",
         ),
         migrations.AddIndex(
-            model_name='aidatcharge',
-            index=models.Index(fields=['billing_period_start', 'apartment'], name='billing_aid_billing_4c6e3c_idx'),
+            model_name="aidatcharge",
+            index=models.Index(fields=["billing_period_start", "apartment"], name="billing_aid_billing_4c6e3c_idx"),
         ),
     ]

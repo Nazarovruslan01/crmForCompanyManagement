@@ -1,4 +1,5 @@
 """Django signals for ticket notifications."""
+
 from typing import Any
 
 from django.db import transaction
@@ -19,7 +20,7 @@ def _capture_old_ticket_status(
     """Store old status on instance before save so post_save can detect changes."""
     if instance.pk:
         try:
-            old = Ticket.objects.only('status').get(pk=instance.pk)
+            old = Ticket.objects.only("status").get(pk=instance.pk)
             instance._old_status = old.status  # type: ignore[attr-defined]
         except Ticket.DoesNotExist:
             instance._old_status = None  # type: ignore[attr-defined]
@@ -48,7 +49,7 @@ def ticket_notification_handler(
             apartment=instance.apartment,
             is_primary=True,
         )
-        .select_related('resident')
+        .select_related("resident")
         .first()
     )
 
@@ -85,15 +86,15 @@ def ticket_notification_handler(
                 f"Talebi görüntülemek için: {ticket_url}"
             )
         email_payload = {
-            'subject': subject,
-            'message': message,
-            'recipient_list': [resident.email],
+            "subject": subject,
+            "message": message,
+            "recipient_list": [resident.email],
         }
 
     # Build SMS payload
     sms_payload: dict[str, Any] | None = None
     if not created:
-        old_status = getattr(instance, '_old_status', None)
+        old_status = getattr(instance, "_old_status", None)
         status_changed = old_status is not None and old_status != instance.status
 
         if status_changed and resident.phone:
@@ -103,8 +104,8 @@ def ticket_notification_handler(
                 f"{building_name} Daire {apartment_no}"
             )
             sms_payload = {
-                'phone': resident.phone,
-                'message': sms_message,
+                "phone": resident.phone,
+                "message": sms_message,
             }
 
     # Schedule Celery tasks only after the DB transaction commits.

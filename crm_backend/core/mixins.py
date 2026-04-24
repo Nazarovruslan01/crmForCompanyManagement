@@ -1,4 +1,5 @@
 """DRF mixins for caching and common patterns."""
+
 from typing import Any, cast
 
 from django.core.cache import cache
@@ -33,12 +34,10 @@ class CacheListRetrieveMixin:
     def _cache_key(self, request: Request, action: str) -> str:
         """Build a cache key that includes the model version."""
         version = self._cache_version()
-        return (
-            f"{self.__class__.__name__}:v{version}:{action}:{request.build_absolute_uri()}"
-        )
+        return f"{self.__class__.__name__}:v{version}:{action}:{request.build_absolute_uri()}"
 
     def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        key = self._cache_key(request, 'list')
+        key = self._cache_key(request, "list")
         cached = cache.get(key)
         if cached is not None:
             return Response(cached)
@@ -47,7 +46,7 @@ class CacheListRetrieveMixin:
         return cast(Response, response)
 
     def retrieve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        key = self._cache_key(request, 'retrieve')
+        key = self._cache_key(request, "retrieve")
         cached = cache.get(key)
         if cached is not None:
             return Response(cached)

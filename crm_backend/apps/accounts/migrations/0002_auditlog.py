@@ -6,29 +6,65 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('accounts', '0001_initial'),
-        ('contenttypes', '0002_remove_content_type_name'),
+        ("accounts", "0001_initial"),
+        ("contenttypes", "0002_remove_content_type_name"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='AuditLog',
+            name="AuditLog",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('action', models.CharField(choices=[('create', 'Create'), ('update', 'Update'), ('delete', 'Delete'), ('login', 'Login'), ('logout', 'Logout'), ('password_change', 'Password Change'), ('password_reset', 'Password Reset'), ('data_export', 'Data Export'), ('login_failed', 'Failed Login')], max_length=20)),
-                ('object_id', models.PositiveIntegerField(blank=True, null=True)),
-                ('changes', models.JSONField(blank=True, default=dict)),
-                ('ip_address', models.GenericIPAddressField(blank=True, null=True)),
-                ('user_agent', models.CharField(blank=True, max_length=500)),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('content_type', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='contenttypes.contenttype')),
-                ('user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='audit_logs', to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "action",
+                    models.CharField(
+                        choices=[
+                            ("create", "Create"),
+                            ("update", "Update"),
+                            ("delete", "Delete"),
+                            ("login", "Login"),
+                            ("logout", "Logout"),
+                            ("password_change", "Password Change"),
+                            ("password_reset", "Password Reset"),
+                            ("data_export", "Data Export"),
+                            ("login_failed", "Failed Login"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                ("object_id", models.PositiveIntegerField(blank=True, null=True)),
+                ("changes", models.JSONField(blank=True, default=dict)),
+                ("ip_address", models.GenericIPAddressField(blank=True, null=True)),
+                ("user_agent", models.CharField(blank=True, max_length=500)),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                (
+                    "content_type",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="contenttypes.contenttype",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="audit_logs",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['user', 'action'], name='accounts_au_user_id_96c97d_idx'), models.Index(fields=['content_type', 'object_id'], name='accounts_au_content_659137_idx'), models.Index(fields=['-created_at'], name='accounts_au_created_721afe_idx')],
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(fields=["user", "action"], name="accounts_au_user_id_96c97d_idx"),
+                    models.Index(fields=["content_type", "object_id"], name="accounts_au_content_659137_idx"),
+                    models.Index(fields=["-created_at"], name="accounts_au_created_721afe_idx"),
+                ],
             },
         ),
     ]

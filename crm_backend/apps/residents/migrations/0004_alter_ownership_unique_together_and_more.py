@@ -4,23 +4,28 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('properties', '0002_add_performance_indexes'),
-        ('residents', '0003_ownership_residents_o_residen_7750b2_idx'),
+        ("properties", "0002_add_performance_indexes"),
+        ("residents", "0003_ownership_residents_o_residen_7750b2_idx"),
     ]
 
     operations = [
         migrations.AlterUniqueTogether(
-            name='ownership',
+            name="ownership",
             unique_together=set(),
         ),
         migrations.AddConstraint(
-            model_name='ownership',
-            constraint=models.UniqueConstraint(fields=('resident', 'apartment', 'role'), name='unique_ownership_resident_apartment_role'),
+            model_name="ownership",
+            constraint=models.UniqueConstraint(
+                fields=("resident", "apartment", "role"), name="unique_ownership_resident_apartment_role"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='ownership',
-            constraint=models.UniqueConstraint(condition=models.Q(('is_primary', True)), fields=('apartment',), name='unique_primary_resident_per_apartment'),
+            model_name="ownership",
+            constraint=models.UniqueConstraint(
+                condition=models.Q(("is_primary", True)),
+                fields=("apartment",),
+                name="unique_primary_resident_per_apartment",
+            ),
         ),
     ]

@@ -5,21 +5,20 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('properties', '0002_add_performance_indexes'),
-        ('staff', '0004_task_staff_task_ticket__8e0116_idx'),
-        ('tickets', '0002_add_performance_indexes'),
+        ("properties", "0002_add_performance_indexes"),
+        ("staff", "0004_task_staff_task_ticket__8e0116_idx"),
+        ("tickets", "0002_add_performance_indexes"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddIndex(
-            model_name='ticket',
-            index=models.Index(fields=['apartment', 'status', '-created_at'], name='tickets_tic_apartme_54f61b_idx'),
+            model_name="ticket",
+            index=models.Index(fields=["apartment", "status", "-created_at"], name="tickets_tic_apartme_54f61b_idx"),
         ),
         migrations.AddIndex(
-            model_name='ticket',
-            index=models.Index(fields=['status', 'updated_at'], name='tickets_tic_status_72bae8_idx'),
+            model_name="ticket",
+            index=models.Index(fields=["status", "updated_at"], name="tickets_tic_status_72bae8_idx"),
         ),
     ]

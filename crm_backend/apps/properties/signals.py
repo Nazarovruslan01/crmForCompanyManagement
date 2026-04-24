@@ -1,4 +1,5 @@
 """Signals for properties app — cache invalidation."""
+
 from typing import Any
 
 from django.core.cache import cache

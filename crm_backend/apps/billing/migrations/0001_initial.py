@@ -7,100 +7,190 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('properties', '0001_initial'),
+        ("properties", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ExtraordinaryCharge',
+            name="ExtraordinaryCharge",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('description', models.TextField()),
-                ('total_amount', models.DecimalField(decimal_places=2, max_digits=12)),
-                ('assembly_resolution_number', models.CharField(blank=True, max_length=50, null=True, verbose_name='Assembly Resolution No')),
-                ('approval_date', models.DateField(blank=True, null=True)),
-                ('status', models.CharField(choices=[('proposed', 'Teklif'), ('approved', 'Onaylandı'), ('rejected', 'Reddedildi'), ('collecting', 'Tahsilatta'), ('collected', 'Tahsil Edildi')], default='proposed', max_length=20)),
-                ('due_date', models.DateField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('building', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='extraordinary_charges', to='properties.building')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("description", models.TextField()),
+                ("total_amount", models.DecimalField(decimal_places=2, max_digits=12)),
+                (
+                    "assembly_resolution_number",
+                    models.CharField(blank=True, max_length=50, null=True, verbose_name="Assembly Resolution No"),
+                ),
+                ("approval_date", models.DateField(blank=True, null=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("proposed", "Teklif"),
+                            ("approved", "Onaylandı"),
+                            ("rejected", "Reddedildi"),
+                            ("collecting", "Tahsilatta"),
+                            ("collected", "Tahsil Edildi"),
+                        ],
+                        default="proposed",
+                        max_length=20,
+                    ),
+                ),
+                ("due_date", models.DateField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "building",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="extraordinary_charges",
+                        to="properties.building",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Extraordinary Charge',
-                'verbose_name_plural': 'Extraordinary Charges',
+                "verbose_name": "Extraordinary Charge",
+                "verbose_name_plural": "Extraordinary Charges",
             },
         ),
         migrations.CreateModel(
-            name='Payment',
+            name="Payment",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('charge_type', models.CharField(help_text='aidat, extraordinary, other', max_length=20)),
-                ('charge_id', models.UUIDField(blank=True, null=True)),
-                ('amount', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('currency', models.CharField(default='TRY', max_length=3)),
-                ('payment_method', models.CharField(choices=[('eft', 'EFT/Havale'), ('credit_card', 'Kredi Kartı'), ('cash', 'Nakit'), ('online', 'Online Ödeme')], max_length=20)),
-                ('bank_reference', models.CharField(blank=True, max_length=100, null=True, verbose_name='Bank Reference (İşlem No)')),
-                ('receipt_number', models.CharField(blank=True, max_length=20, null=True, unique=True, verbose_name='Receipt Number (Makbuz No)')),
-                ('paid_at', models.DateTimeField(auto_now_add=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('apartment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='payments', to='properties.apartment')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("charge_type", models.CharField(help_text="aidat, extraordinary, other", max_length=20)),
+                ("charge_id", models.UUIDField(blank=True, null=True)),
+                ("amount", models.DecimalField(decimal_places=2, max_digits=10)),
+                ("currency", models.CharField(default="TRY", max_length=3)),
+                (
+                    "payment_method",
+                    models.CharField(
+                        choices=[
+                            ("eft", "EFT/Havale"),
+                            ("credit_card", "Kredi Kartı"),
+                            ("cash", "Nakit"),
+                            ("online", "Online Ödeme"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "bank_reference",
+                    models.CharField(blank=True, max_length=100, null=True, verbose_name="Bank Reference (İşlem No)"),
+                ),
+                (
+                    "receipt_number",
+                    models.CharField(
+                        blank=True, max_length=20, null=True, unique=True, verbose_name="Receipt Number (Makbuz No)"
+                    ),
+                ),
+                ("paid_at", models.DateTimeField(auto_now_add=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "apartment",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="payments", to="properties.apartment"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Payment',
-                'verbose_name_plural': 'Payments',
-                'ordering': ['-paid_at'],
+                "verbose_name": "Payment",
+                "verbose_name_plural": "Payments",
+                "ordering": ["-paid_at"],
             },
         ),
         migrations.CreateModel(
-            name='AidatCharge',
+            name="AidatCharge",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('billing_period_start', models.DateField()),
-                ('billing_period_end', models.DateField()),
-                ('base_amount', models.DecimalField(decimal_places=2, max_digits=10, verbose_name='Base Amount (TRY)')),
-                ('late_fee_rate', models.DecimalField(decimal_places=4, default=Decimal('0.001'), help_text='Daily late fee rate (e.g., 0.001 = 0.1%)', max_digits=5)),
-                ('due_date', models.DateField()),
-                ('status', models.CharField(choices=[('pending', 'Ödenmedi'), ('paid', 'Ödenmiş'), ('overdue', 'Gecikmiş'), ('cancelled', 'İptal Edildi')], default='pending', max_length=20)),
-                ('paid_at', models.DateTimeField(blank=True, null=True)),
-                ('paid_amount', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('apartment', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='aidat_charges', to='properties.apartment')),
-                ('payment', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='aidat_payments', to='billing.payment')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("billing_period_start", models.DateField()),
+                ("billing_period_end", models.DateField()),
+                (
+                    "base_amount",
+                    models.DecimalField(decimal_places=2, max_digits=10, verbose_name="Base Amount (TRY)"),
+                ),
+                (
+                    "late_fee_rate",
+                    models.DecimalField(
+                        decimal_places=4,
+                        default=Decimal("0.001"),
+                        help_text="Daily late fee rate (e.g., 0.001 = 0.1%)",
+                        max_digits=5,
+                    ),
+                ),
+                ("due_date", models.DateField()),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Ödenmedi"),
+                            ("paid", "Ödenmiş"),
+                            ("overdue", "Gecikmiş"),
+                            ("cancelled", "İptal Edildi"),
+                        ],
+                        default="pending",
+                        max_length=20,
+                    ),
+                ),
+                ("paid_at", models.DateTimeField(blank=True, null=True)),
+                ("paid_amount", models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "apartment",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="aidat_charges",
+                        to="properties.apartment",
+                    ),
+                ),
+                (
+                    "payment",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="aidat_payments",
+                        to="billing.payment",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Aidat Charge',
-                'verbose_name_plural': 'Aidat Charges',
-                'ordering': ['-billing_period_start'],
+                "verbose_name": "Aidat Charge",
+                "verbose_name_plural": "Aidat Charges",
+                "ordering": ["-billing_period_start"],
             },
         ),
         migrations.CreateModel(
-            name='Receipt',
+            name="Receipt",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('pdf_url', models.URLField(max_length=500)),
-                ('generated_at', models.DateTimeField(auto_now_add=True)),
-                ('payment', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='receipt', to='billing.payment')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("pdf_url", models.URLField(max_length=500)),
+                ("generated_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "payment",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE, related_name="receipt", to="billing.payment"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Receipt',
-                'verbose_name_plural': 'Receipts',
+                "verbose_name": "Receipt",
+                "verbose_name_plural": "Receipts",
             },
         ),
         migrations.AddIndex(
-            model_name='payment',
-            index=models.Index(fields=['apartment', 'paid_at'], name='billing_pay_apartme_9fb8a0_idx'),
+            model_name="payment",
+            index=models.Index(fields=["apartment", "paid_at"], name="billing_pay_apartme_9fb8a0_idx"),
         ),
         migrations.AddIndex(
-            model_name='aidatcharge',
-            index=models.Index(fields=['apartment', 'billing_period_start'], name='billing_aid_apartme_129271_idx'),
+            model_name="aidatcharge",
+            index=models.Index(fields=["apartment", "billing_period_start"], name="billing_aid_apartme_129271_idx"),
         ),
         migrations.AddIndex(
-            model_name='aidatcharge',
-            index=models.Index(fields=['status', 'due_date'], name='billing_aid_status_a80da3_idx'),
+            model_name="aidatcharge",
+            index=models.Index(fields=["status", "due_date"], name="billing_aid_status_a80da3_idx"),
         ),
     ]

@@ -1,4 +1,5 @@
 """Tests for Redis caching on properties endpoints."""
+
 import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
@@ -12,8 +13,8 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def admin_user():
     return User.objects.create_user(
-        username='admin',
-        password='testpass123',
+        username="admin",
+        password="testpass123",
         role=User.Role.ADMIN,
     )
 
@@ -30,37 +31,37 @@ class TestApartmentCaching:
 
     def test_list_is_cached(self, api_client):
         """Repeated list requests use cache."""
-        building = Building.objects.create(name='Cache Test', address='Istanbul')
+        building = Building.objects.create(name="Cache Test", address="Istanbul")
         Apartment.objects.create(
             building=building,
-            apartment_number='101',
+            apartment_number="101",
             floor=1,
             status=Apartment.Status.ACTIVE,
         )
 
         # Prime cache
-        response1 = api_client.get(reverse('apartment-list'))
+        response1 = api_client.get(reverse("apartment-list"))
         assert response1.status_code == 200
 
         # Cached response should be identical
-        response2 = api_client.get(reverse('apartment-list'))
+        response2 = api_client.get(reverse("apartment-list"))
         assert response2.status_code == 200
         assert response1.content == response2.content
 
     def test_retrieve_is_cached(self, api_client):
         """Repeated retrieve requests use cache."""
-        building = Building.objects.create(name='Cache Test', address='Istanbul')
+        building = Building.objects.create(name="Cache Test", address="Istanbul")
         apartment = Apartment.objects.create(
             building=building,
-            apartment_number='102',
+            apartment_number="102",
             floor=1,
             status=Apartment.Status.ACTIVE,
         )
 
-        response1 = api_client.get(reverse('apartment-detail', kwargs={'pk': apartment.pk}))
+        response1 = api_client.get(reverse("apartment-detail", kwargs={"pk": apartment.pk}))
         assert response1.status_code == 200
 
-        response2 = api_client.get(reverse('apartment-detail', kwargs={'pk': apartment.pk}))
+        response2 = api_client.get(reverse("apartment-detail", kwargs={"pk": apartment.pk}))
         assert response2.status_code == 200
         assert response1.content == response2.content
 
@@ -70,12 +71,12 @@ class TestBuildingCaching:
 
     def test_list_is_cached(self, api_client):
         """Repeated list requests use cache."""
-        Building.objects.create(name='Cache Building', address='Ankara')
+        Building.objects.create(name="Cache Building", address="Ankara")
 
-        response1 = api_client.get(reverse('building-list'))
+        response1 = api_client.get(reverse("building-list"))
         assert response1.status_code == 200
 
-        response2 = api_client.get(reverse('building-list'))
+        response2 = api_client.get(reverse("building-list"))
         assert response2.status_code == 200
         assert response1.content == response2.content
 
@@ -85,22 +86,22 @@ class TestCacheInvalidation:
 
     def test_different_query_params_cached_separately(self, api_client):
         """Cache keys include query parameters."""
-        building = Building.objects.create(name='Param Building', address='Izmir')
+        building = Building.objects.create(name="Param Building", address="Izmir")
         Apartment.objects.create(
             building=building,
-            apartment_number='201',
+            apartment_number="201",
             floor=2,
             status=Apartment.Status.ACTIVE,
         )
         Apartment.objects.create(
             building=building,
-            apartment_number='202',
+            apartment_number="202",
             floor=2,
             status=Apartment.Status.INACTIVE,
         )
 
-        response_all = api_client.get(reverse('apartment-list'))
-        response_active = api_client.get(reverse('apartment-list'), {'status': 'active'})
+        response_all = api_client.get(reverse("apartment-list"))
+        response_active = api_client.get(reverse("apartment-list"), {"status": "active"})
 
         assert response_all.status_code == 200
         assert response_active.status_code == 200
@@ -109,51 +110,51 @@ class TestCacheInvalidation:
 
     def test_save_bumps_cache_version(self, api_client):
         """Saving a model invalidates the cached list response."""
-        building = Building.objects.create(name='Version Building', address='Izmir')
+        building = Building.objects.create(name="Version Building", address="Izmir")
         Apartment.objects.create(
             building=building,
-            apartment_number='301',
+            apartment_number="301",
             floor=3,
             status=Apartment.Status.ACTIVE,
         )
 
-        response1 = api_client.get(reverse('apartment-list'))
+        response1 = api_client.get(reverse("apartment-list"))
         assert response1.status_code == 200
         data1 = response1.json()
-        assert len(data1['results']) == 1
+        assert len(data1["results"]) == 1
 
         # Create a new apartment — signal bumps cache version
         Apartment.objects.create(
             building=building,
-            apartment_number='302',
+            apartment_number="302",
             floor=3,
             status=Apartment.Status.ACTIVE,
         )
 
         # Next request should NOT be cached; it must include the new apartment
-        response2 = api_client.get(reverse('apartment-list'))
+        response2 = api_client.get(reverse("apartment-list"))
         assert response2.status_code == 200
         data2 = response2.json()
-        assert len(data2['results']) == 2
+        assert len(data2["results"]) == 2
 
     def test_delete_bumps_cache_version(self, api_client):
         """Deleting a model invalidates the cached list response."""
-        building = Building.objects.create(name='Delete Building', address='Bursa')
+        building = Building.objects.create(name="Delete Building", address="Bursa")
         apartment = Apartment.objects.create(
             building=building,
-            apartment_number='401',
+            apartment_number="401",
             floor=4,
             status=Apartment.Status.ACTIVE,
         )
 
-        response1 = api_client.get(reverse('apartment-list'))
+        response1 = api_client.get(reverse("apartment-list"))
         assert response1.status_code == 200
         data1 = response1.json()
-        assert len(data1['results']) == 1
+        assert len(data1["results"]) == 1
 
         apartment.delete()
 
-        response2 = api_client.get(reverse('apartment-list'))
+        response2 = api_client.get(reverse("apartment-list"))
         assert response2.status_code == 200
         data2 = response2.json()
-        assert len(data2['results']) == 0
+        assert len(data2["results"]) == 0

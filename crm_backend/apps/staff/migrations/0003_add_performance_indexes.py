@@ -5,24 +5,23 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('staff', '0002_initial'),
-        ('tickets', '0001_initial'),
+        ("staff", "0002_initial"),
+        ("tickets", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddIndex(
-            model_name='employee',
-            index=models.Index(fields=['department', 'is_active'], name='staff_emplo_departm_41352a_idx'),
+            model_name="employee",
+            index=models.Index(fields=["department", "is_active"], name="staff_emplo_departm_41352a_idx"),
         ),
         migrations.AddIndex(
-            model_name='task',
-            index=models.Index(fields=['assigned_to', 'status'], name='staff_task_assigne_6231c2_idx'),
+            model_name="task",
+            index=models.Index(fields=["assigned_to", "status"], name="staff_task_assigne_6231c2_idx"),
         ),
         migrations.AddIndex(
-            model_name='task',
-            index=models.Index(fields=['-created_at'], name='staff_task_created_92ffe7_idx'),
+            model_name="task",
+            index=models.Index(fields=["-created_at"], name="staff_task_created_92ffe7_idx"),
         ),
     ]

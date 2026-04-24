@@ -1,4 +1,5 @@
 """Custom User model for CRM — replaces Django's built-in User."""
+
 from typing import Any
 
 from django.contrib.auth.models import AbstractUser
@@ -15,33 +16,20 @@ class User(AbstractUser):
     """
 
     class Role(models.TextChoices):
-        ADMIN = 'admin', 'Yönetici'
-        MANAGER = 'manager', 'Müdür'
-        WORKER = 'worker', 'Çalışan'
-        RESIDENT = 'resident', 'Sakin'
+        ADMIN = "admin", "Yönetici"
+        MANAGER = "manager", "Müdür"
+        WORKER = "worker", "Çalışan"
+        RESIDENT = "resident", "Sakin"
 
-    role = models.CharField(
-        max_length=20,
-        choices=Role.choices,
-        default=Role.RESIDENT,
-        help_text='User role for RBAC'
-    )
-    phone = models.CharField(
-        max_length=20,
-        blank=True,
-        help_text='Phone number for SMS notifications'
-    )
+    role = models.CharField(max_length=20, choices=Role.choices, default=Role.RESIDENT, help_text="User role for RBAC")
+    phone = models.CharField(max_length=20, blank=True, help_text="Phone number for SMS notifications")
     # TC Kimlik for Turkish citizens (optional — residents may not have it)
-    tc_kimlik_no = models.CharField(
-        max_length=11,
-        blank=True,
-        help_text='Turkish ID number'
-    )
+    tc_kimlik_no = models.CharField(max_length=11, blank=True, help_text="Turkish ID number")
 
     class Meta:
-        db_table = 'auth_user'
-        verbose_name = 'User'
-        verbose_name_plural = 'Users'
+        db_table = "auth_user"
+        verbose_name = "User"
+        verbose_name_plural = "Users"
 
     def __str__(self) -> str:
         return self.get_full_name() or self.username
@@ -65,15 +53,16 @@ class User(AbstractUser):
 
 class AuditAction(models.TextChoices):
     """Audit action types."""
-    CREATE = 'create', 'Create'
-    UPDATE = 'update', 'Update'
-    DELETE = 'delete', 'Delete'
-    LOGIN = 'login', 'Login'
-    LOGOUT = 'logout', 'Logout'
-    PASSWORD_CHANGE = 'password_change', 'Password Change'
-    PASSWORD_RESET = 'password_reset', 'Password Reset'
-    DATA_EXPORT = 'data_export', 'Data Export'
-    LOGIN_FAILED = 'login_failed', 'Failed Login'
+
+    CREATE = "create", "Create"
+    UPDATE = "update", "Update"
+    DELETE = "delete", "Delete"
+    LOGIN = "login", "Login"
+    LOGOUT = "logout", "Logout"
+    PASSWORD_CHANGE = "password_change", "Password Change"
+    PASSWORD_RESET = "password_reset", "Password Reset"
+    DATA_EXPORT = "data_export", "Data Export"
+    LOGIN_FAILED = "login_failed", "Failed Login"
 
 
 class AuditLog(models.Model):
@@ -82,12 +71,13 @@ class AuditLog(models.Model):
 
     Stores who did what, when, and from where.
     """
+
     user = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='audit_logs',
+        related_name="audit_logs",
     )
     action = models.CharField(
         max_length=20,
@@ -100,7 +90,7 @@ class AuditLog(models.Model):
         blank=True,
     )
     object_id = models.PositiveIntegerField(null=True, blank=True)
-    content_object = GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey("content_type", "object_id")
 
     # Changes tracking (JSON)
     changes = models.JSONField(default=dict, blank=True)
@@ -113,15 +103,15 @@ class AuditLog(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=['user', 'action']),
-            models.Index(fields=['content_type', 'object_id']),
-            models.Index(fields=['-created_at']),
+            models.Index(fields=["user", "action"]),
+            models.Index(fields=["content_type", "object_id"]),
+            models.Index(fields=["-created_at"]),
         ]
 
     def __str__(self) -> str:
-        user_str = self.user.username if self.user else 'Anonymous'
+        user_str = self.user.username if self.user else "Anonymous"
         return f"{user_str} {self.action} {self.content_type}#{self.object_id}"
 
     @classmethod
@@ -133,7 +123,7 @@ class AuditLog(models.Model):
         changes: dict[str, Any] | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
-    ) -> 'AuditLog':
+    ) -> "AuditLog":
         """Create an audit log entry."""
         content_type = None
         object_id = None
@@ -149,5 +139,5 @@ class AuditLog(models.Model):
             object_id=object_id,
             changes=changes or {},
             ip_address=ip_address,
-            user_agent=user_agent or '',
+            user_agent=user_agent or "",
         )

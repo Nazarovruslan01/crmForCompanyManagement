@@ -1,6 +1,7 @@
 """
 Django settings for CRM project.
 """
+
 import os
 from datetime import timedelta
 from decimal import Decimal
@@ -9,204 +10,204 @@ from urllib.parse import urlparse
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-change-in-production')
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-in-production")
 
-DEBUG = os.getenv('DEBUG', 'False') == 'True'
+DEBUG = os.getenv("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 # Application definition
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     # Third party
-    'rest_framework',
-    'rest_framework_simplejwt',
-    'django_filters',
-    'corsheaders',
-    'drf_spectacular',
-    'django_prometheus',
+    "rest_framework",
+    "rest_framework_simplejwt",
+    "django_filters",
+    "corsheaders",
+    "drf_spectacular",
+    "django_prometheus",
     # Local apps
-    'core',
-    'apps.accounts',
-    'apps.properties',
-    'apps.residents',
-    'apps.tickets',
-    'apps.billing',
-    'apps.staff',
-    'apps.notifications',
+    "core",
+    "apps.accounts",
+    "apps.properties",
+    "apps.residents",
+    "apps.tickets",
+    "apps.billing",
+    "apps.staff",
+    "apps.notifications",
 ]
 
 # Custom user model — must be set before first migration
-AUTH_USER_MODEL = 'accounts.User'
+AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
-    'django_prometheus.middleware.PrometheusBeforeMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'django_prometheus.middleware.PrometheusAfterMiddleware',
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
-ROOT_URLCONF = 'config.urls'
+ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.debug',
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'config.wsgi.application'
-ASGI_APPLICATION = 'config.asgi.application'
+WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
 
 # Database
-_db_url = urlparse(os.getenv('DATABASE_URL', 'postgresql://crm_user:changeme@localhost:5432/crm_db'))
+_db_url = urlparse(os.getenv("DATABASE_URL", "postgresql://crm_user:changeme@localhost:5432/crm_db"))
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': _db_url.path[1:],
-        'USER': _db_url.username,
-        'PASSWORD': _db_url.password,
-        'HOST': _db_url.hostname,
-        'PORT': _db_url.port or 5432,
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": _db_url.path[1:],
+        "USER": _db_url.username,
+        "PASSWORD": _db_url.password,
+        "HOST": _db_url.hostname,
+        "PORT": _db_url.port or 5432,
     }
 }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 # Internationalization
-LANGUAGE_CODE = 'tr'
-TIME_ZONE = 'Europe/Istanbul'
+LANGUAGE_CODE = "tr"
+TIME_ZONE = "Europe/Istanbul"
 USE_I18N = True
 USE_TZ = True
 
 # Static files
-STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
 
 # Media files
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 # Default primary key field type
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # REST Framework
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
     ],
-    'DEFAULT_FILTER_BACKENDS': [
-        'django_filters.rest_framework.DjangoFilterBackend',
-        'rest_framework.filters.SearchFilter',
-        'rest_framework.filters.OrderingFilter',
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
     ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/hour',
-        'login': '5/m',
-        'password_reset': '3/m',
-        'user_read': '1000/hour',
-        'user_write': '100/hour',
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/hour",
+        "login": "5/m",
+        "password_reset": "3/m",
+        "user_read": "1000/hour",
+        "user_write": "100/hour",
     },
-    'DEFAULT_VERSION': 'v2',
-    'ALLOWED_VERSIONS': ['v1', 'v2'],
-    'VERSION_PARAM': 'version',
+    "DEFAULT_VERSION": "v2",
+    "ALLOWED_VERSIONS": ["v1", "v2"],
+    "VERSION_PARAM": "version",
 }
 
 # JWT Settings
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-    'AUTH_HEADER_TYPES': ('Bearer',),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
 # CORS
 CORS_ALLOW_ALL_ORIGINS = DEBUG
-CORS_ALLOWED_ORIGINS = [x for x in os.getenv('CORS_ALLOWED_ORIGINS', '').split(',') if x]
+CORS_ALLOWED_ORIGINS = [x for x in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if x]
 
 # Cache (Redis)
 CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1'),
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1"),
     }
 }
 
 # Celery
-CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+CELERY_BROKER_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = CELERY_BROKER_URL
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 
 # Email (Resend)
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.resend.com'
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.resend.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv('RESEND_EMAIL_USER')
-EMAIL_HOST_PASSWORD = os.getenv('RESEND_EMAIL_API_KEY')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@crm.local')
+EMAIL_HOST_USER = os.getenv("RESEND_EMAIL_USER")
+EMAIL_HOST_PASSWORD = os.getenv("RESEND_EMAIL_API_KEY")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@crm.local")
 
 # Turkish Payment Gateway (İyzico)
-IYZICO_API_KEY = os.getenv('IYZICO_API_KEY')
-IYZICO_API_SECRET = os.getenv('IYZICO_API_SECRET')
-IYZICO_BASE_URL = 'https://api.iyzico.com'
+IYZICO_API_KEY = os.getenv("IYZICO_API_KEY")
+IYZICO_API_SECRET = os.getenv("IYZICO_API_SECRET")
+IYZICO_BASE_URL = "https://api.iyzico.com"
 
 # Turkish SMS (İleti Merkezi)
-SMS_API_URL = 'https://www.iletimerkezi.com/jsonapi/sms'
-SMS_API_KEY = os.getenv('SMS_API_KEY')
-SMS_API_SECRET = os.getenv('SMS_API_SECRET')
-SMS_SENDER = os.getenv('SMS_SENDER', 'CRM')
+SMS_API_URL = "https://www.iletimerkezi.com/jsonapi/sms"
+SMS_API_KEY = os.getenv("SMS_API_KEY")
+SMS_API_SECRET = os.getenv("SMS_API_SECRET")
+SMS_SENDER = os.getenv("SMS_SENDER", "CRM")
 
 # Aidat (Monthly Fee) Defaults
-AIDAT_DEFAULT_BASE_AMOUNT = Decimal('500.00')  # TRY
-AIDAT_DEFAULT_LATE_FEE_RATE = Decimal('0.001')  # 0.1% per day
+AIDAT_DEFAULT_BASE_AMOUNT = Decimal("500.00")  # TRY
+AIDAT_DEFAULT_LATE_FEE_RATE = Decimal("0.001")  # 0.1% per day
 
 # Spectacular (OpenAPI)
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'CRM API',
-    'DESCRIPTION': 'Property Management CRM API',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
+    "TITLE": "CRM API",
+    "DESCRIPTION": "Property Management CRM API",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }

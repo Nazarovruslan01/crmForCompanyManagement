@@ -4,15 +4,16 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('billing', '0002_remove_aidatcharge_billing_aid_apartme_129271_idx_and_more'),
-        ('properties', '0002_add_performance_indexes'),
+        ("billing", "0002_remove_aidatcharge_billing_aid_apartme_129271_idx_and_more"),
+        ("properties", "0002_add_performance_indexes"),
     ]
 
     operations = [
         migrations.AddConstraint(
-            model_name='aidatcharge',
-            constraint=models.UniqueConstraint(fields=('apartment', 'billing_period_start'), name='unique_aidat_per_apartment_period'),
+            model_name="aidatcharge",
+            constraint=models.UniqueConstraint(
+                fields=("apartment", "billing_period_start"), name="unique_aidat_per_apartment_period"
+            ),
         ),
     ]

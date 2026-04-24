@@ -1,4 +1,5 @@
 """Celery tasks for async operations."""
+
 import logging
 from datetime import timedelta
 from typing import Any, TypedDict
@@ -94,35 +95,35 @@ def send_sms_async(
     Returns:
         dict with 'success' status and details
     """
-    api_key = getattr(settings, 'SMS_API_KEY', None)
-    api_secret = getattr(settings, 'SMS_API_SECRET', None)
-    sender = getattr(settings, 'SMS_SENDER', 'CRM')
-    sms_url = getattr(settings, 'SMS_API_URL', None)
+    api_key = getattr(settings, "SMS_API_KEY", None)
+    api_secret = getattr(settings, "SMS_API_SECRET", None)
+    sender = getattr(settings, "SMS_SENDER", "CRM")
+    sms_url = getattr(settings, "SMS_API_URL", None)
 
     if not sms_url:
         logger.warning("SMS API not configured, skipping SMS")
-        return SmsResult(success=False, phone=None, error='SMS API not configured')
+        return SmsResult(success=False, phone=None, error="SMS API not configured")
 
     if not all([api_key, api_secret]):
         logger.warning("SMS API credentials not configured, skipping SMS")
-        return SmsResult(success=False, phone=None, error='SMS API credentials not configured')
+        return SmsResult(success=False, phone=None, error="SMS API credentials not configured")
 
     payload = {
-        'request': {
-            'authentication': {
-                'key': api_key,
-                'secret': api_secret,
+        "request": {
+            "authentication": {
+                "key": api_key,
+                "secret": api_secret,
             },
-            'order': {
-                'sender': sender,
-                'sendDateTime': '',
-                'recipient': [
+            "order": {
+                "sender": sender,
+                "sendDateTime": "",
+                "recipient": [
                     {
-                        'number': phone,
-                        'content': message,
+                        "number": phone,
+                        "content": message,
                     }
                 ],
-            }
+            },
         }
     }
 
@@ -153,9 +154,9 @@ def cleanup_expired_tokens() -> CleanupResult:
     cleaned = 0
 
     # Remove outstanding tokens older than 7 days without blacklist entry
-    old_tokens = OutstandingToken.objects.filter(
-        created_at__lt=now - timedelta(days=7)
-    ).exclude(id__in=BlacklistedToken.objects.values_list('token_id', flat=True))
+    old_tokens = OutstandingToken.objects.filter(created_at__lt=now - timedelta(days=7)).exclude(
+        id__in=BlacklistedToken.objects.values_list("token_id", flat=True)
+    )
 
     cleaned = old_tokens.count()
     old_tokens.delete()
@@ -203,16 +204,20 @@ def send_reminder_notifications(self: Any) -> ReminderResult:
     failed = 0
 
     # Find overdue charges with pending status
-    overdue_charges = AidatCharge.objects.filter(
-        status=AidatCharge.Status.OVERDUE,
-        due_date__lt=today,
-    ).select_related('apartment', 'apartment__building').distinct()
+    overdue_charges = (
+        AidatCharge.objects.filter(
+            status=AidatCharge.Status.OVERDUE,
+            due_date__lt=today,
+        )
+        .select_related("apartment", "apartment__building")
+        .distinct()
+    )
 
     # Get the aidat_overdue template
     try:
         template = NotificationTemplate.objects.get(
-            notification_type='aidat_overdue',
-            channel='email',
+            notification_type="aidat_overdue",
+            channel="email",
             is_active=True,
         )
     except NotificationTemplate.DoesNotExist:
@@ -227,7 +232,7 @@ def send_reminder_notifications(self: Any) -> ReminderResult:
     ownerships = Ownership.objects.filter(
         apartment_id__in=apartment_ids,
         is_primary=True,
-    ).select_related('resident')
+    ).select_related("resident")
 
     apartment_to_resident: dict[int, Any] = {}
     for ownership in ownerships:
@@ -253,7 +258,7 @@ def send_reminder_notifications(self: Any) -> ReminderResult:
                 apartment=charge.apartment.apartment_number,
                 building=charge.apartment.building.name,
                 amount=f"{total_amount:.2f}",
-                due_date=charge.due_date.strftime('%d.%m.%Y'),
+                due_date=charge.due_date.strftime("%d.%m.%Y"),
                 days_overdue=days_overdue,
             )
 
@@ -269,11 +274,13 @@ def send_reminder_notifications(self: Any) -> ReminderResult:
                     status=NotificationLog.Status.PENDING,
                 )
             )
-            email_payloads.append({
-                'subject': subject,
-                'message': body,
-                'recipient_list': [resident.email],
-            })
+            email_payloads.append(
+                {
+                    "subject": subject,
+                    "message": body,
+                    "recipient_list": [resident.email],
+                }
+            )
 
         except Exception as exc:
             logger.error("Failed to prepare reminder for charge %s: %s", charge.id, exc)
@@ -329,13 +336,13 @@ def generate_monthly_invoices(self: Any) -> InvoiceGenerationResult:
 
     apartments = Apartment.objects.filter(
         status=Apartment.Status.ACTIVE,
-    ).select_related('building')
+    ).select_related("building")
 
     # Pre-check existing charges in a single query instead of N+1 exists()
     existing_ids = set(
         AidatCharge.objects.filter(
             billing_period_start=period_start,
-        ).values_list('apartment_id', flat=True)
+        ).values_list("apartment_id", flat=True)
     )
 
     charges_to_create: list[AidatCharge] = []

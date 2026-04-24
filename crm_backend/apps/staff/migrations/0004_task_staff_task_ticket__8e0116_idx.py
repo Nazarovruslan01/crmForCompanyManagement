@@ -5,16 +5,15 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('staff', '0003_add_performance_indexes'),
-        ('tickets', '0002_add_performance_indexes'),
+        ("staff", "0003_add_performance_indexes"),
+        ("tickets", "0002_add_performance_indexes"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddIndex(
-            model_name='task',
-            index=models.Index(fields=['ticket'], name='staff_task_ticket__8e0116_idx'),
+            model_name="task",
+            index=models.Index(fields=["ticket"], name="staff_task_ticket__8e0116_idx"),
         ),
     ]

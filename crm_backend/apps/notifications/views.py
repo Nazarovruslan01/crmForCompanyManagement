@@ -1,4 +1,5 @@
 """Notifications app views for REST API."""
+
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -15,27 +16,27 @@ class NotificationTemplateViewSet(viewsets.ModelViewSet[NotificationTemplate]):
     queryset = NotificationTemplate.objects.all()
     serializer_class = NotificationTemplateSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
-    filterset_fields = ['channel', 'notification_type', 'is_active']
-    search_fields = ['name', 'subject']
-    ordering_fields = ['name']
+    filterset_fields = ["channel", "notification_type", "is_active"]
+    search_fields = ["name", "subject"]
+    ordering_fields = ["name"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def by_type(self, request: Request) -> Response:
         """Get templates by notification type."""
-        notification_type = request.query_params.get('type')
+        notification_type = request.query_params.get("type")
         if not notification_type:
-            return Response({'error': 'type is required'}, status=400)
+            return Response({"error": "type is required"}, status=400)
         templates = self.queryset.filter(notification_type=notification_type, is_active=True)
         serializer = self.get_serializer(templates, many=True)
         return Response(serializer.data)
 
 
 class NotificationLogViewSet(viewsets.ModelViewSet[NotificationLog]):
-    queryset = NotificationLog.objects.select_related('recipient', 'template').all()
+    queryset = NotificationLog.objects.select_related("recipient", "template").all()
     serializer_class = NotificationLogSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
-    filterset_fields = ['status', 'channel', 'recipient']
-    search_fields = ['recipient__name', 'external_id']
-    ordering_fields = ['created_at', 'sent_at']
+    filterset_fields = ["status", "channel", "recipient"]
+    search_fields = ["recipient__name", "external_id"]
+    ordering_fields = ["created_at", "sent_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
