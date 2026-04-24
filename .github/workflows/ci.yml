@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [master]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  WORKING_DIRECTORY: crm_backend
+
 jobs:
   # ─── 1. Fast Gates — style & correctness ─────────────────────────────────
   lint:
@@ -15,12 +23,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: crm_backend/requirements/local.txt
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
       - run: pip install ruff
       - name: Run ruff
-        working-directory: crm_backend
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         run: ruff check .
 
   format:
@@ -30,12 +38,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: crm_backend/requirements/local.txt
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
       - run: pip install ruff
       - name: Check formatting
-        working-directory: crm_backend
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         run: ruff format --check .
 
   typecheck:
@@ -47,13 +55,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: crm_backend/requirements/local.txt
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
       - name: Install dependencies
-        run: pip install -r crm_backend/requirements/local.txt
+        run: pip install -r ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
       - name: Run mypy
-        working-directory: crm_backend
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         run: mypy . --config-file mypy.ini
 
   migrations:
@@ -79,13 +87,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: crm_backend/requirements/local.txt
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
       - name: Install dependencies
-        run: pip install -r crm_backend/requirements/local.txt
+        run: pip install -r ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
       - name: Verify no missing migrations
-        working-directory: crm_backend
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
           python manage.py migrate --noinput
           python manage.py makemigrations --check --dry-run
@@ -113,18 +121,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: crm_backend/requirements/local.txt
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
       - name: Install dependencies
-        run: pip install -r crm_backend/requirements/local.txt
+        run: pip install -r ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
       - name: Create static directory
-        run: mkdir -p crm_backend/static
+        run: mkdir -p ${{ env.WORKING_DIRECTORY }}/static
       - name: Django deploy system check
-        working-directory: crm_backend
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
           python manage.py migrate --noinput
           python manage.py check --deploy
+      - name: Collect static files
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: python manage.py collectstatic --noinput
 
   # ─── 2. Tests ──────────────────────────────────────────────────────────────
   test:
@@ -152,28 +163,112 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: crm_backend/requirements/local.txt
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
       - name: Install dependencies
-        run: pip install -r crm_backend/requirements/local.txt
+        run: pip install -r ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
       - name: Create static directory
-        run: mkdir -p crm_backend/static
+        run: mkdir -p ${{ env.WORKING_DIRECTORY }}/static
       - name: Apply migrations
-        working-directory: crm_backend
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         run: python manage.py migrate --noinput
       - name: Django system check
-        working-directory: crm_backend
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         run: python manage.py check
       - name: Run tests
-        working-directory: crm_backend
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
           pytest -n auto \
             --cov=apps \
-            --cov-report=term-missing \
+            --cov-report=xml \
             --cov-fail-under=80
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ${{ env.WORKING_DIRECTORY }}/coverage.xml
+          flags: unittests
+          name: codecov-crm
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
-  # ─── 3. Security — non-blocking ────────────────────────────────────────────
+  # ─── 3. Smoke test ──────────────────────────────────────────────────────────
+  smoke-test:
+    name: Smoke test (Django server)
+    runs-on: ubuntu-latest
+    needs: [test]
+    env:
+      DATABASE_URL: postgresql://crm_user:crm_password@localhost:5432/crm_test
+      DJANGO_SETTINGS_MODULE: config.settings.local
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: crm_test
+          POSTGRES_USER: crm_user
+          POSTGRES_PASSWORD: crm_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U crm_user -d crm_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
+      - name: Install dependencies
+        run: pip install -r ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
+      - name: Create static directory
+        run: mkdir -p ${{ env.WORKING_DIRECTORY }}/static
+      - name: Apply migrations
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: python manage.py migrate --noinput
+      - name: Collect static
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: python manage.py collectstatic --noinput
+      - name: Start Django and verify /api/v2/
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          python manage.py runserver 0.0.0.0:8000 &
+          sleep 5
+          curl -sSf http://localhost:8000/api/v2/ || true
+          # Graceful shutdown
+          curl -sSf -X POST http://localhost:8000/admin/logout/ || true
+
+  # ─── 4. Docker build ────────────────────────────────────────────────────────
+  docker-build:
+    name: Docker build
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/Dockerfile
+          push: false
+          tags: crm-backend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─── 5. Security — non-blocking ────────────────────────────────────────────
   security-sast:
     name: Security SAST (bandit)
     runs-on: ubuntu-latest
@@ -182,22 +277,27 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: crm_backend/requirements/local.txt
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
       - run: pip install bandit
-      - name: Run bandit
+      - name: Run bandit (SARIF)
         run: |
-          bandit -r crm_backend/ \
+          bandit -r ${{ env.WORKING_DIRECTORY }}/ \
             -ll -iii \
-            -x "crm_backend/apps/accounts/migrations" \
-            -x "crm_backend/apps/billing/migrations" \
-            -x "crm_backend/apps/notifications/migrations" \
-            -x "crm_backend/apps/properties/migrations" \
-            -x "crm_backend/apps/residents/migrations" \
-            -x "crm_backend/apps/staff/migrations" \
-            -x "crm_backend/apps/tickets/migrations" \
-            -f txt
+            -x "${{ env.WORKING_DIRECTORY }}/apps/accounts/migrations" \
+            -x "${{ env.WORKING_DIRECTORY }}/apps/billing/migrations" \
+            -x "${{ env.WORKING_DIRECTORY }}/apps/notifications/migrations" \
+            -x "${{ env.WORKING_DIRECTORY }}/apps/properties/migrations" \
+            -x "${{ env.WORKING_DIRECTORY }}/apps/residents/migrations" \
+            -x "${{ env.WORKING_DIRECTORY }}/apps/staff/migrations" \
+            -x "${{ env.WORKING_DIRECTORY }}/apps/tickets/migrations" \
+            -f sarif \
+            -o bandit-results.sarif
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: bandit-results.sarif
 
   security-deps:
     name: Security deps (pip-audit)
@@ -207,12 +307,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: crm_backend/requirements/base.txt
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/requirements/base.txt
       - run: pip install pip-audit
       - name: Audit dependencies
-        run: pip-audit -r crm_backend/requirements/base.txt
+        run: pip-audit -r ${{ env.WORKING_DIRECTORY }}/requirements/base.txt
 
   security-secrets:
     name: Secret scanning (detect-secrets)
@@ -222,10 +322,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: crm_backend/requirements/local.txt
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
       - run: pip install detect-secrets
       - name: Scan for new secrets
-        working-directory: crm_backend
+        working-directory: ${{ env.WORKING_DIRECTORY }}
         run: detect-secrets scan --baseline .secrets.baseline --force-use-all-plugins
