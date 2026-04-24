@@ -1,4 +1,5 @@
 """Tickets app views for REST API."""
+from django.db import models
 from rest_framework import permissions, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -26,6 +27,14 @@ class TicketViewSet(viewsets.ModelViewSet[Ticket]):
     search_fields = ['title', 'description', 'apartment__apartment_number']
     ordering_fields = ['priority', 'created_at', 'updated_at']
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+
+    def get_queryset(self) -> 'models.QuerySet[Ticket]':
+        qs = super().get_queryset()
+        if self.action == 'retrieve':
+            # TicketDetailSerializer includes nested comments and attachments.
+            # Prefetch to avoid N+1 on author/uploaded_by lookups.
+            qs = qs.prefetch_related('comments__author', 'attachments__uploaded_by')
+        return qs
 
     def get_serializer_class(self) -> type[TicketSerializer | TicketDetailSerializer]:
         if self.action == 'retrieve':

@@ -16,7 +16,7 @@ from .serializers import (
 
 
 class ResidentViewSet(viewsets.ModelViewSet[Resident]):
-    queryset = Resident.objects.all()
+    queryset = Resident.objects.select_related('user').all()
     serializer_class = ResidentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     filterset_fields = ['owner_type', 'is_foreign_owner']
