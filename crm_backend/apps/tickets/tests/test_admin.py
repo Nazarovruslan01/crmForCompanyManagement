@@ -1,6 +1,5 @@
 """Tests for tickets admin actions."""
 import pytest
-from django.utils import timezone
 
 from apps.properties.models import Apartment, Building
 from apps.tickets.admin import make_closed, make_resolved

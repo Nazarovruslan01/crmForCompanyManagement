@@ -91,7 +91,6 @@ class Ticket(models.Model):
         ]
 
     def clean(self) -> None:
-        from django.core.exceptions import ValidationError
 
         if self.pk:
             # Status transitions: only allow valid state machine moves.

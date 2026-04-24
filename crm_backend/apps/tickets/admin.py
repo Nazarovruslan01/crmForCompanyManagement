@@ -1,6 +1,5 @@
 """Admin configuration for tickets app."""
 from django.contrib import admin
-from django.utils import timezone
 
 from .models import Ticket, TicketAttachment, TicketComment
 

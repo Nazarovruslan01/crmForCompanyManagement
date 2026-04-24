@@ -1,7 +1,6 @@
 """Celery tasks for async operations."""
 import logging
 from datetime import timedelta
-from decimal import Decimal
 from typing import Any, TypedDict
 
 import requests

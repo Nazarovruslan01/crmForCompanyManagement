@@ -1,8 +1,9 @@
 """Tests for Celery tasks."""
-import pytest
-from decimal import Decimal
-from unittest.mock import patch, MagicMock
 from datetime import timedelta
+from decimal import Decimal
+from unittest.mock import patch
+
+import pytest
 from django.utils import timezone
 
 pytestmark = pytest.mark.django_db
@@ -106,9 +107,9 @@ class TestSendReminderNotifications:
     def test_sends_notifications_for_overdue_charges(self, admin_user):
         """Notifications are sent for overdue aidat charges."""
         from apps.billing.models import AidatCharge
-        from apps.residents.models import Resident, Ownership
-        from apps.properties.models import Apartment, Building
         from apps.notifications.models import NotificationTemplate
+        from apps.properties.models import Apartment, Building
+        from apps.residents.models import Ownership, Resident
         from core.tasks import send_reminder_notifications
 
         # Create building and apartment
@@ -137,7 +138,7 @@ class TestSendReminderNotifications:
         )
 
         # Create notification template
-        template = NotificationTemplate.objects.create(
+        _template = NotificationTemplate.objects.create(
             name='Aidat Overdue',
             notification_type='aidat_overdue',
             channel='email',
@@ -148,7 +149,7 @@ class TestSendReminderNotifications:
 
         # Create overdue charge
         due_date = timezone.now().date() - timedelta(days=10)
-        charge = AidatCharge.objects.create(
+        _charge = AidatCharge.objects.create(
             apartment=apartment,
             billing_period_start=timezone.now().date() - timedelta(days=30),
             billing_period_end=timezone.now().date() - timedelta(days=1),
@@ -180,8 +181,8 @@ class TestSendReminderNotifications:
     def test_no_primary_resident_skips_charge(self, admin_user):
         """Charges without primary resident are skipped."""
         from apps.billing.models import AidatCharge
-        from apps.properties.models import Apartment, Building
         from apps.notifications.models import NotificationTemplate
+        from apps.properties.models import Apartment, Building
         from core.tasks import send_reminder_notifications
 
         building = Building.objects.create(name='Test Building 2', address='Ankara')
@@ -192,7 +193,7 @@ class TestSendReminderNotifications:
             status=Apartment.Status.ACTIVE,
         )
 
-        template = NotificationTemplate.objects.create(
+        _template = NotificationTemplate.objects.create(
             name='Aidat Overdue 2',
             notification_type='aidat_overdue',
             channel='email',
@@ -201,7 +202,7 @@ class TestSendReminderNotifications:
             is_active=True,
         )
 
-        charge = AidatCharge.objects.create(
+        _charge = AidatCharge.objects.create(
             apartment=apartment,
             billing_period_start=timezone.now().date() - timedelta(days=30),
             billing_period_end=timezone.now().date() - timedelta(days=1),
@@ -226,8 +227,8 @@ class TestGenerateMonthlyInvoices:
         from core.tasks import generate_monthly_invoices
 
         building = Building.objects.create(name='Invoice Test Building', address='Izmir')
-        apt1 = Apartment.objects.create(building=building, apartment_number='1', floor=1, status=Apartment.Status.ACTIVE)
-        apt2 = Apartment.objects.create(building=building, apartment_number='2', floor=1, status=Apartment.Status.ACTIVE)
+        Apartment.objects.create(building=building, apartment_number='1', floor=1, status=Apartment.Status.ACTIVE)
+        Apartment.objects.create(building=building, apartment_number='2', floor=1, status=Apartment.Status.ACTIVE)
 
         result = generate_monthly_invoices()
 
@@ -279,7 +280,7 @@ class TestGenerateMonthlyInvoices:
         active_apt = Apartment.objects.create(
             building=building, apartment_number='A', floor=1, status=Apartment.Status.ACTIVE
         )
-        inactive_apt = Apartment.objects.create(
+        _inactive_apt = Apartment.objects.create(
             building=building, apartment_number='B', floor=1, status=Apartment.Status.INACTIVE
         )
 
