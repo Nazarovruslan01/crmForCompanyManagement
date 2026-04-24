@@ -14,11 +14,13 @@ pytestmark = pytest.mark.django_db
 # without the real AWS SDK installed in the test environment.
 if "boto3" not in sys.modules:
     _fake_boto3 = MagicMock()
-    _fake_boto3.client = MagicMock(return_value=MagicMock(
-        generate_presigned_url=MagicMock(
-            return_value="https://minio.example.com/test-bucket/uploads/tickets/fake/file.png?signature=abc"
+    _fake_boto3.client = MagicMock(
+        return_value=MagicMock(
+            generate_presigned_url=MagicMock(
+                return_value="https://minio.example.com/test-bucket/uploads/tickets/fake/file.png?signature=abc"
+            )
         )
-    ))
+    )
     sys.modules["boto3"] = _fake_boto3
 
 if "botocore" not in sys.modules:
