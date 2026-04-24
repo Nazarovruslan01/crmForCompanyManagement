@@ -3,12 +3,13 @@ from rest_framework import mixins, permissions, viewsets
 
 from common.permissions import IsAdminOrManager
 from common.throttles import UserReadThrottle, UserWriteThrottle
+from core.mixins import CacheListRetrieveMixin
 
 from .models import Apartment, Building
 from .serializers import ApartmentMinimalSerializer, ApartmentSerializer, BuildingSerializer
 
 
-class BuildingViewSet(viewsets.ModelViewSet[Building]):
+class BuildingViewSet(CacheListRetrieveMixin, viewsets.ModelViewSet[Building]):
     queryset = Building.objects.all()
     serializer_class = BuildingSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
@@ -18,7 +19,7 @@ class BuildingViewSet(viewsets.ModelViewSet[Building]):
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
 
-class ApartmentViewSet(viewsets.ModelViewSet[Apartment]):
+class ApartmentViewSet(CacheListRetrieveMixin, viewsets.ModelViewSet[Apartment]):
     queryset = Apartment.objects.select_related('building').all()
     serializer_class = ApartmentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
@@ -29,6 +30,7 @@ class ApartmentViewSet(viewsets.ModelViewSet[Apartment]):
 
 
 class ApartmentMinimalViewSet(
+    CacheListRetrieveMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet[Apartment],

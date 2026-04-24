@@ -26,4 +26,11 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 # Run Celery tasks synchronously in local / test mode
 CELERY_TASK_ALWAYS_EAGER = True
 
+# Use in-memory cache for local / test runs (no Redis required)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}
+
 CORS_ALLOW_ALL_ORIGINS = True
