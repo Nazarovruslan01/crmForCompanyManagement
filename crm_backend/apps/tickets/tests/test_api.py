@@ -137,7 +137,7 @@ class TestTicketCommentViewSet:
             title='Comment Test',
             description='Test',
         )
-        response = admin_client.get('/api/v2/tickets/ticket-comments/')
+        response = admin_client.get('/api/v2/tickets/comments/')
         assert response.status_code == status.HTTP_200_OK
         assert 'results' in response.data
 
@@ -153,7 +153,7 @@ class TestTicketCommentViewSet:
             'ticket': ticket.id,
             'content': 'Test comment content',
         }
-        response = admin_client.post('/api/v2/tickets/ticket-comments/', payload, format='json')
+        response = admin_client.post('/api/v2/tickets/comments/', payload, format='json')
         assert response.status_code == status.HTTP_201_CREATED
 
     def test_filter_comments_by_ticket(self, admin_client, apartment):
@@ -163,16 +163,16 @@ class TestTicketCommentViewSet:
             title='Filter Comment Test',
             description='Test',
         )
-        response = admin_client.get('/api/v2/tickets/ticket-comments/', {'ticket': ticket.id})
+        response = admin_client.get('/api/v2/tickets/comments/', {'ticket': ticket.id})
         assert response.status_code == status.HTTP_200_OK
 
 
 class TestTicketAttachmentViewSet:
-    """Tests for /api/v2/tickets/ticket-attachments/ endpoints."""
+    """Tests for /api/v2/tickets/attachments/ endpoints."""
 
     def test_list_attachments(self, admin_client):
         """Admin can list attachments."""
-        response = admin_client.get('/api/v2/tickets/ticket-attachments/')
+        response = admin_client.get('/api/v2/tickets/attachments/')
         assert response.status_code == status.HTTP_200_OK
         assert 'results' in response.data
 
@@ -190,5 +190,5 @@ class TestTicketAttachmentViewSet:
             'file_name': 'test.pdf',
             'file_type': 'document',
         }
-        response = admin_client.post('/api/v2/tickets/ticket-attachments/', payload, format='json')
+        response = admin_client.post('/api/v2/tickets/attachments/', payload, format='json')
         assert response.status_code == status.HTTP_201_CREATED
