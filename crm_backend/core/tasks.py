@@ -220,23 +220,28 @@ def send_reminder_notifications(self: Any) -> ReminderResult:
         logger.warning("No active aidat_overdue email template found")
         return ReminderResult(notifications_sent=0, notifications_failed=0)
 
+    # Bulk fetch primary residents for all overdue apartments
+    from apps.notifications.models import NotificationLog
+    from apps.residents.models import Ownership
+
+    apartment_ids = [c.apartment_id for c in overdue_charges]
+    ownerships = Ownership.objects.filter(
+        apartment_id__in=apartment_ids,
+        is_primary=True,
+    ).select_related('resident')
+
+    apartment_to_resident: dict[int, Any] = {}
+    for ownership in ownerships:
+        if ownership.resident:
+            apartment_to_resident[ownership.apartment_id] = ownership.resident
+
+    logs_to_create: list[NotificationLog] = []
+    email_payloads: list[dict[str, Any]] = []
+
     for charge in overdue_charges:
         try:
-            # Get primary resident for the apartment
-            from apps.residents.models import Ownership, Resident
-
-            ownership = Ownership.objects.filter(
-                apartment=charge.apartment,
-                is_primary=True,
-            ).select_related('resident').first()
-
-            if not ownership or not ownership.resident:
-                logger.warning("No primary resident found for apartment %s", charge.apartment)
-                continue
-
-            resident = ownership.resident
-            if not resident.email:
-                logger.warning("Resident %s has no email", resident)
+            resident = apartment_to_resident.get(charge.apartment_id)
+            if not resident or not resident.email:
                 continue
 
             # Render template
@@ -253,30 +258,41 @@ def send_reminder_notifications(self: Any) -> ReminderResult:
                 days_overdue=days_overdue,
             )
 
-            # Create notification log
-            from apps.notifications.models import NotificationLog
+            subject = f"Aidat Ödemesi Gecikti - {charge.apartment.apartment_number}"
 
-            NotificationLog.objects.create(
-                template=template,
-                recipient=resident,
-                channel=template.channel,
-                subject=f"Aidat Ödemesi Gecikti - {charge.apartment.apartment_number}",
-                body=body,
-                status=NotificationLog.Status.PENDING,
+            logs_to_create.append(
+                NotificationLog(
+                    template=template,
+                    recipient=resident,
+                    channel=template.channel,
+                    subject=subject,
+                    body=body,
+                    status=NotificationLog.Status.PENDING,
+                )
             )
-
-            # Trigger async send
-            send_email_async.delay(
-                subject=f"Aidat Ödemesi Gecikti - {charge.apartment.apartment_number}",
-                message=body,
-                recipient_list=[resident.email],
-            )
-
-            sent += 1
+            email_payloads.append({
+                'subject': subject,
+                'message': body,
+                'recipient_list': [resident.email],
+            })
 
         except Exception as exc:
-            logger.error("Failed to send reminder for charge %s: %s", charge.id, exc)
+            logger.error("Failed to prepare reminder for charge %s: %s", charge.id, exc)
             failed += 1
+
+    # Bulk create notification logs (chunked)
+    if logs_to_create:
+        try:
+            NotificationLog.objects.bulk_create(logs_to_create, batch_size=500)
+            sent = len(logs_to_create)
+        except Exception as exc:
+            logger.error("Failed to bulk create notification logs: %s", exc)
+            failed += len(logs_to_create)
+            email_payloads = []
+
+    # Queue email tasks
+    for payload in email_payloads:
+        send_email_async.delay(**payload)
 
     logger.info("Sent %d reminder notifications, %d failed", sent, failed)
     return ReminderResult(notifications_sent=sent, notifications_failed=failed)
@@ -312,21 +328,23 @@ def generate_monthly_invoices(self: Any) -> InvoiceGenerationResult:
     created = 0
     failed = 0
 
-    apartments = Apartment.objects.filter(is_active=True).select_related('building')
+    apartments = Apartment.objects.filter(
+        status=Apartment.Status.ACTIVE,
+    ).select_related('building')
 
+    # Pre-check existing charges in a single query instead of N+1 exists()
+    existing_ids = set(
+        AidatCharge.objects.filter(
+            billing_period_start=period_start,
+        ).values_list('apartment_id', flat=True)
+    )
+
+    charges_to_create: list[AidatCharge] = []
     for apartment in apartments:
-        try:
-            # Check if charges already exist for this period
-            exists = AidatCharge.objects.filter(
-                apartment=apartment,
-                billing_period_start=period_start,
-            ).exists()
-
-            if exists:
-                logger.debug("Charge already exists for apartment %s period %s", apartment, period_start)
-                continue
-
-            AidatCharge.objects.create(
+        if apartment.id in existing_ids:
+            continue
+        charges_to_create.append(
+            AidatCharge(
                 apartment=apartment,
                 billing_period_start=period_start,
                 billing_period_end=period_end,
@@ -335,11 +353,18 @@ def generate_monthly_invoices(self: Any) -> InvoiceGenerationResult:
                 due_date=due_date,
                 status=AidatCharge.Status.PENDING,
             )
-            created += 1
+        )
 
+    if charges_to_create:
+        try:
+            AidatCharge.objects.bulk_create(
+                charges_to_create,
+                batch_size=500,
+            )
+            created = len(charges_to_create)
         except Exception as exc:
-            logger.error("Failed to create aidat charge for apartment %s: %s", apartment.id, exc)
-            failed += 1
+            logger.error("Failed to bulk create aidat charges: %s", exc)
+            failed = len(charges_to_create)
 
     logger.info("Generated %d monthly invoices, %d failed", created, failed)
     return InvoiceGenerationResult(charges_created=created, charges_failed=failed)

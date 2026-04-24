@@ -138,9 +138,20 @@ class Ownership(models.Model):
     class Meta:
         verbose_name = 'Ownership'
         verbose_name_plural = 'Ownerships'
-        unique_together = ['resident', 'apartment', 'role']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['resident', 'apartment', 'role'],
+                name='unique_ownership_resident_apartment_role',
+            ),
+            models.UniqueConstraint(
+                fields=['apartment'],
+                condition=models.Q(is_primary=True),
+                name='unique_primary_resident_per_apartment',
+            ),
+        ]
         indexes = [
             models.Index(fields=['apartment', 'is_primary']),
+            models.Index(fields=['resident', 'is_primary']),
         ]
 
     def __str__(self) -> str:

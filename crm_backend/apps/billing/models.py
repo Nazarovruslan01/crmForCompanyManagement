@@ -2,7 +2,7 @@
 from collections.abc import Iterable
 from decimal import Decimal
 
-from django.db import models
+from django.db import IntegrityError, models, transaction
 from django.db.models.base import ModelBase
 from django.utils import timezone
 
@@ -61,8 +61,16 @@ class AidatCharge(models.Model):
         verbose_name = 'Aidat Charge'
         verbose_name_plural = 'Aidat Charges'
         ordering = ['-billing_period_start']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['apartment', 'billing_period_start'],
+                name='unique_aidat_per_apartment_period',
+            ),
+        ]
         indexes = [
-            models.Index(fields=['apartment', 'billing_period_start']),
+            # Reversed so billing_period_start alone (used by generate_monthly_invoices)
+            # can use the index. apartment is already indexed by the FK constraint.
+            models.Index(fields=['billing_period_start', 'apartment']),
             models.Index(fields=['status', 'due_date']),
         ]
 
@@ -179,14 +187,43 @@ class Payment(models.Model):
         using: str | None = None,
         update_fields: Iterable[str] | None = None,
     ) -> None:
-        # Auto-generate receipt number if not set
         if not self.receipt_number:
-            year = timezone.now().year
-            month = f"{timezone.now().month:02d}"
-            # Get last receipt for this month to determine next sequence number
-            last_payment = Payment.objects.filter(
-                receipt_number__startswith=f'{year}{month}'
-            ).order_by('-receipt_number').first()
+            self._generate_receipt_number()
+
+        for attempt in range(3):
+            try:
+                super().save(
+                    force_insert=force_insert,
+                    force_update=force_update,
+                    using=using,
+                    update_fields=update_fields,
+                )
+                return
+            except IntegrityError as exc:
+                # Race condition: another process took the same sequence.
+                # Retry with the next number unless this is the last attempt.
+                if attempt < 2 and 'receipt_number' in str(exc):
+                    self._generate_receipt_number()
+                else:
+                    raise
+
+    def _generate_receipt_number(self) -> None:
+        """Atomically generate the next receipt number for the current month.
+
+        Uses select_for_update() on Postgres to serialize access.
+        Falls back to IntegrityError retry on SQLite.
+        """
+        now = timezone.now()
+        prefix = f"{now.year}{now.month:02d}"
+
+        with transaction.atomic():
+            # select_for_update is a no-op on SQLite but works on Postgres.
+            last_payment = (
+                Payment.objects.select_for_update()
+                .filter(receipt_number__startswith=prefix)
+                .order_by('-receipt_number')
+                .first()
+            )
 
             if last_payment and last_payment.receipt_number:
                 last_seq = int(last_payment.receipt_number[6:])
@@ -194,14 +231,7 @@ class Payment(models.Model):
             else:
                 new_seq = 1
 
-            self.receipt_number = f'{year}{month}{new_seq:04d}'
-
-        super().save(
-            force_insert=force_insert,
-            force_update=force_update,
-            using=using,
-            update_fields=update_fields,
-        )
+            self.receipt_number = f"{prefix}{new_seq:04d}"
 
 
 class Receipt(models.Model):

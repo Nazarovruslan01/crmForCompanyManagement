@@ -96,6 +96,24 @@ class TestPayment:
         )
         assert p1.receipt_number != p2.receipt_number
 
+    def test_payment_receipt_numbers_are_sequential(self, apartment):
+        """Receipt numbers within the same month increment sequentially."""
+        p1 = Payment.objects.create(
+            apartment=apartment,
+            charge_type='aidat',
+            amount=100,
+            payment_method=Payment.PaymentMethod.CASH,
+        )
+        p2 = Payment.objects.create(
+            apartment=apartment,
+            charge_type='aidat',
+            amount=200,
+            payment_method=Payment.PaymentMethod.EFT,
+        )
+        seq1 = int(p1.receipt_number[6:])
+        seq2 = int(p2.receipt_number[6:])
+        assert seq2 == seq1 + 1
+
     def test_payment_method_choices(self):
         assert Payment.PaymentMethod.EFT == 'eft'
         assert Payment.PaymentMethod.CREDIT_CARD == 'credit_card'

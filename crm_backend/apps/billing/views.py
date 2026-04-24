@@ -27,8 +27,12 @@ class AidatChargeViewSet(viewsets.ModelViewSet[AidatCharge]):
 
     @action(detail=False, methods=['get'])
     def overdue(self, request: Request) -> Response:
-        """Get all overdue charges."""
+        """Get all overdue charges (paginated)."""
         overdue = self.queryset.filter(status='overdue')
+        page = self.paginate_queryset(overdue)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(overdue, many=True)
         return Response(serializer.data)
 

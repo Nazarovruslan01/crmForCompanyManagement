@@ -105,6 +105,7 @@ class Task(models.Model):
         indexes = [
             models.Index(fields=['assigned_to', 'status']),
             models.Index(fields=['-created_at']),
+            models.Index(fields=['ticket']),
         ]
 
     def __str__(self) -> str:

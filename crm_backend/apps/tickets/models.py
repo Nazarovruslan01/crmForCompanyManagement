@@ -1,6 +1,8 @@
 """Tickets app models for Turkish HOA CRM"""
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 
 class Ticket(models.Model):
@@ -82,7 +84,61 @@ class Ticket(models.Model):
             models.Index(fields=['assigned_worker', 'status']),
             models.Index(fields=['created_by', 'status']),
             models.Index(fields=['-created_at']),
+            # Composite index for apartment ticket lists ordered by date
+            models.Index(fields=['apartment', 'status', '-created_at']),
+            # Index for ticket_auto_close task
+            models.Index(fields=['status', 'updated_at']),
         ]
+
+    def clean(self) -> None:
+        from django.core.exceptions import ValidationError
+
+        if self.pk:
+            # Status transitions: only allow valid state machine moves.
+            # Fetch old status from DB to validate the transition.
+            try:
+                old_status = Ticket.objects.values_list('status', flat=True).get(pk=self.pk)
+            except Ticket.DoesNotExist:
+                old_status = None
+
+            if old_status and old_status != self.status:
+                allowed = self._allowed_transitions(old_status)
+                if self.status not in allowed:
+                    raise ValidationError(
+                        f"Invalid status transition: {old_status} → {self.status}. "
+                        f"Allowed: {', '.join(allowed)}"
+                    )
+
+        super().clean()
+
+    def _allowed_transitions(self, old_status: str) -> list[str]:
+        """Return list of statuses we can transition to from old_status."""
+        transitions: dict[str, list[str]] = {
+            self.Status.NEW: [
+                self.Status.ASSIGNED,
+                self.Status.IN_PROGRESS,
+                self.Status.RESOLVED,
+                self.Status.CLOSED,
+            ],
+            self.Status.ASSIGNED: [
+                self.Status.IN_PROGRESS,
+                self.Status.RESOLVED,
+                self.Status.CLOSED,
+            ],
+            self.Status.IN_PROGRESS: [
+                self.Status.RESOLVED,
+                self.Status.CLOSED,
+            ],
+            self.Status.RESOLVED: [self.Status.CLOSED],
+            self.Status.CLOSED: [],
+        }
+        return transitions.get(old_status, [])
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        self.clean()
+        if self.status == self.Status.RESOLVED and not self.resolved_at:
+            self.resolved_at = timezone.now()
+        super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"#{self.id} - {self.title[:50]}"

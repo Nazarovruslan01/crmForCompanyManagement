@@ -7,12 +7,16 @@ from .models import Ticket, TicketAttachment, TicketComment
 
 @admin.action(description='Mark selected tickets as resolved')
 def make_resolved(modeladmin, request, queryset):
-    queryset.update(status=Ticket.Status.RESOLVED, resolved_at=timezone.now())
+    for ticket in queryset:
+        ticket.status = Ticket.Status.RESOLVED
+        ticket.save()
 
 
 @admin.action(description='Mark selected tickets as closed')
 def make_closed(modeladmin, request, queryset):
-    queryset.update(status=Ticket.Status.CLOSED)
+    for ticket in queryset:
+        ticket.status = Ticket.Status.CLOSED
+        ticket.save()
 
 
 @admin.register(Ticket)

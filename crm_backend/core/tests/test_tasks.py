@@ -13,14 +13,24 @@ class TestTicketAutoClose:
 
     def test_auto_close_resolved_tickets(self, admin_user):
         """Resolved tickets older than 7 days are auto-closed."""
-        from apps.tickets.models import Ticket, TicketStatus
+        from apps.properties.models import Apartment, Building
+        from apps.tickets.models import Ticket
         from core.tasks import ticket_auto_close
+
+        building = Building.objects.create(name='Auto Close Test', address='Istanbul')
+        apartment = Apartment.objects.create(
+            building=building,
+            apartment_number='101',
+            floor=1,
+            status=Apartment.Status.ACTIVE,
+        )
 
         ticket = Ticket.objects.create(
             title='Old Resolved Ticket',
             description='This was resolved a long time ago',
+            apartment=apartment,
             created_by=admin_user,
-            status=TicketStatus.RESOLVED,
+            status=Ticket.Status.RESOLVED,
         )
         # Force update the updated_at to be old
         Ticket.objects.filter(pk=ticket.pk).update(
@@ -30,43 +40,63 @@ class TestTicketAutoClose:
         result = ticket_auto_close()
 
         ticket.refresh_from_db()
-        assert ticket.status == TicketStatus.CLOSED
+        assert ticket.status == Ticket.Status.CLOSED
         assert result['closed_tickets'] == 1
 
     def test_does_not_close_recently_resolved_tickets(self, admin_user):
         """Recently resolved tickets are not closed."""
-        from apps.tickets.models import Ticket, TicketStatus
+        from apps.properties.models import Apartment, Building
+        from apps.tickets.models import Ticket
         from core.tasks import ticket_auto_close
+
+        building = Building.objects.create(name='Recent Test', address='Istanbul')
+        apartment = Apartment.objects.create(
+            building=building,
+            apartment_number='102',
+            floor=1,
+            status=Apartment.Status.ACTIVE,
+        )
 
         ticket = Ticket.objects.create(
             title='Recently Resolved Ticket',
             description='Just resolved',
+            apartment=apartment,
             created_by=admin_user,
-            status=TicketStatus.RESOLVED,
+            status=Ticket.Status.RESOLVED,
         )
 
         result = ticket_auto_close()
 
         ticket.refresh_from_db()
-        assert ticket.status == TicketStatus.RESOLVED
+        assert ticket.status == Ticket.Status.RESOLVED
         assert result['closed_tickets'] == 0
 
     def test_does_not_close_open_tickets(self, admin_user):
         """Open tickets are not affected."""
-        from apps.tickets.models import Ticket, TicketStatus
+        from apps.properties.models import Apartment, Building
+        from apps.tickets.models import Ticket
         from core.tasks import ticket_auto_close
+
+        building = Building.objects.create(name='Open Test', address='Istanbul')
+        apartment = Apartment.objects.create(
+            building=building,
+            apartment_number='103',
+            floor=1,
+            status=Apartment.Status.ACTIVE,
+        )
 
         ticket = Ticket.objects.create(
             title='Open Ticket',
             description='Still open',
+            apartment=apartment,
             created_by=admin_user,
-            status=TicketStatus.OPEN,
+            status=Ticket.Status.NEW,
         )
 
         result = ticket_auto_close()
 
         ticket.refresh_from_db()
-        assert ticket.status == TicketStatus.OPEN
+        assert ticket.status == Ticket.Status.NEW
         assert result['closed_tickets'] == 0
 
 
@@ -87,7 +117,7 @@ class TestSendReminderNotifications:
             building=building,
             apartment_number='101',
             floor=1,
-            is_active=True,
+            status=Apartment.Status.ACTIVE,
         )
 
         # Create resident with email
@@ -159,7 +189,7 @@ class TestSendReminderNotifications:
             building=building,
             apartment_number='202',
             floor=2,
-            is_active=True,
+            status=Apartment.Status.ACTIVE,
         )
 
         template = NotificationTemplate.objects.create(
@@ -196,8 +226,8 @@ class TestGenerateMonthlyInvoices:
         from core.tasks import generate_monthly_invoices
 
         building = Building.objects.create(name='Invoice Test Building', address='Izmir')
-        apt1 = Apartment.objects.create(building=building, apartment_number='1', floor=1, is_active=True)
-        apt2 = Apartment.objects.create(building=building, apartment_number='2', floor=1, is_active=True)
+        apt1 = Apartment.objects.create(building=building, apartment_number='1', floor=1, status=Apartment.Status.ACTIVE)
+        apt2 = Apartment.objects.create(building=building, apartment_number='2', floor=1, status=Apartment.Status.ACTIVE)
 
         result = generate_monthly_invoices()
 
@@ -216,7 +246,7 @@ class TestGenerateMonthlyInvoices:
             building=building,
             apartment_number='301',
             floor=3,
-            is_active=True,
+            status=Apartment.Status.ACTIVE,
         )
 
         # Create charge for previous month
@@ -247,10 +277,10 @@ class TestGenerateMonthlyInvoices:
 
         building = Building.objects.create(name='Inactive Test', address='Bodrum')
         active_apt = Apartment.objects.create(
-            building=building, apartment_number='A', floor=1, is_active=True
+            building=building, apartment_number='A', floor=1, status=Apartment.Status.ACTIVE
         )
         inactive_apt = Apartment.objects.create(
-            building=building, apartment_number='B', floor=1, is_active=False
+            building=building, apartment_number='B', floor=1, status=Apartment.Status.INACTIVE
         )
 
         result = generate_monthly_invoices()

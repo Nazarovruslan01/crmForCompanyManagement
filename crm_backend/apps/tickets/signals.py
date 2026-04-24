@@ -1,6 +1,7 @@
 """Django signals for ticket notifications."""
 from typing import Any
 
+from django.db import transaction
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
@@ -36,7 +37,7 @@ def ticket_notification_handler(
     """
     Send email and SMS notifications on ticket create/update.
 
-    - Email on create and update
+    - Email on create and update (after transaction commits)
     - SMS only when status changes on existing tickets
     """
     from apps.residents.models import Ownership
@@ -59,7 +60,8 @@ def ticket_notification_handler(
     building_name = instance.apartment.building.name
     apartment_no = instance.apartment.apartment_number
 
-    # Email on create and update
+    # Build email payload
+    email_payload: dict[str, Any] | None = None
     if resident.email:
         if created:
             subject = f"Yeni Talep #{instance.id} - {instance.title[:40]}"
@@ -82,14 +84,14 @@ def ticket_notification_handler(
                 f"Öncelik: {instance.get_priority_display()}\n\n"
                 f"Talebi görüntülemek için: {ticket_url}"
             )
+        email_payload = {
+            'subject': subject,
+            'message': message,
+            'recipient_list': [resident.email],
+        }
 
-        send_email_async.delay(
-            subject=subject,
-            message=message,
-            recipient_list=[resident.email],
-        )
-
-    # SMS only on status change (not on create)
+    # Build SMS payload
+    sms_payload: dict[str, Any] | None = None
     if not created:
         old_status = getattr(instance, '_old_status', None)
         status_changed = old_status is not None and old_status != instance.status
@@ -100,7 +102,17 @@ def ticket_notification_handler(
                 f"{instance.get_status_display()}. "
                 f"{building_name} Daire {apartment_no}"
             )
-            send_sms_async.delay(
-                phone=resident.phone,
-                message=sms_message,
-            )
+            sms_payload = {
+                'phone': resident.phone,
+                'message': sms_message,
+            }
+
+    # Schedule Celery tasks only after the DB transaction commits.
+    # This prevents notifications from being sent if the transaction rolls back.
+    def _send_notifications() -> None:
+        if email_payload:
+            send_email_async.delay(**email_payload)
+        if sms_payload:
+            send_sms_async.delay(**sms_payload)
+
+    transaction.on_commit(_send_notifications)

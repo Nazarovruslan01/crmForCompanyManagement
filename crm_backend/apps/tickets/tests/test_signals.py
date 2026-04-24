@@ -7,7 +7,7 @@ from apps.properties.models import Apartment, Building
 from apps.residents.models import Ownership, Resident
 from apps.tickets.models import Ticket
 
-pytestmark = pytest.mark.django_db
+pytestmark = pytest.mark.django_db(transaction=True)
 
 
 class TestTicketEmailNotifications:

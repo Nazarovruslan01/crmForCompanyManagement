@@ -84,6 +84,29 @@ class TestAidatChargeViewSet:
         )
         response = admin_client.get('/api/v2/billing/aidat-charges/overdue/')
         assert response.status_code == status.HTTP_200_OK
+        assert 'results' in response.data
+        assert len(response.data['results']) == 1
+
+    def test_overdue_action_is_paginated(self, admin_client, apartment):
+        """Overdue action returns paginated results."""
+        from datetime import date, timedelta
+
+        start = date(2025, 12, 1)
+        end = date(2025, 12, 31)
+        AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=start,
+            billing_period_end=end,
+            base_amount=500,
+            late_fee_rate=0.001,
+            due_date=end - timedelta(days=1),
+            status=AidatCharge.Status.OVERDUE,
+        )
+        response = admin_client.get('/api/v2/billing/aidat-charges/overdue/')
+        assert response.status_code == status.HTTP_200_OK
+        assert 'count' in response.data
+        assert 'next' in response.data
+        assert 'previous' in response.data
 
 
 class TestExtraordinaryChargeViewSet:

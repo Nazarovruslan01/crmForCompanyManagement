@@ -106,3 +106,54 @@ class TestCacheInvalidation:
         assert response_active.status_code == 200
         # Different query params should yield different cached responses
         assert response_all.content != response_active.content
+
+    def test_save_bumps_cache_version(self, api_client):
+        """Saving a model invalidates the cached list response."""
+        building = Building.objects.create(name='Version Building', address='Izmir')
+        Apartment.objects.create(
+            building=building,
+            apartment_number='301',
+            floor=3,
+            status=Apartment.Status.ACTIVE,
+        )
+
+        response1 = api_client.get(reverse('apartment-list'))
+        assert response1.status_code == 200
+        data1 = response1.json()
+        assert len(data1['results']) == 1
+
+        # Create a new apartment — signal bumps cache version
+        Apartment.objects.create(
+            building=building,
+            apartment_number='302',
+            floor=3,
+            status=Apartment.Status.ACTIVE,
+        )
+
+        # Next request should NOT be cached; it must include the new apartment
+        response2 = api_client.get(reverse('apartment-list'))
+        assert response2.status_code == 200
+        data2 = response2.json()
+        assert len(data2['results']) == 2
+
+    def test_delete_bumps_cache_version(self, api_client):
+        """Deleting a model invalidates the cached list response."""
+        building = Building.objects.create(name='Delete Building', address='Bursa')
+        apartment = Apartment.objects.create(
+            building=building,
+            apartment_number='401',
+            floor=4,
+            status=Apartment.Status.ACTIVE,
+        )
+
+        response1 = api_client.get(reverse('apartment-list'))
+        assert response1.status_code == 200
+        data1 = response1.json()
+        assert len(data1['results']) == 1
+
+        apartment.delete()
+
+        response2 = api_client.get(reverse('apartment-list'))
+        assert response2.status_code == 200
+        data2 = response2.json()
+        assert len(data2['results']) == 0
