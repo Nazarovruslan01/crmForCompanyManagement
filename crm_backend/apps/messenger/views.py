@@ -95,6 +95,8 @@ class TelegramWebhookView(View):
             self._start_registration(messenger_user)
         elif command == "/cancel":
             self._cancel_registration(messenger_user)
+        elif command == "/ticket":
+            self._start_ticket(messenger_user)
         else:
             self._send_unknown_command(messenger_user)
 
@@ -116,6 +118,14 @@ class TelegramWebhookView(View):
 
         if step == "waiting_for_apartment":
             self._process_apartment(messenger_user, text)
+            return
+
+        if step == "waiting_for_ticket_title":
+            self._process_ticket_title(messenger_user, text)
+            return
+
+        if step == "waiting_for_ticket_description":
+            self._process_ticket_description(messenger_user, text)
             return
 
         if messenger_user.resident:
@@ -147,6 +157,13 @@ class TelegramWebhookView(View):
         if data.startswith("role_"):
             role = data.replace("role_", "")
             self._process_role(messenger_user, role)
+        elif data.startswith("ticket_cat_"):
+            category = data.replace("ticket_cat_", "")
+            self._process_ticket_category(messenger_user, category)
+        elif data == "ticket_confirm":
+            self._create_ticket(messenger_user)
+        elif data == "ticket_cancel":
+            self._cancel_ticket_creation(messenger_user)
 
     def _start_registration(self, messenger_user):
         if messenger_user.resident:
@@ -284,6 +301,174 @@ class TelegramWebhookView(View):
             ),
         )
 
+    def _start_ticket(self, messenger_user):
+        if not messenger_user.resident:
+            send_telegram_message(
+                messenger_user.telegram_chat_id,
+                "Please complete registration first with /register.",
+            )
+            return
+
+        # Check if resident has an apartment
+        from apps.residents.models import Ownership
+
+        has_apartment = Ownership.objects.filter(resident=messenger_user.resident).exists()
+        if not has_apartment:
+            send_telegram_message(
+                messenger_user.telegram_chat_id,
+                "You are not linked to any apartment. Please contact management.",
+            )
+            return
+
+        messenger_user.conversation_state = {"step": "waiting_for_ticket_category"}
+        messenger_user.save(update_fields=["conversation_state"])
+
+        reply_markup = {
+            "inline_keyboard": [
+                [{"text": "Tesisat", "callback_data": "ticket_cat_plumbing"}],
+                [{"text": "Elektrik", "callback_data": "ticket_cat_electrical"}],
+                [{"text": "Temizlik", "callback_data": "ticket_cat_cleaning"}],
+                [{"text": "Güvenlik", "callback_data": "ticket_cat_security"}],
+                [{"text": "Gürültü", "callback_data": "ticket_cat_noise"}],
+                [{"text": "Genel", "callback_data": "ticket_cat_general"}],
+            ]
+        }
+        send_telegram_message(
+            messenger_user.telegram_chat_id,
+            "What category is your maintenance request?",
+            reply_markup=reply_markup,
+        )
+
+    def _process_ticket_category(self, messenger_user, category):
+        state = messenger_user.conversation_state or {}
+        if state.get("step") != "waiting_for_ticket_category":
+            return
+
+        state["step"] = "waiting_for_ticket_title"
+        state["ticket_category"] = category
+        messenger_user.conversation_state = state
+        messenger_user.save(update_fields=["conversation_state"])
+
+        send_telegram_message(
+            messenger_user.telegram_chat_id,
+            "Please enter a short title for your request.",
+        )
+
+    def _process_ticket_title(self, messenger_user, text):
+        state = messenger_user.conversation_state or {}
+        state["step"] = "waiting_for_ticket_description"
+        state["ticket_title"] = text.strip()
+        messenger_user.conversation_state = state
+        messenger_user.save(update_fields=["conversation_state"])
+
+        send_telegram_message(
+            messenger_user.telegram_chat_id,
+            "Please describe the problem in detail.",
+        )
+
+    def _process_ticket_description(self, messenger_user, text):
+        state = messenger_user.conversation_state or {}
+        state["step"] = "waiting_for_ticket_confirm"
+        state["ticket_description"] = text.strip()
+        messenger_user.conversation_state = state
+        messenger_user.save(update_fields=["conversation_state"])
+
+        category = state.get("ticket_category", "general")
+        title = state.get("ticket_title", "")
+        description = state.get("ticket_description", "")
+
+        category_labels = {
+            "plumbing": "Tesisat",
+            "electrical": "Elektrik",
+            "cleaning": "Temizlik",
+            "security": "Güvenlik",
+            "noise": "Gürültü",
+            "general": "Genel",
+        }
+
+        confirm_text = (
+            "Please confirm your maintenance request:\n\n"
+            f"Category: {category_labels.get(category, category)}\n"
+            f"Title: {title}\n"
+            f"Description: {description}\n\n"
+            "Create this ticket?"
+        )
+        reply_markup = {
+            "inline_keyboard": [
+                [{"text": "Yes, create ticket", "callback_data": "ticket_confirm"}],
+                [{"text": "Cancel", "callback_data": "ticket_cancel"}],
+            ]
+        }
+        send_telegram_message(
+            messenger_user.telegram_chat_id,
+            confirm_text,
+            reply_markup=reply_markup,
+        )
+
+    def _create_ticket(self, messenger_user):
+        state = messenger_user.conversation_state or {}
+        if state.get("step") != "waiting_for_ticket_confirm":
+            return
+
+        from apps.residents.models import Ownership
+        from apps.tickets.models import Ticket
+
+        ownership = (
+            Ownership.objects.filter(resident=messenger_user.resident, is_primary=True)
+            .select_related("apartment")
+            .first()
+        )
+
+        if not ownership:
+            ownership = Ownership.objects.filter(resident=messenger_user.resident).select_related("apartment").first()
+
+        if not ownership:
+            send_telegram_message(
+                messenger_user.telegram_chat_id,
+                "Could not find your apartment. Please contact management.",
+            )
+            messenger_user.conversation_state = {}
+            messenger_user.save(update_fields=["conversation_state"])
+            return
+
+        ticket = Ticket.objects.create(
+            apartment=ownership.apartment,
+            title=state.get("ticket_title", ""),
+            description=state.get("ticket_description", ""),
+            category=state.get("ticket_category", "general"),
+            created_by=messenger_user.resident.user if messenger_user.resident.user else None,
+        )
+
+        # Link bot message to ticket for two-way sync
+        BotMessage.objects.create(
+            messenger_user=messenger_user,
+            direction=BotMessage.Direction.SYSTEM,
+            message_type=BotMessage.MessageType.TEXT,
+            text=f"Ticket #{ticket.id} created",
+            ticket=ticket,
+        )
+
+        messenger_user.conversation_state = {}
+        messenger_user.save(update_fields=["conversation_state"])
+
+        send_telegram_message(
+            messenger_user.telegram_chat_id,
+            (
+                f"✅ Ticket #{ticket.id} has been created successfully!\n\n"
+                f"Category: {ticket.get_category_display()}\n"
+                f"Status: {ticket.get_status_display()}\n\n"
+                "Our team will review it shortly."
+            ),
+        )
+
+    def _cancel_ticket_creation(self, messenger_user):
+        messenger_user.conversation_state = {}
+        messenger_user.save(update_fields=["conversation_state"])
+        send_telegram_message(
+            messenger_user.telegram_chat_id,
+            "Ticket creation cancelled. Use /ticket to start again.",
+        )
+
     def _send_welcome(self, messenger_user):
         welcome_text = (
             "Welcome to the Building Management CRM bot! 🏢\n\n"
@@ -301,9 +486,10 @@ class TelegramWebhookView(View):
             "Available commands:\n\n"
             "/start - Welcome message\n"
             "/register - Register as a resident\n"
+            "/ticket - Create a maintenance ticket\n"
             "/cancel - Cancel current registration\n"
             "/help - This help message\n\n"
-            "More features coming soon: tickets, balance checks."
+            "More features coming soon: balance checks."
         )
         send_telegram_message(messenger_user.telegram_chat_id, help_text)
 
