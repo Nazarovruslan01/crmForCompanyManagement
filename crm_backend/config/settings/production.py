@@ -25,6 +25,7 @@ DATABASES = {
         "HOST": _db_url.hostname,
         "PORT": _db_url.port or 5432,
         "CONN_MAX_AGE": 60,
+        "DISABLE_SERVER_SIDE_CURSORS": True,
     }
 }
 

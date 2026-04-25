@@ -65,10 +65,11 @@ class PaymentSerializer(serializers.ModelSerializer):
             "payment_method",
             "bank_reference",
             "receipt_number",
+            "idempotency_key",
             "paid_at",
             "created_at",
         ]
-        read_only_fields = ["receipt_number", "created_at"]
+        read_only_fields = ["receipt_number", "created_at", "idempotency_key"]
 
 
 class ReceiptSerializer(serializers.ModelSerializer):
