@@ -1,6 +1,6 @@
 """Billing app views for REST API."""
 
-from rest_framework import permissions, viewsets
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -59,6 +59,27 @@ class PaymentViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Payment]):
     ordering_fields = ["paid_at", "amount"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
     resident_lookup = "apartment__ownerships__resident__user"
+
+    def create(self, request: Request, *args: object, **kwargs: object) -> Response:
+        """Create a payment with idempotency key support.
+
+        Clients should send ``Idempotency-Key: <uuid>`` header to prevent
+        duplicate payments on network retries. If a payment with the same key
+        already exists, the existing record is returned with 200 OK.
+        """
+        idempotency_key = request.headers.get("Idempotency-Key")
+        if idempotency_key:
+            existing = Payment.objects.filter(idempotency_key=idempotency_key).first()
+            if existing:
+                serializer = self.get_serializer(existing)
+                return Response(serializer.data, status=status.HTTP_200_OK)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(idempotency_key=idempotency_key)
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class ReceiptViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Receipt]):

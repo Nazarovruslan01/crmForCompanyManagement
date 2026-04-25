@@ -1,7 +1,9 @@
 """Celery tasks for async operations."""
 
 import logging
-from datetime import timedelta
+import os
+import subprocess
+from datetime import datetime, timedelta
 from typing import Any, TypedDict
 
 import requests
@@ -42,6 +44,13 @@ class InvoiceGenerationResult(TypedDict):
     charges_failed: int
 
 
+class BackupResult(TypedDict):
+    success: bool
+    file_path: str
+    size_bytes: int
+    error: str | None
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_email_async(
     self: Any,
@@ -62,14 +71,18 @@ def send_email_async(
     Returns:
         dict with 'success' status and details
     """
+    from core.circuit_breaker import CircuitBreaker
+
+    breaker = CircuitBreaker("email_api", failure_threshold=5, recovery_timeout=300)
     try:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=recipient_list,
-            fail_silently=fail_silently,
-        )
+        with breaker:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=recipient_list,
+                fail_silently=fail_silently,
+            )
         logger.info("Email sent successfully to %s", recipient_list)
         return EmailResult(success=True, recipients=recipient_list)
     except Exception as exc:
@@ -127,9 +140,13 @@ def send_sms_async(
         }
     }
 
+    from core.circuit_breaker import CircuitBreaker
+
+    breaker = CircuitBreaker("sms_api", failure_threshold=5, recovery_timeout=300)
     try:
-        response = requests.post(str(sms_url), json=payload, timeout=30)
-        response.raise_for_status()
+        with breaker:
+            response = requests.post(str(sms_url), json=payload, timeout=30)
+            response.raise_for_status()
         logger.info("SMS sent successfully to %s", phone)
         return SmsResult(success=True, phone=phone, error=None)
     except Exception as exc:
@@ -374,3 +391,99 @@ def generate_monthly_invoices(self: Any) -> InvoiceGenerationResult:
 
     logger.info("Generated %d monthly invoices, %d failed", created, failed)
     return InvoiceGenerationResult(charges_created=created, charges_failed=failed)
+
+
+@shared_task(bind=True, max_retries=2, default_retry_delay=300)
+def backup_database(self: Any) -> BackupResult:
+    """
+    Backup PostgreSQL database via pg_dump, compress with gzip, and upload to S3 if configured.
+
+    Retention policy: keeps the last 7 daily backups locally.
+    Uploads to S3 under ``backups/YYYY-MM-DD/`` when AWS credentials are available.
+
+    Returns:
+        dict with success status, file path, size, and optional error.
+    """
+    db_url = getattr(settings, "DATABASE_URL", os.getenv("DATABASE_URL", ""))
+    if not db_url:
+        return BackupResult(success=False, file_path="", size_bytes=0, error="DATABASE_URL not configured")
+
+    backup_dir = getattr(settings, "BACKUP_DIR", "/app/backups")
+    os.makedirs(backup_dir, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"crm_db_backup_{timestamp}.sql.gz"
+    local_path = os.path.join(backup_dir, filename)
+
+    try:
+        # Run pg_dump and pipe through gzip
+        with open(local_path, "wb") as out_f:
+            dump_proc = subprocess.Popen(
+                ["pg_dump", db_url],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            gzip_proc = subprocess.Popen(
+                ["gzip", "-c"],
+                stdin=dump_proc.stdout,
+                stdout=out_f,
+                stderr=subprocess.PIPE,
+            )
+            # Close pg_dump stdout in parent so gzip gets EOF when pg_dump finishes
+            if dump_proc.stdout:
+                dump_proc.stdout.close()
+            gzip_ret = gzip_proc.wait()
+            dump_ret = dump_proc.wait()
+
+            if dump_ret != 0:
+                stderr = dump_proc.stderr.read().decode("utf-8", errors="replace") if dump_proc.stderr else ""
+                raise RuntimeError(f"pg_dump failed (exit {dump_ret}): {stderr}")
+            if gzip_ret != 0:
+                stderr = gzip_proc.stderr.read().decode("utf-8", errors="replace") if gzip_proc.stderr else ""
+                raise RuntimeError(f"gzip failed (exit {gzip_ret}): {stderr}")
+
+        size_bytes = os.path.getsize(local_path)
+        logger.info("Database backup created: %s (%d bytes)", local_path, size_bytes)
+
+        # Upload to S3 if configured
+        bucket = getattr(settings, "AWS_STORAGE_BUCKET_NAME", None)
+        access_key = getattr(settings, "AWS_ACCESS_KEY_ID", None)
+        secret_key = getattr(settings, "AWS_SECRET_ACCESS_KEY", None)
+        endpoint_url = getattr(settings, "AWS_S3_ENDPOINT_URL", None)
+        region_name = getattr(settings, "AWS_S3_REGION_NAME", "us-east-1")
+
+        if all([bucket, access_key, secret_key]):
+            import boto3
+            from botocore.config import Config
+
+            s3_config = Config(signature_version="s3v4")
+            s3 = boto3.client(
+                "s3",
+                endpoint_url=endpoint_url,
+                aws_access_key_id=access_key,
+                aws_secret_access_key=secret_key,
+                region_name=region_name,
+                config=s3_config,
+            )
+            s3_key = f"backups/{datetime.now().strftime('%Y-%m-%d')}/{filename}"
+            s3.upload_file(local_path, bucket, s3_key)
+            logger.info("Backup uploaded to S3: s3://%s/%s", bucket, s3_key)
+
+        # Local retention policy — keep last 7 backups
+        backups = sorted(
+            [f for f in os.listdir(backup_dir) if f.startswith("crm_db_backup_") and f.endswith(".sql.gz")],
+            reverse=True,
+        )
+        for old in backups[7:]:
+            old_path = os.path.join(backup_dir, old)
+            os.remove(old_path)
+            logger.info("Removed old local backup: %s", old_path)
+
+        return BackupResult(success=True, file_path=local_path, size_bytes=size_bytes, error=None)
+
+    except Exception as exc:
+        logger.error("Database backup failed: %s", exc)
+        # Clean up partial file
+        if os.path.exists(local_path):
+            os.remove(local_path)
+        raise self.retry(exc=exc)

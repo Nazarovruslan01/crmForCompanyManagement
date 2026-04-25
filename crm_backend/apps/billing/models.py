@@ -115,6 +115,14 @@ class Payment(models.Model):
     receipt_number = models.CharField(
         max_length=20, unique=True, null=True, blank=True, verbose_name="Receipt Number (Makbuz No)"
     )
+    idempotency_key = models.CharField(
+        max_length=100,
+        unique=True,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="Client-generated key to prevent duplicate payments on retries.",
+    )
     paid_at = models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -124,6 +132,7 @@ class Payment(models.Model):
         ordering = ["-paid_at"]
         indexes = [
             models.Index(fields=["apartment", "paid_at"]),
+            models.Index(fields=["idempotency_key"]),
         ]
 
     def __str__(self) -> str:

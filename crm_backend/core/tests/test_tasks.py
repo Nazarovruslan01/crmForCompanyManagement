@@ -288,3 +288,38 @@ class TestGenerateMonthlyInvoices:
         assert result["charges_created"] == 1
         charges = AidatCharge.objects.filter(apartment=active_apt)
         assert charges.exists()
+
+
+class TestBackupDatabase:
+    """Tests for backup_database task."""
+
+    def test_backup_fails_without_database_url(self, settings):
+        """Returns error when DATABASE_URL is not configured."""
+        from core.tasks import backup_database
+
+        settings.DATABASE_URL = None
+        result = backup_database()
+        assert result["success"] is False
+        assert "DATABASE_URL" in result["error"]
+
+    def test_backup_creates_compressed_file(self, settings, tmp_path):
+        """Backup runs pg_dump and produces a gzip file."""
+        from core.tasks import backup_database
+
+        backup_dir = tmp_path / "backups"
+        settings.BACKUP_DIR = str(backup_dir)
+        settings.DATABASE_URL = "postgresql://user:pass@localhost:5432/db"
+
+        with patch("core.tasks.subprocess.Popen") as mock_popen:
+            mock_proc = mock_popen.return_value
+            mock_proc.stdout = None
+            mock_proc.stderr = None
+            mock_proc.wait.return_value = 0
+
+            with patch("core.tasks.os.path.getsize", return_value=123):
+                with patch("core.tasks.os.listdir", return_value=[]):
+                    result = backup_database()
+
+        assert result["success"] is True
+        assert result["size_bytes"] == 123
+        assert ".sql.gz" in result["file_path"]

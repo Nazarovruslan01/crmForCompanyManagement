@@ -266,6 +266,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.tasks.generate_monthly_invoices",
         "schedule": crontab(day_of_month=1, hour=0, minute=0),
     },
+    "database-backup": {
+        "task": "core.tasks.backup_database",
+        "schedule": crontab(hour=2, minute=0),
+    },
 }
 
 # Frontend URL (used for password-reset links)

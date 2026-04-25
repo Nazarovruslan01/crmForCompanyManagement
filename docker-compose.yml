@@ -18,6 +18,23 @@ services:
       timeout: 5s
       retries: 5
 
+  pgbouncer:
+    image: pgbouncer/pgbouncer:1.22
+    restart: unless-stopped
+    volumes:
+      - ./docker/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./docker/pgbouncer.userlist.txt:/etc/pgbouncer/userlist.txt:ro
+    ports:
+      - "6432:6432"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432 -U crm_user || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     restart: unless-stopped
@@ -43,10 +60,11 @@ services:
       - ./crm_backend:/app
       - media_data:/app/media
       - staticfiles:/app/staticfiles
+      - backup_data:/app/backups
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql://crm_user:changeme@db:5432/crm_db
+      DATABASE_URL: postgresql://crm_user:changeme@pgbouncer:6432/crm_db
       REDIS_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.production
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
@@ -56,6 +74,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      pgbouncer:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/health/"]
@@ -73,8 +93,9 @@ services:
     volumes:
       - ./crm_backend:/app
       - media_data:/app/media
+      - backup_data:/app/backups
     environment:
-      DATABASE_URL: postgresql://crm_user:changeme@db:5432/crm_db
+      DATABASE_URL: postgresql://crm_user:changeme@pgbouncer:6432/crm_db
       REDIS_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.production
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
@@ -83,6 +104,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      pgbouncer:
         condition: service_healthy
 
   celery-beat:
@@ -93,8 +116,9 @@ services:
     command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
       - ./crm_backend:/app
+      - backup_data:/app/backups
     environment:
-      DATABASE_URL: postgresql://crm_user:changeme@db:5432/crm_db
+      DATABASE_URL: postgresql://crm_user:changeme@pgbouncer:6432/crm_db
       REDIS_URL: redis://redis:6379/0
       DJANGO_SETTINGS_MODULE: config.settings.production
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
@@ -103,6 +127,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      pgbouncer:
         condition: service_healthy
 
   flower:
@@ -141,3 +167,4 @@ volumes:
   redis_data:
   media_data:
   staticfiles:
+  backup_data:

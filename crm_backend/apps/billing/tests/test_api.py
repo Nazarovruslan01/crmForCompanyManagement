@@ -169,6 +169,54 @@ class TestPaymentViewSet:
         response = admin_client.get("/api/v2/billing/payments/", {"payment_method": "eft"})
         assert response.status_code == status.HTTP_200_OK
 
+    def test_create_payment_with_idempotency_key(self, admin_client, apartment):
+        """Payment creation accepts Idempotency-Key header."""
+        payload = {
+            "apartment": apartment.id,
+            "charge_type": "aidat",
+            "amount": 600,
+            "payment_method": "eft",
+        }
+        response = admin_client.post(
+            "/api/v2/billing/payments/",
+            payload,
+            format="json",
+            HTTP_IDEMPOTENCY_KEY="test-key-123",
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["idempotency_key"] == "test-key-123"
+
+    def test_duplicate_idempotency_key_returns_existing(self, admin_client, apartment):
+        """Retry with same Idempotency-Key returns existing payment with 200."""
+        from apps.billing.models import Payment
+
+        payload = {
+            "apartment": apartment.id,
+            "charge_type": "aidat",
+            "amount": 600,
+            "payment_method": "eft",
+        }
+        # First request
+        response1 = admin_client.post(
+            "/api/v2/billing/payments/",
+            payload,
+            format="json",
+            HTTP_IDEMPOTENCY_KEY="dup-key-456",
+        )
+        assert response1.status_code == status.HTTP_201_CREATED
+        payment_id = response1.data["id"]
+
+        # Second request with same key — should return existing
+        response2 = admin_client.post(
+            "/api/v2/billing/payments/",
+            payload,
+            format="json",
+            HTTP_IDEMPOTENCY_KEY="dup-key-456",
+        )
+        assert response2.status_code == status.HTTP_200_OK
+        assert response2.data["id"] == payment_id
+        assert Payment.objects.filter(idempotency_key="dup-key-456").count() == 1
+
 
 class TestAidatChargeViewSetResidentAccess:
     """Tests for resident-scoped aidat charge access."""
