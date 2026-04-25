@@ -271,9 +271,48 @@ class TestTicketViewSetResidentAccess:
         response = resident_client.delete(f"/api/v2/tickets/tickets/{ticket.id}/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    def test_worker_denied_ticket_list(self, staff_client):
+    def test_worker_can_list_all_tickets(self, staff_client, apartment):
+        from apps.tickets.models import Ticket
+
+        Ticket.objects.create(apartment=apartment, title="Ticket 1", description="Test")
         response = staff_client.get("/api/v2/tickets/tickets/")
+        assert response.status_code == status.HTTP_200_OK
+        assert "results" in response.data
+        assert len(response.data["results"]) == 1
+
+    def test_worker_can_retrieve_any_ticket(self, staff_client, apartment):
+        from apps.tickets.models import Ticket
+
+        ticket = Ticket.objects.create(apartment=apartment, title="Any Ticket", description="Test")
+        response = staff_client.get(f"/api/v2/tickets/tickets/{ticket.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["title"] == "Any Ticket"
+
+    def test_worker_can_update_assigned_ticket(self, staff_client, staff_user, apartment, employee):
+        from apps.tickets.models import Ticket
+
+        ticket = Ticket.objects.create(
+            apartment=apartment, title="Assigned", description="Test", assigned_worker=employee
+        )
+        response = staff_client.patch(f"/api/v2/tickets/tickets/{ticket.id}/", {"title": "Updated"}, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        ticket.refresh_from_db()
+        assert ticket.title == "Updated"
+
+    def test_worker_cannot_update_unassigned_ticket(self, staff_client, apartment):
+        from apps.tickets.models import Ticket
+
+        ticket = Ticket.objects.create(apartment=apartment, title="Unassigned", description="Test")
+        response = staff_client.patch(f"/api/v2/tickets/tickets/{ticket.id}/", {"title": "Hacked"}, format="json")
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_worker_can_comment_on_any_ticket(self, staff_client, apartment):
+        from apps.tickets.models import Ticket
+
+        ticket = Ticket.objects.create(apartment=apartment, title="Any Ticket", description="Test")
+        payload = {"ticket": ticket.id, "content": "Working on it"}
+        response = staff_client.post("/api/v2/tickets/comments/", payload, format="json")
+        assert response.status_code == status.HTTP_201_CREATED
 
 
 class TestTicketCommentViewSetResidentAccess:
