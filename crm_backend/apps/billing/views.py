@@ -5,8 +5,9 @@ from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from common.permissions import IsAdminOrManager
+from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
+from core.mixins import ResidentQuerySetMixin
 
 from .models import AidatCharge, ExtraordinaryCharge, Payment, Receipt
 from .serializers import (
@@ -17,19 +18,20 @@ from .serializers import (
 )
 
 
-class AidatChargeViewSet(viewsets.ModelViewSet[AidatCharge]):
+class AidatChargeViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[AidatCharge]):
     queryset = AidatCharge.objects.select_related("apartment__building").all()
     serializer_class = AidatChargeSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     filterset_fields = ["status", "apartment"]
     search_fields = ["apartment__apartment_number"]
     ordering_fields = ["billing_period_start", "due_date", "base_amount"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    resident_lookup = "apartment__ownerships__resident__user"
 
     @action(detail=False, methods=["get"])
     def overdue(self, request: Request) -> Response:
         """Get all overdue charges (paginated)."""
-        overdue = self.queryset.filter(status="overdue")
+        overdue = self.get_queryset().filter(status="overdue")
         page = self.paginate_queryset(overdue)
         if page is not None:
             serializer = self.get_serializer(page, many=True)
@@ -48,18 +50,20 @@ class ExtraordinaryChargeViewSet(viewsets.ModelViewSet[ExtraordinaryCharge]):
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
 
-class PaymentViewSet(viewsets.ModelViewSet[Payment]):
+class PaymentViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Payment]):
     queryset = Payment.objects.select_related("apartment__building").all()
     serializer_class = PaymentSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     filterset_fields = ["payment_method", "apartment"]
     search_fields = ["receipt_number", "bank_reference"]
     ordering_fields = ["paid_at", "amount"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    resident_lookup = "apartment__ownerships__resident__user"
 
 
-class ReceiptViewSet(viewsets.ModelViewSet[Receipt]):
+class ReceiptViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Receipt]):
     queryset = Receipt.objects.select_related("payment__apartment__building").all()
     serializer_class = ReceiptSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    resident_lookup = "payment__apartment__ownerships__resident__user"

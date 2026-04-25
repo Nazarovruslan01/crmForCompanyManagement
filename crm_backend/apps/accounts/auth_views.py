@@ -1,5 +1,4 @@
-"""Auth views for login, logout, password reset."""
-
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
@@ -9,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from common.throttles import LoginRateThrottle, PasswordResetRateThrottle
+from core.tasks import send_email_async
 
 from .serializers import UserSerializer
 
@@ -136,15 +136,24 @@ class PasswordResetRequestView(APIView):
         refresh = RefreshToken.for_user(user)
         reset_token = str(refresh.access_token)
 
-        # In production, send this via email service (Resend)
-        # reset_link = f"{request.build_absolute_uri('/api/v1/auth/password-reset/')}{reset_token}/"
-        # send_mail(
-        #     subject='Password Reset - CRM',
-        #     message=f'Click to reset: {reset_link}',
-        #     from_email=settings.DEFAULT_FROM_EMAIL,
-        #     recipient_list=[email],
-        # )
-        _ = reset_token  # Used when email integration is enabled
+        frontend_url = getattr(settings, "FRONTEND_URL", "")
+        if frontend_url:
+            reset_link = f"{frontend_url.rstrip('/')}/reset-password?token={reset_token}"
+        else:
+            reset_link = request.build_absolute_uri(f"/reset-password?token={reset_token}")
+
+        send_email_async.delay(
+            subject="Şifre Sıfırlama - CRM",
+            message=(
+                f"Merhaba {user.get_full_name() or user.username},\n\n"
+                f"Şifre sıfırlama talebinde bulundunuz. "
+                f"Aşağıdaki bağlantıyı kullanarak şifrenizi sıfırlayabilirsiniz:\n\n"
+                f"{reset_link}\n\n"
+                f"Bu bağlantı 60 dakika geçerlidir. "
+                f"Eğer bu talebi siz yapmadıysanız, bu e-postayı dikkate almayın."
+            ),
+            recipient_list=[email],
+        )
 
         return Response({"detail": "If the email exists, a reset link has been sent"}, status=status.HTTP_200_OK)
 

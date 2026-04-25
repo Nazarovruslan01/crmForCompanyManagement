@@ -3,6 +3,7 @@
 from common.permissions import (
     IsAdmin,
     IsAdminOrManager,
+    IsAdminOrManagerOrResidentReadOwn,
     IsAdminOrManagerOrWorker,
     IsManager,
     IsOwnerOrAdmin,
@@ -18,8 +19,9 @@ class MockUser:
 
 
 class MockRequest:
-    def __init__(self, user: MockUser | None) -> None:
+    def __init__(self, user: MockUser | None, method: str = "GET") -> None:
         self.user = user
+        self.method = method
 
 
 class MockView:
@@ -202,3 +204,61 @@ class TestIsOwnerOrAdmin:
         request = MockRequest(None)
         obj = MockObj(user=MockUser(id=1))
         assert IsOwnerOrAdmin().has_object_permission(request, MockView(), obj) is False
+
+
+class TestIsAdminOrManagerOrResidentReadOwn:
+    """Tests for IsAdminOrManagerOrResidentReadOwn permission."""
+
+    # ---------- has_permission ----------
+
+    def test_admin_allowed_any_method(self) -> None:
+        request = MockRequest(MockUser(role="admin"), method="DELETE")
+        assert IsAdminOrManagerOrResidentReadOwn().has_permission(request, MockView()) is True
+
+    def test_manager_allowed_any_method(self) -> None:
+        request = MockRequest(MockUser(role="manager"), method="DELETE")
+        assert IsAdminOrManagerOrResidentReadOwn().has_permission(request, MockView()) is True
+
+    def test_resident_allowed_safe_methods(self) -> None:
+        for method in ("GET", "HEAD", "OPTIONS"):
+            request = MockRequest(MockUser(role="resident"), method=method)
+            assert IsAdminOrManagerOrResidentReadOwn().has_permission(request, MockView()) is True
+
+    def test_resident_denied_unsafe_methods(self) -> None:
+        for method in ("POST", "PUT", "PATCH", "DELETE"):
+            request = MockRequest(MockUser(role="resident"), method=method)
+            assert IsAdminOrManagerOrResidentReadOwn().has_permission(request, MockView()) is False
+
+    def test_worker_denied(self) -> None:
+        request = MockRequest(MockUser(role="worker"), method="GET")
+        assert IsAdminOrManagerOrResidentReadOwn().has_permission(request, MockView()) is False
+
+    def test_unauthenticated_denied(self) -> None:
+        request = MockRequest(None, method="GET")
+        assert IsAdminOrManagerOrResidentReadOwn().has_permission(request, MockView()) is False
+
+    # ---------- has_object_permission ----------
+
+    def test_admin_object_permission_always_true(self) -> None:
+        request = MockRequest(MockUser(role="admin"), method="DELETE")
+        assert IsAdminOrManagerOrResidentReadOwn().has_object_permission(request, MockView(), MockObj()) is True
+
+    def test_manager_object_permission_always_true(self) -> None:
+        request = MockRequest(MockUser(role="manager"), method="DELETE")
+        assert IsAdminOrManagerOrResidentReadOwn().has_object_permission(request, MockView(), MockObj()) is True
+
+    def test_resident_object_permission_safe_allowed(self) -> None:
+        request = MockRequest(MockUser(role="resident"), method="GET")
+        assert IsAdminOrManagerOrResidentReadOwn().has_object_permission(request, MockView(), MockObj()) is True
+
+    def test_resident_object_permission_unsafe_denied(self) -> None:
+        request = MockRequest(MockUser(role="resident"), method="POST")
+        assert IsAdminOrManagerOrResidentReadOwn().has_object_permission(request, MockView(), MockObj()) is False
+
+    def test_worker_object_permission_denied(self) -> None:
+        request = MockRequest(MockUser(role="worker"), method="GET")
+        assert IsAdminOrManagerOrResidentReadOwn().has_object_permission(request, MockView(), MockObj()) is False
+
+    def test_unauthenticated_object_permission_denied(self) -> None:
+        request = MockRequest(None, method="GET")
+        assert IsAdminOrManagerOrResidentReadOwn().has_object_permission(request, MockView(), MockObj()) is False

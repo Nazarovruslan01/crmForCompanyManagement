@@ -2,9 +2,9 @@
 
 from rest_framework import mixins, permissions, viewsets
 
-from common.permissions import IsAdminOrManager
+from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
-from core.mixins import CacheListRetrieveMixin
+from core.mixins import CacheListRetrieveMixin, ResidentQuerySetMixin
 
 from .models import Apartment, Building
 from .serializers import ApartmentMinimalSerializer, ApartmentSerializer, BuildingSerializer
@@ -20,14 +20,15 @@ class BuildingViewSet(CacheListRetrieveMixin, viewsets.ModelViewSet[Building]):
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
 
-class ApartmentViewSet(CacheListRetrieveMixin, viewsets.ModelViewSet[Apartment]):
+class ApartmentViewSet(CacheListRetrieveMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Apartment]):
     queryset = Apartment.objects.select_related("building").all()
     serializer_class = ApartmentSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     filterset_fields = ["status", "building", "block"]
     search_fields = ["apartment_number", "building__name", "tapu_number"]
     ordering_fields = ["building", "apartment_number", "created_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    resident_lookup = "ownerships__resident__user"
 
 
 class ApartmentMinimalViewSet(

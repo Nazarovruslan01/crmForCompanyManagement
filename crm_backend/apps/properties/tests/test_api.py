@@ -132,6 +132,46 @@ class TestApartmentViewSet:
         assert "building" in response.data
 
 
+class TestApartmentViewSetResidentAccess:
+    """Tests for resident-scoped apartment access."""
+
+    def test_resident_can_list_own_apartments(self, resident_client, resident_with_profile, apartment):
+        """Resident sees only apartments they own."""
+        from apps.properties.models import Apartment
+
+        other_apt = Apartment.objects.create(
+            building=apartment.building, apartment_number="999", status=Apartment.Status.ACTIVE
+        )
+        response = resident_client.get("/api/v2/properties/apartments/")
+        assert response.status_code == status.HTTP_200_OK
+        numbers = {a["apartment_number"] for a in response.data["results"]}
+        assert apartment.apartment_number in numbers
+        assert other_apt.apartment_number not in numbers
+
+    def test_resident_can_retrieve_own_apartment(self, resident_client, apartment):
+        response = resident_client.get(f"/api/v2/properties/apartments/{apartment.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["apartment_number"] == apartment.apartment_number
+
+    def test_resident_cannot_create_apartment(self, resident_client, building):
+        payload = {
+            "building": building.id,
+            "apartment_number": "999",
+            "floor": 9,
+            "block": "Z",
+            "square_meters": 50.0,
+            "share_ratio_num": 1,
+            "share_ratio_denom": 1000,
+            "status": "active",
+        }
+        response = resident_client.post("/api/v2/properties/apartments/", payload, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_worker_denied_apartment_list(self, staff_client):
+        response = staff_client.get("/api/v2/properties/apartments/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
 class TestApartmentMinimalViewSet:
     """Tests for /api/v2/properties/apartments-minimal/ endpoint."""
 

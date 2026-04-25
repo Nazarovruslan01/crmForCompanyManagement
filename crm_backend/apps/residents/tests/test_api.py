@@ -147,3 +147,105 @@ class TestOwnershipViewSet:
         """Admin can filter ownerships by role."""
         response = admin_client.get("/api/v2/residents/ownerships/", {"role": "owner"})
         assert response.status_code == status.HTTP_200_OK
+
+
+class TestResidentViewSetResidentAccess:
+    """Tests for resident-scoped resident profile access."""
+
+    def test_resident_can_retrieve_own_profile(self, resident_client, resident_with_profile):
+        response = resident_client.get(f"/api/v2/residents/residents/{resident_with_profile.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["name"] == resident_with_profile.name
+
+    def test_resident_can_list_only_own_profile(self, resident_client, resident_with_profile, resident):
+        response = resident_client.get("/api/v2/residents/residents/")
+        assert response.status_code == status.HTTP_200_OK
+        ids = {r["id"] for r in response.data["results"]}
+        assert resident_with_profile.id in ids
+        assert resident.id not in ids
+
+    def test_resident_cannot_create_resident(self, resident_client):
+        payload = {
+            "name": "New",
+            "surname": "Resident",
+            "phone": "+905551119999",
+            "email": "new@example.com",
+            "tc_kimlik_no": "11111111190",
+            "owner_type": "owner",
+        }
+        response = resident_client.post("/api/v2/residents/residents/", payload, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_resident_cannot_update_other_resident(self, resident_client, resident):
+        response = resident_client.patch(
+            f"/api/v2/residents/residents/{resident.id}/", {"name": "Hacked"}, format="json"
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_worker_denied_resident_list(self, staff_client):
+        response = staff_client.get("/api/v2/residents/residents/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+class TestPersonalAccountViewSetResidentAccess:
+    """Tests for resident-scoped personal account access."""
+
+    def test_resident_can_list_own_account(self, resident_client, resident_with_profile, apartment):
+        from apps.residents.models import PersonalAccount
+
+        PersonalAccount.objects.create(apartment=apartment, account_number="ACC-RES-001", balance=0)
+        response = resident_client.get("/api/v2/residents/accounts/")
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["account_number"] == "ACC-RES-001"
+
+    def test_resient_cannot_see_other_account(self, resident_client, personal_account, other_apartment):
+        from apps.residents.models import PersonalAccount
+
+        # Ensure personal_account is for a different apartment than the resident owns
+        personal_account.apartment = other_apartment
+        personal_account.save()
+        response = resident_client.get("/api/v2/residents/accounts/")
+        assert response.status_code == status.HTTP_200_OK
+        ids = {a["id"] for a in response.data["results"]}
+        assert personal_account.id not in ids
+
+    def test_resident_cannot_create_account(self, resident_client, apartment):
+        payload = {"apartment": apartment.id, "account_number": "ACC-NEW", "balance": 0}
+        response = resident_client.post("/api/v2/residents/accounts/", payload, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_worker_denied_account_list(self, staff_client):
+        response = staff_client.get("/api/v2/residents/accounts/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+class TestOwnershipViewSetResidentAccess:
+    """Tests for resident-scoped ownership access."""
+
+    def test_resident_can_list_own_ownerships(self, resident_client, resident_with_profile):
+        response = resident_client.get("/api/v2/residents/ownerships/")
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 1
+
+    def test_resident_cannot_see_other_ownerships(self, resident_client, ownership):
+        response = resident_client.get("/api/v2/residents/ownerships/")
+        assert response.status_code == status.HTTP_200_OK
+        ids = {o["id"] for o in response.data["results"]}
+        assert ownership.id not in ids
+
+    def test_resident_cannot_create_ownership(self, resident_client, resident_with_profile, apartment):
+        payload = {
+            "resident": resident_with_profile.id,
+            "apartment": apartment.id,
+            "role": "owner",
+            "share_ratio_num": 1,
+            "share_ratio_denom": 1,
+            "is_primary": False,
+        }
+        response = resident_client.post("/api/v2/residents/ownerships/", payload, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_worker_denied_ownership_list(self, staff_client):
+        response = staff_client.get("/api/v2/residents/ownerships/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN

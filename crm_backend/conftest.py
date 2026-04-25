@@ -260,3 +260,86 @@ def payment(db, apartment):
     return Payment.objects.create(
         apartment=apartment, charge_type="aidat", amount=500, payment_method=Payment.PaymentMethod.EFT
     )
+
+
+@pytest.fixture
+def resident_with_profile(db, apartment):
+    """Create a resident user with linked Resident profile and ownership."""
+    user = User.objects.create_user(
+        username="residentprofile",
+        email="residentprofile@example.com",
+        password="testpass123",
+        role=User.Role.RESIDENT,
+        first_name="Resident",
+        last_name="Profile",
+    )
+    resident = Resident.objects.create(
+        user=user,
+        name="Resident",
+        surname="Profile",
+        phone="+905551234567",
+        email="residentprofile@example.com",
+        tc_kimlik_no="99999999999",
+        owner_type=Resident.OwnerType.OWNER,
+    )
+    Ownership.objects.create(
+        resident=resident,
+        apartment=apartment,
+        role=Ownership.Role.OWNER,
+        share_ratio_num=1,
+        share_ratio_denom=1,
+        is_primary=False,
+    )
+    return resident
+
+
+@pytest.fixture
+def resident_client(resident_with_profile):
+    """Return API client authenticated as a resident user with ownership."""
+    client = APIClient()
+    client.force_authenticate(user=resident_with_profile.user)
+    return client
+
+
+@pytest.fixture
+def other_apartment(db, building):
+    """Create another apartment for cross-resident isolation tests."""
+    return Apartment.objects.create(
+        building=building,
+        apartment_number="999",
+        floor=9,
+        block="Z",
+        square_meters=50.0,
+        share_ratio_num=1,
+        share_ratio_denom=1000,
+        status=Apartment.Status.ACTIVE,
+    )
+
+
+@pytest.fixture
+def other_resident(db, other_apartment):
+    """Create another resident user with a different apartment."""
+    user = User.objects.create_user(
+        username="otherresident",
+        email="other@example.com",
+        password="testpass123",
+        role=User.Role.RESIDENT,
+    )
+    resident = Resident.objects.create(
+        user=user,
+        name="Other",
+        surname="Resident",
+        phone="+905551234568",
+        email="other@example.com",
+        tc_kimlik_no="88888888888",
+        owner_type=Resident.OwnerType.OWNER,
+    )
+    Ownership.objects.create(
+        resident=resident,
+        apartment=other_apartment,
+        role=Ownership.Role.OWNER,
+        share_ratio_num=1,
+        share_ratio_denom=1,
+        is_primary=True,
+    )
+    return resident

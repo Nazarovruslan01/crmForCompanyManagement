@@ -215,6 +215,90 @@ class TestTicketAttachmentViewSet:
         assert response.status_code == status.HTTP_201_CREATED
 
 
+class TestTicketViewSetResidentAccess:
+    """Tests for resident-scoped ticket access."""
+
+    def test_resident_can_list_own_tickets(self, resident_client, resident_with_profile, apartment):
+        """Resident sees only tickets for apartments they own."""
+        from apps.tickets.models import Ticket
+
+        # Create a ticket for the resident's apartment
+        own_ticket = Ticket.objects.create(apartment=apartment, title="Own Ticket", description="Mine")
+        # Create a ticket for another apartment
+        other_apt = apartment.__class__.objects.create(
+            building=apartment.building,
+            apartment_number="999",
+            status=apartment.Status.ACTIVE,
+        )
+        Ticket.objects.create(apartment=other_apt, title="Other Ticket", description="Not mine")
+
+        response = resident_client.get("/api/v2/tickets/tickets/")
+        assert response.status_code == status.HTTP_200_OK
+        titles = {t["title"] for t in response.data["results"]}
+        assert "Own Ticket" in titles
+        assert "Other Ticket" not in titles
+
+    def test_resident_can_retrieve_own_ticket(self, resident_client, resident_with_profile, apartment):
+        from apps.tickets.models import Ticket
+
+        ticket = Ticket.objects.create(apartment=apartment, title="My Ticket", description="Mine")
+        response = resident_client.get(f"/api/v2/tickets/tickets/{ticket.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["title"] == "My Ticket"
+
+    def test_resident_cannot_create_ticket(self, resident_client, apartment):
+        payload = {
+            "apartment": apartment.id,
+            "title": "New Ticket",
+            "description": "New",
+            "category": "general",
+            "priority": "medium",
+        }
+        response = resident_client.post("/api/v2/tickets/tickets/", payload, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_resident_cannot_update_ticket(self, resident_client, resident_with_profile, apartment):
+        from apps.tickets.models import Ticket
+
+        ticket = Ticket.objects.create(apartment=apartment, title="Old Title", description="Mine")
+        response = resident_client.patch(
+            f"/api/v2/tickets/tickets/{ticket.id}/", {"title": "Hacked"}, format="json"
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_resident_cannot_delete_ticket(self, resident_client, resident_with_profile, apartment):
+        from apps.tickets.models import Ticket
+
+        ticket = Ticket.objects.create(apartment=apartment, title="Delete Me", description="Mine")
+        response = resident_client.delete(f"/api/v2/tickets/tickets/{ticket.id}/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_worker_denied_ticket_list(self, staff_client):
+        response = staff_client.get("/api/v2/tickets/tickets/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+class TestTicketCommentViewSetResidentAccess:
+    """Tests for resident-scoped comment access."""
+
+    def test_resident_can_list_comments_on_own_ticket(self, resident_client, resident_with_profile, apartment):
+        from apps.tickets.models import Ticket, TicketComment
+
+        ticket = Ticket.objects.create(apartment=apartment, title="My Ticket", description="Mine")
+        TicketComment.objects.create(ticket=ticket, author=resident_with_profile.user, content="Hello")
+        response = resident_client.get("/api/v2/tickets/comments/")
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 1
+
+    def test_resident_cannot_create_comment(self, resident_client, resident_with_profile, apartment):
+        from apps.tickets.models import Ticket
+
+        ticket = Ticket.objects.create(apartment=apartment, title="My Ticket", description="Mine")
+        payload = {"ticket": ticket.id, "content": "Spam"}
+        response = resident_client.post("/api/v2/tickets/comments/", payload, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
 class TestPresignedUploadView:
     """Tests for /api/v2/tickets/upload/presigned/ endpoint."""
 

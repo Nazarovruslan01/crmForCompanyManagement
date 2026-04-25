@@ -8,6 +8,8 @@ from decimal import Decimal
 from pathlib import Path
 from urllib.parse import urlparse
 
+from celery.schedules import crontab
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-in-production")
@@ -179,6 +181,28 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+
+CELERY_BEAT_SCHEDULE = {
+    "cleanup-expired-tokens": {
+        "task": "core.tasks.cleanup_expired_tokens",
+        "schedule": crontab(hour=0, minute=0),
+    },
+    "ticket-auto-close": {
+        "task": "core.tasks.ticket_auto_close",
+        "schedule": crontab(hour=0, minute=0),
+    },
+    "send-reminder-notifications": {
+        "task": "core.tasks.send_reminder_notifications",
+        "schedule": crontab(hour=9, minute=0),
+    },
+    "generate-monthly-invoices": {
+        "task": "core.tasks.generate_monthly_invoices",
+        "schedule": crontab(day_of_month=1, hour=0, minute=0),
+    },
+}
+
+# Frontend URL (used for password-reset links)
+FRONTEND_URL = os.getenv("FRONTEND_URL", "")
 
 # Email (Resend)
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
