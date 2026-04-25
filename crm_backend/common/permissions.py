@@ -89,6 +89,44 @@ class IsAdminOrManagerOrResidentReadOwn(BasePermission):
         return False
 
 
+class IsAdminOrManagerOrWorkerOrResidentReadOwn(BasePermission):
+    """Allow admin/manager full access, worker read-all + write-assigned, resident read-own.
+
+    Object ownership for residents is enforced by ``ResidentQuerySetMixin``.
+    Worker write access is enforced at object level via ``assigned_worker``.
+    """
+
+    def has_permission(self, request: Any, view: Any) -> bool:
+        if not (request.user and request.user.is_authenticated):
+            return False
+        role = getattr(request.user, "role", None)
+        if role in ("admin", "manager"):
+            return True
+        if role == "worker":
+            # Workers can read all; write checked in has_object_permission
+            return True
+        if role == "resident":
+            return request.method in SAFE_METHODS
+        return False
+
+    def has_object_permission(self, request: Any, view: Any, obj: object) -> bool:
+        if not (request.user and request.user.is_authenticated):
+            return False
+        role = getattr(request.user, "role", None)
+        if role in ("admin", "manager"):
+            return True
+        if role == "worker":
+            # Allow write only if the worker is the assigned worker.
+            if request.method in SAFE_METHODS:
+                return True
+            assigned = getattr(obj, "assigned_worker", None)
+            employee = getattr(request.user, "employee_profile", None)
+            return bool(assigned and employee and assigned.id == employee.id)
+        if role == "resident":
+            return request.method in SAFE_METHODS
+        return False
+
+
 class IsOwnerOrAdmin(BasePermission):
     """Allow owner of the object or admin to modify."""
 
