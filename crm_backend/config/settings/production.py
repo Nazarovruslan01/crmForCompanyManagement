@@ -61,10 +61,10 @@ CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
 # Sentry — error tracking and performance monitoring
 _sentry_dsn = os.getenv("SENTRY_DSN", "")
 if _sentry_dsn:
-    import sentry_sdk  # type: ignore[import-not-found]
-    from sentry_sdk.integrations.celery import CeleryIntegration  # type: ignore[import-not-found]
-    from sentry_sdk.integrations.django import DjangoIntegration  # type: ignore[import-not-found]
-    from sentry_sdk.integrations.redis import RedisIntegration  # type: ignore[import-not-found]
+    import sentry_sdk  # type: ignore
+    from sentry_sdk.integrations.celery import CeleryIntegration  # type: ignore
+    from sentry_sdk.integrations.django import DjangoIntegration  # type: ignore
+    from sentry_sdk.integrations.redis import RedisIntegration  # type: ignore
 
     sentry_sdk.init(
         dsn=_sentry_dsn,
