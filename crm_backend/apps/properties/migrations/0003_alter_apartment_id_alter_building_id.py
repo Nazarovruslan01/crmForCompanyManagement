@@ -4,20 +4,19 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('properties', '0002_add_performance_indexes'),
+        ("properties", "0002_add_performance_indexes"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='apartment',
-            name='id',
+            model_name="apartment",
+            name="id",
             field=models.BigAutoField(primary_key=True, serialize=False),
         ),
         migrations.AlterField(
-            model_name='building',
-            name='id',
+            model_name="building",
+            name="id",
             field=models.BigAutoField(primary_key=True, serialize=False),
         ),
     ]

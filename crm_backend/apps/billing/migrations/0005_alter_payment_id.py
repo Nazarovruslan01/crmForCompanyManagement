@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('billing', '0004_add_payment_idempotency_key'),
+        ("billing", "0004_add_payment_idempotency_key"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='payment',
-            name='id',
+            model_name="payment",
+            name="id",
             field=models.BigAutoField(primary_key=True, serialize=False),
         ),
     ]
