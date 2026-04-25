@@ -9,6 +9,7 @@ django-storages>=1.14,<2.0
 # Async Task Queue
 celery>=5.4,<6.0
 redis>=5.0,<6.0
+django-celery-beat>=2.6,<3.0
 
 # AWS / S3
 boto3>=1.34,<2.0
@@ -16,6 +17,7 @@ boto3>=1.34,<2.0
 # Monitoring
 django-prometheus>=2.3,<3.0
 flower>=2.0,<3.0
+sentry-sdk[django]>=2.0,<3.0
 
 # Database
 psycopg2-binary>=2.9,<3.0
@@ -41,9 +43,11 @@ Pillow>=12.2.0,<13.0
 # Turkish Payment Gateway (İyzico)
 # iyzico>=1.0 (or HTTP API integration)
 
-# WSGI server
+# WSGI / ASGI server
 gunicorn>=22.0,<23.0
+uvicorn[standard]>=0.30,<1.0
 
 # Utilities
 python-dateutil>=2.8,<3.0
 requests>=2.31,<3.0
+python-json-logger>=2.0,<3.0
