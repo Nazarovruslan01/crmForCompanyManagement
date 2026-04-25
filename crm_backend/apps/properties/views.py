@@ -1,13 +1,24 @@
 """Properties app views for REST API."""
 
-from rest_framework import mixins, permissions, viewsets
+from django.db.models import Prefetch
+from rest_framework import mixins, permissions, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.request import Request
+from rest_framework.response import Response
 
+from apps.billing.models import AidatCharge
+from apps.residents.models import Ownership
 from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
 from core.mixins import CacheListRetrieveMixin, ResidentQuerySetMixin
 
 from .models import Apartment, Building
-from .serializers import ApartmentMinimalSerializer, ApartmentSerializer, BuildingSerializer
+from .serializers import (
+    ApartmentChessboardSerializer,
+    ApartmentMinimalSerializer,
+    ApartmentSerializer,
+    BuildingSerializer,
+)
 
 
 class BuildingViewSet(CacheListRetrieveMixin, viewsets.ModelViewSet[Building]):
@@ -18,6 +29,52 @@ class BuildingViewSet(CacheListRetrieveMixin, viewsets.ModelViewSet[Building]):
     search_fields = ["name", "address"]
     ordering_fields = ["name", "created_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+
+    @action(detail=True, methods=["get"], url_path="chessboard")
+    def chessboard(self, request: Request, pk: int | None = None) -> Response:  # noqa: ARG002
+        """Return apartment grid grouped by block and floor for chessboard UI."""
+        building = self.get_object()
+        apartments = building.apartments.prefetch_related(  # type: ignore[attr-defined]
+            Prefetch(
+                "ownerships",  # type: ignore[attr-defined]
+                queryset=Ownership.objects.select_related("resident"),
+            ),
+            Prefetch(
+                "aidat_charges",  # type: ignore[attr-defined]
+                queryset=AidatCharge.objects.order_by("-billing_period_start"),
+            ),
+        )
+        serializer = ApartmentChessboardSerializer(apartments, many=True)
+
+        # Group by block → floor (descending) → apartments by number
+        blocks: dict[str, dict[int, list[dict]]] = {}
+        for apt in serializer.data:
+            block_name = apt["block"] or "Без блока"
+            floor_num = apt["floor"] or 0
+            if block_name not in blocks:
+                blocks[block_name] = {}
+            if floor_num not in blocks[block_name]:
+                blocks[block_name][floor_num] = []
+            blocks[block_name][floor_num].append(apt)
+
+        result_blocks = []
+        for block_name in sorted(blocks.keys()):
+            floors_list = []
+            for floor_num in sorted(blocks[block_name].keys(), reverse=True):
+                apts = sorted(
+                    blocks[block_name][floor_num],
+                    key=lambda x: x["apartment_number"],
+                )
+                floors_list.append({"floor": floor_num, "apartments": apts})
+            result_blocks.append({"block": block_name, "floors": floors_list})
+
+        return Response(
+            {
+                "building": {"id": building.id, "name": building.name},  # type: ignore[attr-defined]
+                "blocks": result_blocks,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class ApartmentViewSet(CacheListRetrieveMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Apartment]):

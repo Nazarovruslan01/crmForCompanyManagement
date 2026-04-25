@@ -185,3 +185,69 @@ class TestApartmentMinimalViewSet:
         """Admin can retrieve minimal apartment."""
         response = admin_client.get(f"/api/v2/properties/apartments-minimal/{apartment.id}/")
         assert response.status_code == status.HTTP_200_OK
+
+
+class TestChessboardViewSet:
+    """Tests for /api/v2/properties/buildings/{id}/chessboard/ endpoint."""
+
+    def test_chessboard_returns_grouped_data(self, admin_client, building, apartment):
+        """Chessboard endpoint returns apartments grouped by block and floor."""
+        response = admin_client.get(f"/api/v2/properties/buildings/{building.id}/chessboard/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["building"]["id"] == building.id
+        assert response.data["building"]["name"] == building.name
+        assert "blocks" in response.data
+        # Apartment should appear in blocks
+        blocks = response.data["blocks"]
+        assert len(blocks) >= 1
+        found = False
+        for block in blocks:
+            for floor in block["floors"]:
+                for apt in floor["apartments"]:
+                    if apt["id"] == apartment.id:
+                        found = True
+                        assert "latest_aidat_status" in apt
+                        assert "total_debt" in apt
+                        assert "primary_resident" in apt
+                        assert "residents" in apt
+        assert found
+
+    def test_chessboard_includes_aidat_status_and_debt(self, admin_client, building, apartment):
+        """Chessboard reflects latest aidat status and total debt."""
+        from decimal import Decimal
+
+        from apps.billing.models import AidatCharge
+
+        AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start="2024-01-01",
+            billing_period_end="2024-01-31",
+            base_amount=500,
+            due_date="2024-02-15",
+            status=AidatCharge.Status.PENDING,
+        )
+        response = admin_client.get(f"/api/v2/properties/buildings/{building.id}/chessboard/")
+        assert response.status_code == status.HTTP_200_OK
+        for block in response.data["blocks"]:
+            for floor in block["floors"]:
+                for apt in floor["apartments"]:
+                    if apt["id"] == apartment.id:
+                        assert apt["latest_aidat_status"] == "pending"
+                        assert apt["total_debt"] == Decimal("500.00")
+
+    def test_chessboard_shows_residents(self, admin_client, building, apartment, ownership):
+        """Chessboard includes resident info linked via ownership."""
+        response = admin_client.get(f"/api/v2/properties/buildings/{building.id}/chessboard/")
+        assert response.status_code == status.HTTP_200_OK
+        for block in response.data["blocks"]:
+            for floor in block["floors"]:
+                for apt in floor["apartments"]:
+                    if apt["id"] == apartment.id:
+                        assert apt["primary_resident"] is not None
+                        assert apt["primary_resident"]["name"] == ownership.resident.name
+                        assert len(apt["residents"]) == 1
+
+    def test_chessboard_unauthenticated(self, api_client, building):
+        """Unauthenticated request returns 401."""
+        response = api_client.get(f"/api/v2/properties/buildings/{building.id}/chessboard/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
