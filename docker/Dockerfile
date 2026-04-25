@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Python dependencies
 COPY crm_backend/requirements/ ./requirements/
-RUN pip install --no-cache-dir -r requirements/local.txt
+RUN pip install --no-cache-dir -r requirements/base.txt
 
 # Application code
 COPY crm_backend/ .

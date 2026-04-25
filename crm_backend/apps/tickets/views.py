@@ -10,8 +10,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from common.permissions import IsAdminOrManager
+from common.permissions import IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
+from core.mixins import ResidentQuerySetMixin
 
 from .models import Ticket, TicketAttachment, TicketComment
 from .serializers import (
@@ -22,14 +23,15 @@ from .serializers import (
 )
 
 
-class TicketViewSet(viewsets.ModelViewSet[Ticket]):
+class TicketViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Ticket]):
     queryset = Ticket.objects.select_related("apartment__building", "assigned_worker", "created_by").all()
     serializer_class = TicketSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     filterset_fields = ["status", "priority", "category", "assigned_worker"]
     search_fields = ["title", "description", "apartment__apartment_number"]
     ordering_fields = ["priority", "created_at", "updated_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    resident_lookup = "apartment__ownerships__resident__user"
 
     def get_queryset(self) -> "models.QuerySet[Ticket]":
         qs = super().get_queryset()
@@ -63,20 +65,22 @@ class TicketViewSet(viewsets.ModelViewSet[Ticket]):
         return Response(serializer.data)
 
 
-class TicketCommentViewSet(viewsets.ModelViewSet[TicketComment]):
+class TicketCommentViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[TicketComment]):
     queryset = TicketComment.objects.select_related("author", "ticket").all()
     serializer_class = TicketCommentSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     filterset_fields = ["ticket"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    resident_lookup = "ticket__apartment__ownerships__resident__user"
 
 
-class TicketAttachmentViewSet(viewsets.ModelViewSet[TicketAttachment]):
+class TicketAttachmentViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[TicketAttachment]):
     queryset = TicketAttachment.objects.select_related("uploaded_by", "ticket").all()
     serializer_class = TicketAttachmentSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     filterset_fields = ["ticket", "file_type"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    resident_lookup = "ticket__apartment__ownerships__resident__user"
 
 
 class PresignedUploadSerializer(serializers.Serializer):

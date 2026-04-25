@@ -7,8 +7,10 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from core.health import HealthCheckView, ReadinessCheckView
 
+_admin_url = getattr(settings, "ADMIN_URL", "admin/")
+
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path(_admin_url, admin.site.urls),
     # Health checks (for K8s probes)
     path("api/health/", HealthCheckView.as_view(), name="health"),
     path("api/ready/", ReadinessCheckView.as_view(), name="readiness"),

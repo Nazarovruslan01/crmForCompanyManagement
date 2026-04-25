@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 
 class IsAdmin(BasePermission):
@@ -58,6 +58,35 @@ class IsAdminOrManagerOrWorker(BasePermission):
 
     def has_object_permission(self, request: Any, view: Any, obj: object) -> bool:
         return self.has_permission(request, view)
+
+
+class IsAdminOrManagerOrResidentReadOwn(BasePermission):
+    """Allow admin/manager full access. Residents: read-only + own objects only.
+
+    Object ownership is enforced by ``ResidentQuerySetMixin`` filtering
+    ``get_queryset()`` — any object a resident can reach is already theirs.
+    This class only gates the HTTP method (safe methods only for residents).
+    """
+
+    def has_permission(self, request: Any, view: Any) -> bool:
+        if not (request.user and request.user.is_authenticated):
+            return False
+        role = getattr(request.user, "role", None)
+        if role in ("admin", "manager"):
+            return True
+        if role == "resident":
+            return request.method in SAFE_METHODS
+        return False
+
+    def has_object_permission(self, request: Any, view: Any, obj: object) -> bool:
+        if not (request.user and request.user.is_authenticated):
+            return False
+        role = getattr(request.user, "role", None)
+        if role in ("admin", "manager"):
+            return True
+        if role == "resident":
+            return request.method in SAFE_METHODS
+        return False
 
 
 class IsOwnerOrAdmin(BasePermission):

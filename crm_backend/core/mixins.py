@@ -3,8 +3,37 @@
 from typing import Any, cast
 
 from django.core.cache import cache
+from django.db import models
 from rest_framework.request import Request
 from rest_framework.response import Response
+
+
+class ResidentQuerySetMixin:
+    """Filter queryset to resident-owned objects when user.role == 'resident'.
+
+    Set ``resident_lookup`` on the view to the Django ORM path from the
+    view's model to the ``User`` who owns it via the ``Resident`` profile.
+    Example: ``"apartment__ownerships__resident__user"``.
+
+    Admin and manager users see the unfiltered queryset.
+    If a resident has no ``Resident`` profile, returns ``.none()``.
+    """
+
+    resident_lookup: str = ""
+
+    def get_queryset(self) -> "models.QuerySet[Any]":
+        qs = super().get_queryset()  # type: ignore[misc]
+        user = self.request.user  # type: ignore[attr-defined]
+        role = getattr(user, "role", None)
+        if role != "resident":
+            return qs  # type: ignore[no-any-return]
+        if not self.resident_lookup:
+            return qs  # type: ignore[no-any-return]
+        resident = getattr(user, "resident_profile", None)
+        if not resident:
+            return qs.none()  # type: ignore[no-any-return]
+        filter_kwargs = {self.resident_lookup: user}
+        return qs.filter(**filter_kwargs).distinct()  # type: ignore[no-any-return]
 
 
 class CacheListRetrieveMixin:

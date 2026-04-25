@@ -1,5 +1,7 @@
 """Tests for billing endpoints."""
 
+from datetime import date, timedelta
+
 import pytest
 from rest_framework import status
 
@@ -68,8 +70,6 @@ class TestAidatChargeViewSet:
 
     def test_overdue_action(self, admin_client, apartment):
         """Admin can get overdue charges via action."""
-        from datetime import date, timedelta
-
         # Create an overdue charge
         start = date(2025, 12, 1)
         end = date(2025, 12, 31)
@@ -89,8 +89,6 @@ class TestAidatChargeViewSet:
 
     def test_overdue_action_is_paginated(self, admin_client, apartment):
         """Overdue action returns paginated results."""
-        from datetime import date, timedelta
-
         start = date(2025, 12, 1)
         end = date(2025, 12, 31)
         AidatCharge.objects.create(
@@ -170,6 +168,124 @@ class TestPaymentViewSet:
         """Admin can filter payments by payment method."""
         response = admin_client.get("/api/v2/billing/payments/", {"payment_method": "eft"})
         assert response.status_code == status.HTTP_200_OK
+
+
+class TestAidatChargeViewSetResidentAccess:
+    """Tests for resident-scoped aidat charge access."""
+
+    def test_resident_can_list_own_charges(self, resident_client, resident_with_profile, apartment):
+        AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=date(2026, 1, 1),
+            billing_period_end=date(2026, 1, 31),
+            base_amount=500,
+            late_fee_rate=0.001,
+            due_date=date(2026, 2, 15),
+            status=AidatCharge.Status.PENDING,
+        )
+        # Charge for another apartment
+        other_apt = apartment.__class__.objects.create(
+            building=apartment.building, apartment_number="999", status=apartment.Status.ACTIVE
+        )
+        AidatCharge.objects.create(
+            apartment=other_apt,
+            billing_period_start=date(2026, 1, 1),
+            billing_period_end=date(2026, 1, 31),
+            base_amount=999,
+            late_fee_rate=0.001,
+            due_date=date(2026, 2, 15),
+            status=AidatCharge.Status.PENDING,
+        )
+
+        response = resident_client.get("/api/v2/billing/aidat-charges/")
+        assert response.status_code == status.HTTP_200_OK
+        amounts = {float(c["base_amount"]) for c in response.data["results"]}
+        assert 500.0 in amounts
+        assert 999.0 not in amounts
+
+    def test_resident_cannot_create_charge(self, resident_client, apartment):
+        payload = {
+            "apartment": apartment.id,
+            "billing_period_start": "2026-02-01",
+            "billing_period_end": "2026-02-28",
+            "base_amount": 600,
+            "late_fee_rate": 0.001,
+            "due_date": "2026-03-15",
+            "status": "pending",
+        }
+        response = resident_client.post("/api/v2/billing/aidat-charges/", payload, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_worker_denied_charge_list(self, staff_client):
+        response = staff_client.get("/api/v2/billing/aidat-charges/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+class TestPaymentViewSetResidentAccess:
+    """Tests for resident-scoped payment access."""
+
+    def test_resident_can_list_own_payments(self, resident_client, resident_with_profile, apartment):
+        from apps.billing.models import Payment
+
+        Payment.objects.create(
+            apartment=apartment, charge_type="aidat", amount=500, payment_method=Payment.PaymentMethod.EFT
+        )
+        other_apt = apartment.__class__.objects.create(
+            building=apartment.building, apartment_number="999", status=apartment.Status.ACTIVE
+        )
+        Payment.objects.create(
+            apartment=other_apt, charge_type="aidat", amount=999, payment_method=Payment.PaymentMethod.EFT
+        )
+
+        response = resident_client.get("/api/v2/billing/payments/")
+        assert response.status_code == status.HTTP_200_OK
+        amounts = {float(p["amount"]) for p in response.data["results"]}
+        assert 500.0 in amounts
+        assert 999.0 not in amounts
+
+    def test_resident_cannot_create_payment(self, resident_client, apartment):
+        payload = {
+            "apartment": apartment.id,
+            "charge_type": "aidat",
+            "amount": 600,
+            "payment_method": "eft",
+        }
+        response = resident_client.post("/api/v2/billing/payments/", payload, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_worker_denied_payment_list(self, staff_client):
+        response = staff_client.get("/api/v2/billing/payments/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+class TestReceiptViewSetResidentAccess:
+    """Tests for resident-scoped receipt access."""
+
+    def test_resident_can_list_own_receipts(self, resident_client, resident_with_profile, apartment):
+        from apps.billing.models import Payment, Receipt
+
+        payment = Payment.objects.create(
+            apartment=apartment, charge_type="aidat", amount=500, payment_method=Payment.PaymentMethod.EFT
+        )
+        Receipt.objects.create(payment=payment, pdf_url="https://example.com/receipt.pdf")
+
+        response = resident_client.get("/api/v2/billing/receipts/")
+        assert response.status_code == status.HTTP_200_OK
+        assert len(response.data["results"]) == 1
+
+    def test_resident_cannot_create_receipt(self, resident_client, apartment):
+        from apps.billing.models import Payment
+
+        payment = Payment.objects.create(
+            apartment=apartment, charge_type="aidat", amount=500, payment_method=Payment.PaymentMethod.EFT
+        )
+        payload = {"payment": payment.id, "pdf_url": "https://example.com/new.pdf"}
+        response = resident_client.post("/api/v2/billing/receipts/", payload, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_worker_denied_receipt_list(self, staff_client):
+        response = staff_client.get("/api/v2/billing/receipts/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 class TestReceiptViewSet:
