@@ -128,15 +128,85 @@ class TelegramWebhookView(View):
             self._process_ticket_description(messenger_user, text)
             return
 
+        if step == "chatting_with_ticket":
+            self._process_chat_message(messenger_user, text)
+            return
+
         if messenger_user.resident:
-            send_telegram_message(
-                messenger_user.telegram_chat_id,
-                "Your message has been forwarded to the management team. They will respond shortly.",
-            )
+            self._handle_registered_text(messenger_user, text)
         else:
             send_telegram_message(
                 messenger_user.telegram_chat_id,
                 "Please complete registration first with /register or use /help for commands.",
+            )
+
+    def _handle_registered_text(self, messenger_user, text):
+        from apps.residents.models import Ownership
+        from apps.tickets.models import Ticket, TicketComment
+
+        state = messenger_user.conversation_state or {}
+
+        if state.get("step") == "waiting_for_ticket_select":
+            return
+
+        # Find active tickets for this resident's apartments
+        apartments = Ownership.objects.filter(resident=messenger_user.resident).values_list("apartment_id", flat=True)
+
+        active_tickets = Ticket.objects.filter(
+            apartment_id__in=apartments,
+            status__in=[Ticket.Status.NEW, Ticket.Status.ASSIGNED, Ticket.Status.IN_PROGRESS],
+        ).order_by("-created_at")
+
+        if active_tickets.count() == 1:
+            ticket = active_tickets.first()
+            # Create comment in CRM
+            TicketComment.objects.create(
+                ticket=ticket,
+                author=messenger_user.resident.user if messenger_user.resident.user else None,
+                content=text,
+            )
+            # Link bot message to ticket
+            BotMessage.objects.create(
+                messenger_user=messenger_user,
+                direction=BotMessage.Direction.INBOUND,
+                message_type=BotMessage.MessageType.TEXT,
+                text=text,
+                ticket=ticket,
+            )
+            send_telegram_message(
+                messenger_user.telegram_chat_id,
+                f"Your message has been added to Ticket #{ticket.id}.",
+            )
+        elif active_tickets.count() > 1:
+            messenger_user.conversation_state = {"step": "waiting_for_ticket_select"}
+            messenger_user.save(update_fields=["conversation_state"])
+
+            keyboard = []
+            for ticket in active_tickets[:5]:
+                keyboard.append(
+                    [{"text": f"#{ticket.id} {ticket.title[:30]}", "callback_data": f"chat_ticket_{ticket.id}"}]
+                )
+            keyboard.append([{"text": "Cancel", "callback_data": "chat_cancel"}])
+
+            send_telegram_message(
+                messenger_user.telegram_chat_id,
+                "You have multiple active tickets. Please select one:",
+                reply_markup={"inline_keyboard": keyboard},
+            )
+        else:
+            BotMessage.objects.create(
+                messenger_user=messenger_user,
+                direction=BotMessage.Direction.INBOUND,
+                message_type=BotMessage.MessageType.TEXT,
+                text=text,
+            )
+            send_telegram_message(
+                messenger_user.telegram_chat_id,
+                (
+                    "You have no active tickets. "
+                    "Your message has been forwarded to the management team. "
+                    "Use /ticket to create a maintenance request."
+                ),
             )
 
     def _handle_callback(self, callback_query):
@@ -164,6 +234,16 @@ class TelegramWebhookView(View):
             self._create_ticket(messenger_user)
         elif data == "ticket_cancel":
             self._cancel_ticket_creation(messenger_user)
+        elif data.startswith("chat_ticket_"):
+            ticket_id = data.replace("chat_ticket_", "")
+            self._process_chat_ticket_selection(messenger_user, ticket_id)
+        elif data == "chat_cancel":
+            messenger_user.conversation_state = {}
+            messenger_user.save(update_fields=["conversation_state"])
+            send_telegram_message(
+                messenger_user.telegram_chat_id,
+                "Cancelled. Use /ticket to create a new request.",
+            )
 
     def _start_registration(self, messenger_user):
         if messenger_user.resident:
@@ -467,6 +547,63 @@ class TelegramWebhookView(View):
         send_telegram_message(
             messenger_user.telegram_chat_id,
             "Ticket creation cancelled. Use /ticket to start again.",
+        )
+
+    def _process_chat_ticket_selection(self, messenger_user, ticket_id):
+        from apps.tickets.models import Ticket
+
+        try:
+            ticket = Ticket.objects.get(pk=ticket_id)
+        except Ticket.DoesNotExist:
+            send_telegram_message(
+                messenger_user.telegram_chat_id,
+                "Ticket not found. Please try again.",
+            )
+            return
+
+        messenger_user.conversation_state = {"step": "chatting_with_ticket", "ticket_id": ticket_id}
+        messenger_user.save(update_fields=["conversation_state"])
+
+        send_telegram_message(
+            messenger_user.telegram_chat_id,
+            (
+                f"You are now chatting about Ticket #{ticket.id}: {ticket.title}\n\n"
+                "Send your messages and they will be forwarded to the management team."
+            ),
+        )
+
+    def _process_chat_message(self, messenger_user, text):
+        from apps.tickets.models import Ticket, TicketComment
+
+        state = messenger_user.conversation_state or {}
+        ticket_id = state.get("ticket_id")
+
+        try:
+            ticket = Ticket.objects.get(pk=ticket_id)
+        except Ticket.DoesNotExist:
+            send_telegram_message(
+                messenger_user.telegram_chat_id,
+                "Ticket not found. Conversation ended.",
+            )
+            messenger_user.conversation_state = {}
+            messenger_user.save(update_fields=["conversation_state"])
+            return
+
+        TicketComment.objects.create(
+            ticket=ticket,
+            author=messenger_user.resident.user if messenger_user.resident.user else None,
+            content=text,
+        )
+        BotMessage.objects.create(
+            messenger_user=messenger_user,
+            direction=BotMessage.Direction.INBOUND,
+            message_type=BotMessage.MessageType.TEXT,
+            text=text,
+            ticket=ticket,
+        )
+        send_telegram_message(
+            messenger_user.telegram_chat_id,
+            f"Message sent to Ticket #{ticket.id}.",
         )
 
     def _send_welcome(self, messenger_user):
