@@ -343,3 +343,14 @@ def other_resident(db, other_apartment):
         is_primary=True,
     )
     return resident
+
+
+@pytest.fixture(autouse=True)
+def disable_throttling_for_tests(settings):
+    """Disable DRF throttling in tests to prevent 429 errors on full test runs."""
+    rates = settings.REST_FRAMEWORK.setdefault("DEFAULT_THROTTLE_RATES", {})
+    rates["user_read"] = "100000/second"
+    rates["user_write"] = "100000/second"
+    rates["anon"] = "100000/second"
+    rates["login"] = "100000/second"
+    rates["password_reset"] = "100000/second"

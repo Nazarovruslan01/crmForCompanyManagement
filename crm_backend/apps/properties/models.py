@@ -9,6 +9,8 @@ from django.db import models
 class Building(models.Model):
     """ЖК / Комплекс (Bina / Site)"""
 
+    id = models.BigAutoField(primary_key=True)
+
     class ManagementType(models.TextChoices):
         SELF_MANAGED = "self_managed", "Kendi Yönetim"
         EXTERNAL_COMPANY = "external_company", "Dış Yönetim Şirketi"
@@ -40,6 +42,8 @@ class Building(models.Model):
 
 class Apartment(models.Model):
     """Квартира (Daire)"""
+
+    id = models.BigAutoField(primary_key=True)
 
     class Status(models.TextChoices):
         ACTIVE = "active", "Active"

@@ -99,6 +99,8 @@ class ExtraordinaryCharge(models.Model):
 class Payment(models.Model):
     """Платёж (Ödeme)"""
 
+    id = models.BigAutoField(primary_key=True)
+
     class PaymentMethod(models.TextChoices):
         EFT = "eft", "EFT/Havale"
         CREDIT_CARD = "credit_card", "Kredi Kartı"
