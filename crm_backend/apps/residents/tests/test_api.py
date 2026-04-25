@@ -200,8 +200,6 @@ class TestPersonalAccountViewSetResidentAccess:
         assert response.data["results"][0]["account_number"] == "ACC-RES-001"
 
     def test_resient_cannot_see_other_account(self, resident_client, personal_account, other_apartment):
-        from apps.residents.models import PersonalAccount
-
         # Ensure personal_account is for a different apartment than the resident owns
         personal_account.apartment = other_apartment
         personal_account.save()

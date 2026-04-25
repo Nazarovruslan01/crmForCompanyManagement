@@ -223,7 +223,7 @@ class TestTicketViewSetResidentAccess:
         from apps.tickets.models import Ticket
 
         # Create a ticket for the resident's apartment
-        own_ticket = Ticket.objects.create(apartment=apartment, title="Own Ticket", description="Mine")
+        Ticket.objects.create(apartment=apartment, title="Own Ticket", description="Mine")
         # Create a ticket for another apartment
         other_apt = apartment.__class__.objects.create(
             building=apartment.building,
@@ -261,9 +261,7 @@ class TestTicketViewSetResidentAccess:
         from apps.tickets.models import Ticket
 
         ticket = Ticket.objects.create(apartment=apartment, title="Old Title", description="Mine")
-        response = resident_client.patch(
-            f"/api/v2/tickets/tickets/{ticket.id}/", {"title": "Hacked"}, format="json"
-        )
+        response = resident_client.patch(f"/api/v2/tickets/tickets/{ticket.id}/", {"title": "Hacked"}, format="json")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_resident_cannot_delete_ticket(self, resident_client, resident_with_profile, apartment):
