@@ -1,11 +1,16 @@
 """Tests for Celery tasks."""
 
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
 from django.utils import timezone
+
+from apps.billing.models import AidatCharge
+from apps.messenger.models import MessengerUser
+from apps.properties.models import Apartment, Building
+from apps.residents.models import Ownership, Resident
 
 pytestmark = pytest.mark.django_db
 
@@ -323,3 +328,299 @@ class TestBackupDatabase:
         assert result["success"] is True
         assert result["size_bytes"] == 123
         assert ".sql.gz" in result["file_path"]
+
+
+class TestSendTelegramDebtReminders:
+    """Tests for send_telegram_debt_reminders task."""
+
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_no_overdue_charges(self, mock_send):
+        from core.tasks import send_telegram_debt_reminders
+
+        result = send_telegram_debt_reminders()
+
+        assert result["sent"] == 0
+        assert result["failed"] == 0
+        assert result["no_chat_id"] == 0
+        mock_send.assert_not_called()
+
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_auto_marks_pending_as_overdue(self, mock_send):
+        from core.tasks import send_telegram_debt_reminders
+
+        building = Building.objects.create(
+            name="Test Tower",
+            address="Test Address",
+            city="Istanbul",
+            district="Kadikoy",
+        )
+        apartment = Apartment.objects.create(building=building, apartment_number="1A")
+
+        AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=date(2026, 1, 1),
+            billing_period_end=date(2026, 1, 31),
+            base_amount=Decimal("500.00"),
+            late_fee_rate=Decimal("0.001"),
+            due_date=date(2026, 1, 15),
+            status=AidatCharge.Status.PENDING,
+        )
+
+        send_telegram_debt_reminders()
+
+        charge = AidatCharge.objects.get(pk=apartment.aidat_charges.first().pk)
+        assert charge.status == AidatCharge.Status.OVERDUE
+
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_sends_reminder_to_resident_with_chat_id(self, mock_send):
+        from core.tasks import send_telegram_debt_reminders
+
+        mock_send.return_value = True
+
+        building = Building.objects.create(
+            name="Test Tower",
+            address="Test Address",
+            city="Istanbul",
+            district="Kadikoy",
+        )
+        apartment = Apartment.objects.create(building=building, apartment_number="1A")
+        resident = Resident.objects.create(
+            name="Test",
+            surname="Resident",
+            phone="+905551234567",
+            tc_kimlik_no="12345678901",
+        )
+        Ownership.objects.create(
+            resident=resident,
+            apartment=apartment,
+            role=Ownership.Role.OWNER,
+            is_primary=True,
+        )
+        MessengerUser.objects.create(
+            resident=resident,
+            telegram_chat_id=123456789,
+            is_active=True,
+        )
+
+        AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=date(2026, 1, 1),
+            billing_period_end=date(2026, 1, 31),
+            base_amount=Decimal("500.00"),
+            late_fee_rate=Decimal("0.001"),
+            due_date=date(2026, 1, 15),
+            status=AidatCharge.Status.OVERDUE,
+        )
+
+        result = send_telegram_debt_reminders()
+
+        assert result["sent"] == 1
+        assert result["failed"] == 0
+        assert result["no_chat_id"] == 0
+        mock_send.assert_called_once()
+        args = mock_send.call_args[0]
+        assert args[0] == 123456789
+        assert "Overdue Payment Reminder" in args[1]
+
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_counts_no_chat_id(self, mock_send):
+        from core.tasks import send_telegram_debt_reminders
+
+        building = Building.objects.create(
+            name="Test Tower",
+            address="Test Address",
+            city="Istanbul",
+            district="Kadikoy",
+        )
+        apartment = Apartment.objects.create(building=building, apartment_number="1A")
+        resident = Resident.objects.create(
+            name="Test",
+            surname="Resident",
+            phone="+905551234567",
+            tc_kimlik_no="12345678901",
+        )
+        Ownership.objects.create(
+            resident=resident,
+            apartment=apartment,
+            role=Ownership.Role.OWNER,
+            is_primary=True,
+        )
+        # No MessengerUser linked
+
+        AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=date(2026, 1, 1),
+            billing_period_end=date(2026, 1, 31),
+            base_amount=Decimal("500.00"),
+            late_fee_rate=Decimal("0.001"),
+            due_date=date(2026, 1, 15),
+            status=AidatCharge.Status.OVERDUE,
+        )
+
+        result = send_telegram_debt_reminders()
+
+        assert result["sent"] == 0
+        assert result["failed"] == 0
+        assert result["no_chat_id"] == 1
+        mock_send.assert_not_called()
+
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_groups_multiple_charges_by_resident(self, mock_send):
+        from core.tasks import send_telegram_debt_reminders
+
+        mock_send.return_value = True
+
+        building = Building.objects.create(
+            name="Test Tower",
+            address="Test Address",
+            city="Istanbul",
+            district="Kadikoy",
+        )
+        apartment1 = Apartment.objects.create(building=building, apartment_number="1A")
+        apartment2 = Apartment.objects.create(building=building, apartment_number="1B")
+        resident = Resident.objects.create(
+            name="Test",
+            surname="Resident",
+            phone="+905551234567",
+            tc_kimlik_no="12345678901",
+        )
+        Ownership.objects.create(
+            resident=resident,
+            apartment=apartment1,
+            role=Ownership.Role.OWNER,
+            is_primary=True,
+        )
+        Ownership.objects.create(
+            resident=resident,
+            apartment=apartment2,
+            role=Ownership.Role.OWNER,
+            is_primary=True,
+        )
+        MessengerUser.objects.create(
+            resident=resident,
+            telegram_chat_id=123456789,
+            is_active=True,
+        )
+
+        AidatCharge.objects.create(
+            apartment=apartment1,
+            billing_period_start=date(2026, 1, 1),
+            billing_period_end=date(2026, 1, 31),
+            base_amount=Decimal("500.00"),
+            late_fee_rate=Decimal("0.001"),
+            due_date=date(2026, 1, 15),
+            status=AidatCharge.Status.OVERDUE,
+        )
+        AidatCharge.objects.create(
+            apartment=apartment2,
+            billing_period_start=date(2026, 2, 1),
+            billing_period_end=date(2026, 2, 28),
+            base_amount=Decimal("600.00"),
+            late_fee_rate=Decimal("0.001"),
+            due_date=date(2026, 2, 15),
+            status=AidatCharge.Status.OVERDUE,
+        )
+
+        result = send_telegram_debt_reminders()
+
+        assert result["sent"] == 1
+        assert result["failed"] == 0
+        assert result["no_chat_id"] == 0
+        mock_send.assert_called_once()
+        message = mock_send.call_args[0][1]
+        assert "1A" in message
+        assert "1B" in message
+        assert "Total Due" in message
+
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_handles_send_failure(self, mock_send):
+        from core.tasks import send_telegram_debt_reminders
+
+        mock_send.return_value = False
+
+        building = Building.objects.create(
+            name="Test Tower",
+            address="Test Address",
+            city="Istanbul",
+            district="Kadikoy",
+        )
+        apartment = Apartment.objects.create(building=building, apartment_number="1A")
+        resident = Resident.objects.create(
+            name="Test",
+            surname="Resident",
+            phone="+905551234567",
+            tc_kimlik_no="12345678901",
+        )
+        Ownership.objects.create(
+            resident=resident,
+            apartment=apartment,
+            role=Ownership.Role.OWNER,
+            is_primary=True,
+        )
+        MessengerUser.objects.create(
+            resident=resident,
+            telegram_chat_id=123456789,
+            is_active=True,
+        )
+
+        AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=date(2026, 1, 1),
+            billing_period_end=date(2026, 1, 31),
+            base_amount=Decimal("500.00"),
+            late_fee_rate=Decimal("0.001"),
+            due_date=date(2026, 1, 15),
+            status=AidatCharge.Status.OVERDUE,
+        )
+
+        result = send_telegram_debt_reminders()
+
+        assert result["sent"] == 0
+        assert result["failed"] == 1
+        assert result["no_chat_id"] == 0
+
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_skips_non_primary_ownership(self, mock_send):
+        from core.tasks import send_telegram_debt_reminders
+
+        building = Building.objects.create(
+            name="Test Tower",
+            address="Test Address",
+            city="Istanbul",
+            district="Kadikoy",
+        )
+        apartment = Apartment.objects.create(building=building, apartment_number="1A")
+        resident = Resident.objects.create(
+            name="Test",
+            surname="Resident",
+            phone="+905551234567",
+            tc_kimlik_no="12345678901",
+        )
+        Ownership.objects.create(
+            resident=resident,
+            apartment=apartment,
+            role=Ownership.Role.OWNER,
+            is_primary=False,
+        )
+        MessengerUser.objects.create(
+            resident=resident,
+            telegram_chat_id=123456789,
+            is_active=True,
+        )
+
+        AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=date(2026, 1, 1),
+            billing_period_end=date(2026, 1, 31),
+            base_amount=Decimal("500.00"),
+            late_fee_rate=Decimal("0.001"),
+            due_date=date(2026, 1, 15),
+            status=AidatCharge.Status.OVERDUE,
+        )
+
+        result = send_telegram_debt_reminders()
+
+        assert result["sent"] == 0
+        assert result["failed"] == 0
+        assert result["no_chat_id"] == 0
+        mock_send.assert_not_called()

@@ -271,6 +271,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.tasks.backup_database",
         "schedule": crontab(hour=2, minute=0),
     },
+    "send-telegram-debt-reminders": {
+        "task": "core.tasks.send_telegram_debt_reminders",
+        "schedule": crontab(hour=10, minute=0),
+    },
 }
 
 # Frontend URL (used for password-reset links)
