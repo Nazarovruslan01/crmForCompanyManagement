@@ -301,6 +301,188 @@ class TestTelegramRegistrationFlow:
         assert req.status == RegistrationRequest.Status.PENDING
 
 
+class TestTelegramTicketFlow:
+    @patch("apps.messenger.views.send_telegram_message")
+    def test_ticket_command_requires_registration(self, mock_send, api_client):
+        MessengerUser.objects.create(telegram_chat_id=100000)
+        payload = {
+            "update_id": 100,
+            "message": {
+                "message_id": 100,
+                "from": {"id": 100000, "is_bot": False, "first_name": "Test"},
+                "chat": {"id": 100000, "type": "private"},
+                "date": 1234567890,
+                "text": "/ticket",
+            },
+        }
+        url = reverse("messenger:telegram-webhook")
+        api_client.post(url, data=json.dumps(payload), content_type="application/json")
+
+        mock_send.assert_called_once()
+        args = mock_send.call_args[0]
+        assert "Please complete registration" in args[1]
+
+    @patch("apps.messenger.views.send_telegram_message")
+    def test_ticket_command_starts_flow(self, mock_send, api_client, user):
+        from apps.residents.models import Resident
+
+        building = Building.objects.create(
+            name="Sunset Tower",
+            address="Test Address",
+            city="Antalya",
+            district="Alanya",
+        )
+        apartment = Apartment.objects.create(building=building, apartment_number="1A")
+        resident = Resident.objects.create(user=user, name="Test", surname="User")
+        Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
+        mu = MessengerUser.objects.create(telegram_chat_id=100001, resident=resident)
+        payload = {
+            "update_id": 101,
+            "message": {
+                "message_id": 101,
+                "from": {"id": 100001, "is_bot": False, "first_name": "Test"},
+                "chat": {"id": 100001, "type": "private"},
+                "date": 1234567890,
+                "text": "/ticket",
+            },
+        }
+        url = reverse("messenger:telegram-webhook")
+        api_client.post(url, data=json.dumps(payload), content_type="application/json")
+
+        mu.refresh_from_db()
+        assert mu.conversation_state.get("step") == "waiting_for_ticket_category"
+
+    @patch("apps.messenger.views.send_telegram_message")
+    def test_ticket_category_callback_advances(self, mock_send, api_client, user):
+        from apps.residents.models import Resident
+
+        resident = Resident.objects.create(user=user, name="Test", surname="User")
+        mu = MessengerUser.objects.create(
+            telegram_chat_id=100002,
+            resident=resident,
+            conversation_state={"step": "waiting_for_ticket_category"},
+        )
+        payload = {
+            "update_id": 102,
+            "callback_query": {
+                "id": "cq102",
+                "from": {"id": 100002, "is_bot": False, "first_name": "Test"},
+                "message": {"message_id": 102, "chat": {"id": 100002, "type": "private"}},
+                "data": "ticket_cat_plumbing",
+            },
+        }
+        url = reverse("messenger:telegram-webhook")
+        api_client.post(url, data=json.dumps(payload), content_type="application/json")
+
+        mu.refresh_from_db()
+        assert mu.conversation_state.get("step") == "waiting_for_ticket_title"
+        assert mu.conversation_state.get("ticket_category") == "plumbing"
+
+    @patch("apps.messenger.views.send_telegram_message")
+    def test_ticket_title_advances(self, mock_send, api_client, user):
+        from apps.residents.models import Resident
+
+        resident = Resident.objects.create(user=user, name="Test", surname="User")
+        mu = MessengerUser.objects.create(
+            telegram_chat_id=100003,
+            resident=resident,
+            conversation_state={"step": "waiting_for_ticket_title", "ticket_category": "plumbing"},
+        )
+        payload = {
+            "update_id": 103,
+            "message": {
+                "message_id": 103,
+                "from": {"id": 100003, "is_bot": False, "first_name": "Test"},
+                "chat": {"id": 100003, "type": "private"},
+                "date": 1234567890,
+                "text": "Leaking faucet",
+            },
+        }
+        url = reverse("messenger:telegram-webhook")
+        api_client.post(url, data=json.dumps(payload), content_type="application/json")
+
+        mu.refresh_from_db()
+        assert mu.conversation_state.get("step") == "waiting_for_ticket_description"
+        assert mu.conversation_state.get("ticket_title") == "Leaking faucet"
+
+    @patch("apps.messenger.views.send_telegram_message")
+    def test_ticket_description_shows_confirm(self, mock_send, api_client, user):
+        from apps.residents.models import Resident
+
+        resident = Resident.objects.create(user=user, name="Test", surname="User")
+        mu = MessengerUser.objects.create(
+            telegram_chat_id=100004,
+            resident=resident,
+            conversation_state={
+                "step": "waiting_for_ticket_description",
+                "ticket_category": "plumbing",
+                "ticket_title": "Leaking faucet",
+            },
+        )
+        payload = {
+            "update_id": 104,
+            "message": {
+                "message_id": 104,
+                "from": {"id": 100004, "is_bot": False, "first_name": "Test"},
+                "chat": {"id": 100004, "type": "private"},
+                "date": 1234567890,
+                "text": "The kitchen faucet is leaking since yesterday",
+            },
+        }
+        url = reverse("messenger:telegram-webhook")
+        api_client.post(url, data=json.dumps(payload), content_type="application/json")
+
+        mu.refresh_from_db()
+        assert mu.conversation_state.get("step") == "waiting_for_ticket_confirm"
+        assert mu.conversation_state.get("ticket_description") == "The kitchen faucet is leaking since yesterday"
+
+    @patch("apps.messenger.views.send_telegram_message")
+    def test_ticket_confirm_creates_ticket(self, mock_send, api_client, user):
+        from apps.residents.models import Resident
+
+        building = Building.objects.create(
+            name="Sunset Tower",
+            address="Test Address",
+            city="Antalya",
+            district="Alanya",
+        )
+        apartment = Apartment.objects.create(building=building, apartment_number="42B")
+        resident = Resident.objects.create(user=user, name="Test", surname="User")
+        Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
+        mu = MessengerUser.objects.create(
+            telegram_chat_id=100005,
+            resident=resident,
+            conversation_state={
+                "step": "waiting_for_ticket_confirm",
+                "ticket_category": "plumbing",
+                "ticket_title": "Leaking faucet",
+                "ticket_description": "The kitchen faucet is leaking since yesterday",
+            },
+        )
+        payload = {
+            "update_id": 105,
+            "callback_query": {
+                "id": "cq105",
+                "from": {"id": 100005, "is_bot": False, "first_name": "Test"},
+                "message": {"message_id": 105, "chat": {"id": 100005, "type": "private"}},
+                "data": "ticket_confirm",
+            },
+        }
+        url = reverse("messenger:telegram-webhook")
+        api_client.post(url, data=json.dumps(payload), content_type="application/json")
+
+        mu.refresh_from_db()
+        assert mu.conversation_state == {}
+
+        from apps.tickets.models import Ticket
+
+        ticket = Ticket.objects.get(apartment=apartment)
+        assert ticket.title == "Leaking faucet"
+        assert ticket.description == "The kitchen faucet is leaking since yesterday"
+        assert ticket.category == "plumbing"
+        assert ticket.status == "new"
+
+
 class TestRegistrationRequestAdmin:
     @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_admin_approve_creates_resident(self, mock_send, admin_user, db):
