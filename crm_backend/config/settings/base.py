@@ -8,7 +8,7 @@ from decimal import Decimal
 from pathlib import Path
 from urllib.parse import urlparse
 
-from celery.schedules import crontab
+from celery.schedules import crontab  # type: ignore[import-untyped]
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 

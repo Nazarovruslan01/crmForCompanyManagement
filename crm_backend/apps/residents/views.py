@@ -5,7 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
+from common.permissions import IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
 from core.mixins import ResidentQuerySetMixin
 

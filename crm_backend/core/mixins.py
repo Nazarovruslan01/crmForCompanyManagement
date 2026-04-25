@@ -26,14 +26,14 @@ class ResidentQuerySetMixin:
         user = self.request.user  # type: ignore[attr-defined]
         role = getattr(user, "role", None)
         if role != "resident":
-            return qs
+            return qs  # type: ignore[no-any-return]
         if not self.resident_lookup:
-            return qs
+            return qs  # type: ignore[no-any-return]
         resident = getattr(user, "resident_profile", None)
         if not resident:
-            return qs.none()
+            return qs.none()  # type: ignore[no-any-return]
         filter_kwargs = {self.resident_lookup: user}
-        return qs.filter(**filter_kwargs).distinct()
+        return qs.filter(**filter_kwargs).distinct()  # type: ignore[no-any-return]
 
 
 class CacheListRetrieveMixin:
