@@ -134,7 +134,7 @@ _logging_formatters: dict[str, dict[str, str]] = {
 
 # Use JSON formatter in production if python-json-logger is installed
 try:
-    from pythonjsonlogger.jsonlogger import JsonFormatter  # type: ignore
+    from pythonjsonlogger.jsonlogger import JsonFormatter
 
     _logging_formatters["json"] = {
         "()": "pythonjsonlogger.jsonlogger.JsonFormatter",

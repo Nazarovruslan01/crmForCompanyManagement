@@ -75,7 +75,7 @@ class TestTelegramWebhookView:
                 "chat": {"id": 123456789, "type": "private"},
                 "date": 1234567890,
                 "text": "/start",
-            }
+            },
         }
         url = reverse("messenger:telegram-webhook")
         response = api_client.post(
@@ -103,7 +103,7 @@ class TestTelegramWebhookView:
                 "chat": {"id": 987654321, "type": "private"},
                 "date": 1234567891,
                 "text": "Hello manager",
-            }
+            },
         }
         url = reverse("messenger:telegram-webhook")
         response = api_client.post(

@@ -23,9 +23,7 @@ class MessengerUser(models.Model):
     )
     telegram_chat_id = models.BigIntegerField(unique=True, null=True, blank=True)
     whatsapp_number = models.CharField(max_length=20, null=True, blank=True)
-    preferred_channel = models.CharField(
-        max_length=20, choices=Channel.choices, default=Channel.TELEGRAM
-    )
+    preferred_channel = models.CharField(max_length=20, choices=Channel.choices, default=Channel.TELEGRAM)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -97,7 +95,8 @@ class BotMessage(models.Model):
     def __str__(self) -> str:
         prefix = "←" if self.direction == self.Direction.INBOUND else "→"
         text_preview = self.text[:50] if self.text else "—"
-        return f"{prefix} {self.message_type.label} | {self.messenger_user} | {text_preview}"
+        type_label = dict(self.MessageType.choices).get(self.message_type, self.message_type)
+        return f"{prefix} {type_label} | {self.messenger_user} | {text_preview}"
 
 
 class RegistrationRequest(models.Model):

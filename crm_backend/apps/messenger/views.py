@@ -4,9 +4,9 @@ import json
 import logging
 
 from django.http import HttpResponse, JsonResponse
+from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 
 from .models import BotMessage, MessengerUser
 
