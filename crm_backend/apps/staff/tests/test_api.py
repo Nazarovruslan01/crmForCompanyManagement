@@ -196,3 +196,24 @@ class TestTaskViewSet:
         )
         response = admin_client.get("/api/v2/staff/tasks/", {"assigned_to": employee.id})
         assert response.status_code == status.HTTP_200_OK
+
+    def test_delete_task(self, admin_client, employee):
+        """Admin can delete a task."""
+        from apps.staff.models import Task
+
+        task = Task.objects.create(title="Delete Task", assigned_to=employee)
+        response = admin_client.delete(f"/api/v2/staff/tasks/{task.id}/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_retrieve_task_404(self, admin_client):
+        """Retrieve non-existent task returns 404."""
+        response = admin_client.get("/api/v2/staff/tasks/99999/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_search_tasks(self, admin_client, employee):
+        """Admin can search tasks by title."""
+        from apps.staff.models import Task
+
+        Task.objects.create(title="Searchable Task", assigned_to=employee)
+        response = admin_client.get("/api/v2/staff/tasks/", {"search": "Searchable"})
+        assert response.status_code == status.HTTP_200_OK
