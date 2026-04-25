@@ -25,6 +25,12 @@ class MessengerUser(models.Model):
     whatsapp_number = models.CharField(max_length=20, null=True, blank=True)
     preferred_channel = models.CharField(max_length=20, choices=Channel.choices, default=Channel.TELEGRAM)
     is_active = models.BooleanField(default=True)
+    # Tracks multi-step bot conversation state (e.g. registration flow)
+    conversation_state = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Temporary state for multi-step bot conversations",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -109,6 +115,11 @@ class RegistrationRequest(models.Model):
         APPROVED = "approved", "Approved"
         REJECTED = "rejected", "Rejected"
 
+    class OwnerRole(models.TextChoices):
+        OWNER = "owner", "Mal Sahibi"
+        TENANT = "tenant", "Kiracı"
+        RESIDENT = "resident", "İkamet Eden"
+
     messenger_user = models.OneToOneField(
         MessengerUser,
         on_delete=models.CASCADE,
@@ -118,6 +129,7 @@ class RegistrationRequest(models.Model):
     phone = models.CharField(max_length=20)
     building_name = models.CharField(max_length=255, help_text="Building name as provided by resident")
     apartment_number = models.CharField(max_length=20)
+    role = models.CharField(max_length=20, choices=OwnerRole.choices, default=OwnerRole.OWNER)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     reviewed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
