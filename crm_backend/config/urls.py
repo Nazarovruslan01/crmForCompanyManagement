@@ -43,6 +43,7 @@ urlpatterns = [
                 path("billing/", include("apps.billing.urls")),
                 path("staff/", include("apps.staff.urls")),
                 path("notifications/", include("apps.notifications.urls")),
+                path("messenger/", include("apps.messenger.urls")),
             ]
         ),
     ),

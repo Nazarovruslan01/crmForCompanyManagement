@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.billing",
     "apps.staff",
     "apps.notifications",
+    "apps.messenger",
 ]
 
 # Custom user model — must be set before first migration
@@ -301,6 +302,9 @@ SMS_SENDER = os.getenv("SMS_SENDER", "CRM")
 # Aidat (Monthly Fee) Defaults
 AIDAT_DEFAULT_BASE_AMOUNT = Decimal("500.00")  # TRY
 AIDAT_DEFAULT_LATE_FEE_RATE = Decimal("0.001")  # 0.1% per day
+
+# Telegram Bot
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 
 # Spectacular (OpenAPI)
 SPECTACULAR_SETTINGS = {
