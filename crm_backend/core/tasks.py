@@ -51,6 +51,12 @@ class BackupResult(TypedDict):
     error: str | None
 
 
+class TelegramReminderResult(TypedDict):
+    sent: int
+    failed: int
+    no_chat_id: int
+
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
 def send_email_async(
     self: Any,
@@ -319,6 +325,127 @@ def send_reminder_notifications(self: Any) -> ReminderResult:
 
     logger.info("Sent %d reminder notifications, %d failed", sent, failed)
     return ReminderResult(notifications_sent=sent, notifications_failed=failed)
+
+
+@shared_task
+def send_telegram_debt_reminders() -> TelegramReminderResult:
+    """
+    Send bulk Telegram debt reminders to residents with overdue aidat charges.
+
+    Steps:
+    1. Auto-mark PENDING charges past due_date as OVERDUE.
+    2. Find all OVERDUE charges.
+    3. Group by resident via primary Ownership.
+    4. Send Telegram message to residents with linked MessengerUser.
+
+    Runs daily via Celery beat at 10 AM.
+    """
+    from apps.billing.models import AidatCharge
+    from apps.messenger.models import MessengerUser
+    from apps.messenger.telegram_client import send_telegram_message
+    from apps.residents.models import Ownership
+
+    today = timezone.now().date()
+    sent = 0
+    failed = 0
+    no_chat_id = 0
+
+    # Step 1: Auto-mark overdue
+    overdue_updated = AidatCharge.objects.filter(
+        status=AidatCharge.Status.PENDING,
+        due_date__lt=today,
+    ).update(status=AidatCharge.Status.OVERDUE)
+    if overdue_updated:
+        logger.info("Auto-marked %d charges as overdue", overdue_updated)
+
+    # Step 2: Find all overdue charges
+    overdue_charges = (
+        AidatCharge.objects.filter(
+            status=AidatCharge.Status.OVERDUE,
+            due_date__lt=today,
+        )
+        .select_related("apartment", "apartment__building")
+        .order_by("due_date")
+    )
+
+    if not overdue_charges.exists():
+        logger.info("No overdue charges found for Telegram reminders")
+        return TelegramReminderResult(sent=0, failed=0, no_chat_id=0)
+
+    # Step 3: Map apartments to residents
+    apartment_ids = [c.apartment_id for c in overdue_charges]
+    ownerships = Ownership.objects.filter(
+        apartment_id__in=apartment_ids,
+        is_primary=True,
+    ).select_related("resident")
+
+    apartment_to_resident: dict[int, Any] = {}
+    for ownership in ownerships:
+        if ownership.resident:
+            apartment_to_resident[ownership.apartment_id] = ownership.resident
+
+    # Group charges by resident
+    resident_charges: dict[int, list[AidatCharge]] = {}
+    for charge in overdue_charges:
+        resident = apartment_to_resident.get(charge.apartment_id)
+        if not resident:
+            continue
+        resident_charges.setdefault(resident.id, []).append(charge)
+
+    # Step 4: Send Telegram messages
+    residents_with_charges = list(resident_charges.keys())
+    messenger_users = {
+        mu.resident_id: mu
+        for mu in MessengerUser.objects.filter(
+            resident_id__in=residents_with_charges,
+            telegram_chat_id__isnull=False,
+            is_active=True,
+        )
+    }
+
+    for resident_id, charges in resident_charges.items():
+        mu = messenger_users.get(resident_id)
+        if not mu:
+            no_chat_id += 1
+            continue
+
+        try:
+            lines = ["📋 Overdue Payment Reminder\n"]
+            total_due = 0
+
+            for charge in charges:
+                days_overdue = (today - charge.due_date).days
+                late_fee = charge.calculate_late_fee(days_overdue)
+                total = charge.base_amount + late_fee
+                total_due += total
+
+                lines.append(
+                    f"\n🏢 {charge.apartment.building.name} - Apt {charge.apartment.apartment_number}\n"
+                    f"Amount: {total:.2f} TRY\n"
+                    f"Due: {charge.due_date.strftime('%d.%m.%Y')}\n"
+                    f"Overdue: {days_overdue} days"
+                )
+
+            lines.append(f"\n💰 Total Due: {total_due:.2f} TRY")
+            lines.append("\nPlease make your payment as soon as possible.")
+
+            message_text = "\n".join(lines)
+            result = send_telegram_message(mu.telegram_chat_id, message_text)
+            if result:
+                sent += 1
+            else:
+                failed += 1
+        except Exception as exc:
+            logger.error("Failed to send Telegram reminder to resident %s: %s", resident_id, exc)
+            failed += 1
+
+    logger.info(
+        "Telegram debt reminders: %d sent, %d failed, %d without chat_id",
+        sent,
+        failed,
+        no_chat_id,
+    )
+    return TelegramReminderResult(sent=sent, failed=failed, no_chat_id=no_chat_id)
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=600)

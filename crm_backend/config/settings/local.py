@@ -35,3 +35,6 @@ CACHES = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+# Telegram Bot token for local tests
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "test-bot-token-for-local-dev-only")

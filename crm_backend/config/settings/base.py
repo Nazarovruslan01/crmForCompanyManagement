@@ -271,6 +271,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.tasks.backup_database",
         "schedule": crontab(hour=2, minute=0),
     },
+    "send-telegram-debt-reminders": {
+        "task": "core.tasks.send_telegram_debt_reminders",
+        "schedule": crontab(hour=10, minute=0),
+    },
 }
 
 # Frontend URL (used for password-reset links)
@@ -313,3 +317,26 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }
+
+# Sentry error tracking
+SENTRY_DSN = os.getenv("SENTRY_DSN", "")
+SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", "local")
+SENTRY_RELEASE = os.getenv("SENTRY_RELEASE", "")
+
+if SENTRY_DSN:
+    import sentry_sdk
+    from sentry_sdk.integrations.celery import CeleryIntegration
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=SENTRY_ENVIRONMENT,
+        release=SENTRY_RELEASE or None,
+        integrations=[
+            DjangoIntegration(),
+            CeleryIntegration(),
+        ],
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.0")),
+        send_default_pii=False,
+    )
