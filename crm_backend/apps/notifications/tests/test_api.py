@@ -155,3 +155,52 @@ class TestNotificationLogViewSet:
         )
         response = admin_client.get("/api/v2/notifications/logs/", {"channel": "email"})
         assert response.status_code == status.HTTP_200_OK
+
+    def test_update_notification_log(self, admin_client, notification_template, resident):
+        """Admin can update a notification log."""
+        from apps.notifications.models import NotificationLog
+
+        log = NotificationLog.objects.create(
+            recipient=resident,
+            template=notification_template,
+            channel="email",
+            status="pending",
+        )
+        payload = {"status": "sent"}
+        response = admin_client.patch(f"/api/v2/notifications/logs/{log.id}/", payload, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        log.refresh_from_db()
+        assert log.status == "sent"
+
+    def test_delete_notification_log(self, admin_client, notification_template, resident):
+        """Admin can delete a notification log."""
+        from apps.notifications.models import NotificationLog
+
+        log = NotificationLog.objects.create(
+            recipient=resident,
+            template=notification_template,
+            channel="email",
+            status="sent",
+        )
+        response = admin_client.delete(f"/api/v2/notifications/logs/{log.id}/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_retrieve_notification_log_404(self, admin_client):
+        """Retrieve non-existent log returns 404."""
+        response = admin_client.get("/api/v2/notifications/logs/99999/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_retrieve_template_404(self, admin_client):
+        """Retrieve non-existent template returns 404."""
+        response = admin_client.get("/api/v2/notifications/templates/99999/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_resident_denied_log_list(self, resident_client):
+        """Resident cannot list notification logs."""
+        response = resident_client.get("/api/v2/notifications/logs/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_worker_denied_log_list(self, staff_client):
+        """Worker cannot list notification logs."""
+        response = staff_client.get("/api/v2/notifications/logs/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN

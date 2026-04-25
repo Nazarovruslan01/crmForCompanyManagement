@@ -166,7 +166,46 @@ class TestPasswordChange:
         )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_password_change_unauthenticated(self, api_client):
+
+class TestTokenRefresh:
+    """Tests for POST /api/v2/auth/token/refresh/"""
+
+    def test_token_refresh_success(self, user):
+        """Valid refresh token returns new access token."""
+        from rest_framework.test import APIClient
+
+        client = APIClient()
+        refresh = RefreshToken.for_user(user)
+        response = client.post(
+            "/api/v2/auth/token/refresh/",
+            {"refresh": str(refresh)},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert "access" in response.data
+
+    def test_token_refresh_invalid_token(self, api_client):
+        """Invalid refresh token returns 401."""
+        response = api_client.post(
+            "/api/v2/auth/token/refresh/",
+            {"refresh": "invalid-token"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_token_refresh_missing_token(self, api_client):
+        """Missing refresh token returns 400."""
+        response = api_client.post("/api/v2/auth/token/refresh/", {}, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+class TestAuth404:
+    """Tests for non-existent auth endpoints."""
+
+    def test_nonexistent_auth_endpoint_returns_404(self, api_client):
+        """Unknown auth path returns 404."""
+        response = api_client.post("/api/v2/accounts/nonexistent/", {})
+        assert response.status_code == status.HTTP_404_NOT_FOUND
         """Change password without auth returns 401."""
         response = api_client.post(
             "/api/v2/accounts/password/change/",

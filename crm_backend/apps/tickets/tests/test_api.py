@@ -314,6 +314,137 @@ class TestTicketViewSetResidentAccess:
         response = staff_client.post("/api/v2/tickets/comments/", payload, format="json")
         assert response.status_code == status.HTTP_201_CREATED
 
+    def test_retrieve_comment(self, admin_client, apartment, admin_user):
+        """Admin can retrieve a specific comment."""
+        ticket = Ticket.objects.create(
+            apartment=apartment,
+            title="Retrieve Comment Test",
+            description="Test",
+            created_by=admin_user,
+        )
+        from apps.tickets.models import TicketComment
+
+        comment = TicketComment.objects.create(ticket=ticket, author=admin_user, content="Hello")
+        response = admin_client.get(f"/api/v2/tickets/comments/{comment.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["content"] == "Hello"
+
+    def test_update_comment(self, admin_client, apartment, admin_user):
+        """Admin can update a comment."""
+        ticket = Ticket.objects.create(
+            apartment=apartment,
+            title="Update Comment Test",
+            description="Test",
+            created_by=admin_user,
+        )
+        from apps.tickets.models import TicketComment
+
+        comment = TicketComment.objects.create(ticket=ticket, author=admin_user, content="Old")
+        payload = {"content": "Updated"}
+        response = admin_client.patch(f"/api/v2/tickets/comments/{comment.id}/", payload, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        comment.refresh_from_db()
+        assert comment.content == "Updated"
+
+    def test_delete_comment(self, admin_client, apartment, admin_user):
+        """Admin can delete a comment."""
+        ticket = Ticket.objects.create(
+            apartment=apartment,
+            title="Delete Comment Test",
+            description="Test",
+            created_by=admin_user,
+        )
+        from apps.tickets.models import TicketComment
+
+        comment = TicketComment.objects.create(ticket=ticket, author=admin_user, content="Bye")
+        response = admin_client.delete(f"/api/v2/tickets/comments/{comment.id}/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_retrieve_comment_404(self, admin_client):
+        """Retrieve non-existent comment returns 404."""
+        response = admin_client.get("/api/v2/tickets/comments/99999/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+class TestTicketAttachmentViewSetFull:
+    """Additional tests for /api/v2/tickets/attachments/ endpoints."""
+
+    def test_retrieve_attachment(self, admin_client, apartment, admin_user):
+        """Admin can retrieve a specific attachment."""
+        ticket = Ticket.objects.create(
+            apartment=apartment,
+            title="Attachment Retrieve",
+            description="Test",
+            created_by=admin_user,
+        )
+        from apps.tickets.models import TicketAttachment
+
+        attachment = TicketAttachment.objects.create(
+            ticket=ticket, file_url="https://example.com/file.pdf", file_name="test.pdf", file_type="document"
+        )
+        response = admin_client.get(f"/api/v2/tickets/attachments/{attachment.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["file_name"] == "test.pdf"
+
+    def test_update_attachment(self, admin_client, apartment, admin_user):
+        """Admin can update an attachment."""
+        ticket = Ticket.objects.create(
+            apartment=apartment,
+            title="Attachment Update",
+            description="Test",
+            created_by=admin_user,
+        )
+        from apps.tickets.models import TicketAttachment
+
+        attachment = TicketAttachment.objects.create(
+            ticket=ticket, file_url="https://example.com/file.pdf", file_name="old.pdf", file_type="document"
+        )
+        payload = {"file_name": "new.pdf"}
+        response = admin_client.patch(f"/api/v2/tickets/attachments/{attachment.id}/", payload, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        attachment.refresh_from_db()
+        assert attachment.file_name == "new.pdf"
+
+    def test_delete_attachment(self, admin_client, apartment, admin_user):
+        """Admin can delete an attachment."""
+        ticket = Ticket.objects.create(
+            apartment=apartment,
+            title="Attachment Delete",
+            description="Test",
+            created_by=admin_user,
+        )
+        from apps.tickets.models import TicketAttachment
+
+        attachment = TicketAttachment.objects.create(
+            ticket=ticket, file_url="https://example.com/file.pdf", file_name="del.pdf", file_type="document"
+        )
+        response = admin_client.delete(f"/api/v2/tickets/attachments/{attachment.id}/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_retrieve_attachment_404(self, admin_client):
+        """Retrieve non-existent attachment returns 404."""
+        response = admin_client.get("/api/v2/tickets/attachments/99999/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+class TestTicketViewSet404:
+    """Tests for 404 cases on tickets."""
+
+    def test_retrieve_ticket_404(self, admin_client):
+        """Retrieve non-existent ticket returns 404."""
+        response = admin_client.get("/api/v2/tickets/tickets/99999/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_update_ticket_404(self, admin_client):
+        """Update non-existent ticket returns 404."""
+        response = admin_client.patch("/api/v2/tickets/tickets/99999/", {"title": "Nope"}, format="json")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_delete_ticket_404(self, admin_client):
+        """Delete non-existent ticket returns 404."""
+        response = admin_client.delete("/api/v2/tickets/tickets/99999/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
 
 class TestTicketCommentViewSetResidentAccess:
     """Tests for resident-scoped comment access."""

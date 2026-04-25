@@ -138,6 +138,51 @@ class TestExtraordinaryChargeViewSet:
         response = admin_client.post("/api/v2/billing/extraordinary-charges/", payload, format="json")
         assert response.status_code == status.HTTP_201_CREATED
 
+    def test_retrieve_extraordinary_charge(self, admin_client, building):
+        """Admin can retrieve a specific extraordinary charge."""
+        from apps.billing.models import ExtraordinaryCharge
+
+        charge = ExtraordinaryCharge.objects.create(
+            building=building,
+            description="Retrieve Test",
+            total_amount=5000,
+        )
+        response = admin_client.get(f"/api/v2/billing/extraordinary-charges/{charge.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["description"] == "Retrieve Test"
+
+    def test_update_extraordinary_charge(self, admin_client, building):
+        """Admin can update an extraordinary charge."""
+        from apps.billing.models import ExtraordinaryCharge
+
+        charge = ExtraordinaryCharge.objects.create(
+            building=building,
+            description="Old",
+            total_amount=5000,
+        )
+        payload = {"description": "Updated"}
+        response = admin_client.patch(f"/api/v2/billing/extraordinary-charges/{charge.id}/", payload, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        charge.refresh_from_db()
+        assert charge.description == "Updated"
+
+    def test_delete_extraordinary_charge(self, admin_client, building):
+        """Admin can delete an extraordinary charge."""
+        from apps.billing.models import ExtraordinaryCharge
+
+        charge = ExtraordinaryCharge.objects.create(
+            building=building,
+            description="Delete",
+            total_amount=5000,
+        )
+        response = admin_client.delete(f"/api/v2/billing/extraordinary-charges/{charge.id}/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_retrieve_extraordinary_charge_404(self, admin_client):
+        """Retrieve non-existent extraordinary charge returns 404."""
+        response = admin_client.get("/api/v2/billing/extraordinary-charges/99999/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
 
 class TestPaymentViewSet:
     """Tests for /api/v2/billing/payments/ endpoints."""
@@ -168,6 +213,75 @@ class TestPaymentViewSet:
         """Admin can filter payments by payment method."""
         response = admin_client.get("/api/v2/billing/payments/", {"payment_method": "eft"})
         assert response.status_code == status.HTTP_200_OK
+
+
+class TestPaymentViewSetFull:
+    """Additional tests for /api/v2/billing/payments/ endpoints."""
+
+    def test_retrieve_payment(self, admin_client, payment):
+        """Admin can retrieve a specific payment."""
+        response = admin_client.get(f"/api/v2/billing/payments/{payment.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert float(response.data["amount"]) == 500
+
+    def test_update_payment(self, admin_client, payment):
+        """Admin can update a payment."""
+        payload = {"amount": 700}
+        response = admin_client.patch(f"/api/v2/billing/payments/{payment.id}/", payload, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        payment.refresh_from_db()
+        assert float(payment.amount) == 700
+
+    def test_delete_payment(self, admin_client, payment):
+        """Admin can delete a payment."""
+        response = admin_client.delete(f"/api/v2/billing/payments/{payment.id}/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_retrieve_payment_404(self, admin_client):
+        """Retrieve non-existent payment returns 404."""
+        response = admin_client.get("/api/v2/billing/payments/99999/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+class TestReceiptViewSetFull:
+    """Additional tests for /api/v2/billing/receipts/ endpoints."""
+
+    def test_retrieve_receipt(self, admin_client, payment):
+        """Admin can retrieve a specific receipt."""
+        from apps.billing.models import Receipt
+
+        receipt = Receipt.objects.create(payment=payment, pdf_url="https://example.com/receipt.pdf")
+        response = admin_client.get(f"/api/v2/billing/receipts/{receipt.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["pdf_url"] == "https://example.com/receipt.pdf"
+
+    def test_update_receipt(self, admin_client, payment):
+        """Admin can update a receipt."""
+        from apps.billing.models import Receipt
+
+        receipt = Receipt.objects.create(payment=payment, pdf_url="https://example.com/old.pdf")
+        payload = {"pdf_url": "https://example.com/new.pdf"}
+        response = admin_client.patch(f"/api/v2/billing/receipts/{receipt.id}/", payload, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        receipt.refresh_from_db()
+        assert receipt.pdf_url == "https://example.com/new.pdf"
+
+    def test_delete_receipt(self, admin_client, payment):
+        """Admin can delete a receipt."""
+        from apps.billing.models import Receipt
+
+        receipt = Receipt.objects.create(payment=payment, pdf_url="https://example.com/del.pdf")
+        response = admin_client.delete(f"/api/v2/billing/receipts/{receipt.id}/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_retrieve_receipt_404(self, admin_client):
+        """Retrieve non-existent receipt returns 404."""
+        response = admin_client.get("/api/v2/billing/receipts/99999/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+class TestPaymentIdempotency:
+    """Tests for payment idempotency."""
 
     def test_create_payment_with_idempotency_key(self, admin_client, apartment):
         """Payment creation accepts Idempotency-Key header."""
