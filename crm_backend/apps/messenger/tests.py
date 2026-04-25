@@ -678,3 +678,330 @@ class TestRegistrationRequestAdmin:
         req.refresh_from_db()
         assert req.status == RegistrationRequest.Status.REJECTED
         assert req.reviewed_by == admin_user
+
+
+class TestTelegramWebhookE2E:
+    """End-to-end tests that exercise the full webhook flow without mocking send_telegram_message."""
+
+    @patch("apps.messenger.telegram_client.requests.post")
+    def test_full_registration_flow_e2e(self, mock_post, api_client):
+        """Complete registration flow from /start to role selection."""
+        mock_post.return_value.json.return_value = {"ok": True}
+        mock_post.return_value.raise_for_status.return_value = None
+
+        chat_id = 999001
+        url = reverse("messenger:telegram-webhook")
+
+        # Step 1: /register starts the flow
+        api_client.post(
+            url,
+            data=json.dumps(
+                {
+                    "update_id": 1,
+                    "message": {
+                        "message_id": 1,
+                        "from": {"id": chat_id, "is_bot": False, "first_name": "E2E"},
+                        "chat": {"id": chat_id, "type": "private"},
+                        "date": 1234567890,
+                        "text": "/register",
+                    },
+                }
+            ),
+            content_type="application/json",
+        )
+
+        mu = MessengerUser.objects.get(telegram_chat_id=chat_id)
+        assert mu.conversation_state.get("step") == "waiting_for_contact"
+
+        # Step 2: Send contact
+        api_client.post(
+            url,
+            data=json.dumps(
+                {
+                    "update_id": 2,
+                    "message": {
+                        "message_id": 2,
+                        "from": {"id": chat_id, "is_bot": False, "first_name": "E2E"},
+                        "chat": {"id": chat_id, "type": "private"},
+                        "date": 1234567891,
+                        "contact": {"phone_number": "+90555999001", "first_name": "E2E"},
+                    },
+                }
+            ),
+            content_type="application/json",
+        )
+        mu.refresh_from_db()
+        assert mu.conversation_state.get("step") == "waiting_for_full_name"
+
+        # Step 3: Send full name
+        api_client.post(
+            url,
+            data=json.dumps(
+                {
+                    "update_id": 3,
+                    "message": {
+                        "message_id": 3,
+                        "from": {"id": chat_id, "is_bot": False, "first_name": "E2E"},
+                        "chat": {"id": chat_id, "type": "private"},
+                        "date": 1234567892,
+                        "text": "E2E Testuser",
+                    },
+                }
+            ),
+            content_type="application/json",
+        )
+        mu.refresh_from_db()
+        assert mu.conversation_state.get("step") == "waiting_for_building"
+
+        # Step 4: Send building name
+        api_client.post(
+            url,
+            data=json.dumps(
+                {
+                    "update_id": 4,
+                    "message": {
+                        "message_id": 4,
+                        "from": {"id": chat_id, "is_bot": False, "first_name": "E2E"},
+                        "chat": {"id": chat_id, "type": "private"},
+                        "date": 1234567893,
+                        "text": "E2E Tower",
+                    },
+                }
+            ),
+            content_type="application/json",
+        )
+        mu.refresh_from_db()
+        assert mu.conversation_state.get("step") == "waiting_for_apartment"
+
+        # Step 5: Send apartment number
+        api_client.post(
+            url,
+            data=json.dumps(
+                {
+                    "update_id": 5,
+                    "message": {
+                        "message_id": 5,
+                        "from": {"id": chat_id, "is_bot": False, "first_name": "E2E"},
+                        "chat": {"id": chat_id, "type": "private"},
+                        "date": 1234567894,
+                        "text": "99A",
+                    },
+                }
+            ),
+            content_type="application/json",
+        )
+        mu.refresh_from_db()
+        assert mu.conversation_state.get("step") == "waiting_for_role"
+
+        # Step 6: Role callback
+        api_client.post(
+            url,
+            data=json.dumps(
+                {
+                    "update_id": 6,
+                    "callback_query": {
+                        "id": "cq6",
+                        "from": {"id": chat_id, "is_bot": False, "first_name": "E2E"},
+                        "message": {"message_id": 6, "chat": {"id": chat_id, "type": "private"}},
+                        "data": "role_owner",
+                    },
+                }
+            ),
+            content_type="application/json",
+        )
+        mu.refresh_from_db()
+        assert mu.conversation_state == {}
+
+        req = RegistrationRequest.objects.get(messenger_user=mu)
+        assert req.full_name == "E2E Testuser"
+        assert req.phone == "+90555999001"
+        assert req.building_name == "E2E Tower"
+        assert req.apartment_number == "99A"
+        assert req.role == RegistrationRequest.OwnerRole.OWNER
+
+    @patch("apps.messenger.telegram_client.requests.post")
+    def test_full_ticket_creation_flow_e2e(self, mock_post, api_client, user):
+        """Complete ticket creation flow through the bot."""
+        from apps.residents.models import Resident
+
+        mock_post.return_value.json.return_value = {"ok": True}
+        mock_post.return_value.raise_for_status.return_value = None
+
+        building = Building.objects.create(
+            name="E2E Building",
+            address="E2E Address",
+            city="Antalya",
+            district="Alanya",
+        )
+        apartment = Apartment.objects.create(building=building, apartment_number="1E")
+        resident = Resident.objects.create(user=user, name="E2E", surname="Resident")
+        Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
+        mu = MessengerUser.objects.create(telegram_chat_id=999002, resident=resident)
+
+        chat_id = 999002
+        url = reverse("messenger:telegram-webhook")
+
+        # Step 1: /ticket command
+        api_client.post(
+            url,
+            data=json.dumps(
+                {
+                    "update_id": 10,
+                    "message": {
+                        "message_id": 10,
+                        "from": {"id": chat_id, "is_bot": False, "first_name": "E2E"},
+                        "chat": {"id": chat_id, "type": "private"},
+                        "date": 1234567890,
+                        "text": "/ticket",
+                    },
+                }
+            ),
+            content_type="application/json",
+        )
+        mu.refresh_from_db()
+        assert mu.conversation_state.get("step") == "waiting_for_ticket_category"
+
+        # Step 2: Category callback
+        api_client.post(
+            url,
+            data=json.dumps(
+                {
+                    "update_id": 11,
+                    "callback_query": {
+                        "id": "cq11",
+                        "from": {"id": chat_id, "is_bot": False, "first_name": "E2E"},
+                        "message": {"message_id": 11, "chat": {"id": chat_id, "type": "private"}},
+                        "data": "ticket_cat_electrical",
+                    },
+                }
+            ),
+            content_type="application/json",
+        )
+        mu.refresh_from_db()
+        assert mu.conversation_state.get("ticket_category") == "electrical"
+        assert mu.conversation_state.get("step") == "waiting_for_ticket_title"
+
+        # Step 3: Title
+        api_client.post(
+            url,
+            data=json.dumps(
+                {
+                    "update_id": 12,
+                    "message": {
+                        "message_id": 12,
+                        "from": {"id": chat_id, "is_bot": False, "first_name": "E2E"},
+                        "chat": {"id": chat_id, "type": "private"},
+                        "date": 1234567891,
+                        "text": "Power outage",
+                    },
+                }
+            ),
+            content_type="application/json",
+        )
+        mu.refresh_from_db()
+        assert mu.conversation_state.get("ticket_title") == "Power outage"
+
+        # Step 4: Description
+        api_client.post(
+            url,
+            data=json.dumps(
+                {
+                    "update_id": 13,
+                    "message": {
+                        "message_id": 13,
+                        "from": {"id": chat_id, "is_bot": False, "first_name": "E2E"},
+                        "chat": {"id": chat_id, "type": "private"},
+                        "date": 1234567892,
+                        "text": "No electricity in apartment since morning",
+                    },
+                }
+            ),
+            content_type="application/json",
+        )
+        mu.refresh_from_db()
+        assert mu.conversation_state.get("step") == "waiting_for_ticket_confirm"
+
+        # Step 5: Confirm
+        api_client.post(
+            url,
+            data=json.dumps(
+                {
+                    "update_id": 14,
+                    "callback_query": {
+                        "id": "cq14",
+                        "from": {"id": chat_id, "is_bot": False, "first_name": "E2E"},
+                        "message": {"message_id": 14, "chat": {"id": chat_id, "type": "private"}},
+                        "data": "ticket_confirm",
+                    },
+                }
+            ),
+            content_type="application/json",
+        )
+        mu.refresh_from_db()
+        assert mu.conversation_state == {}
+
+        from apps.tickets.models import Ticket
+
+        ticket = Ticket.objects.get(apartment=apartment)
+        assert ticket.title == "Power outage"
+        assert ticket.category == "electrical"
+
+    @patch("apps.messenger.telegram_client.requests.post")
+    def test_two_way_chat_message_creates_comment_e2e(self, mock_post, api_client, user):
+        """Sending a text message while linked to a ticket creates a TicketComment."""
+        from apps.residents.models import Resident
+        from apps.tickets.models import Ticket, TicketComment
+
+        mock_post.return_value.json.return_value = {"ok": True}
+        mock_post.return_value.raise_for_status.return_value = None
+
+        building = Building.objects.create(
+            name="E2E Chat",
+            address="Chat Address",
+            city="Antalya",
+            district="Alanya",
+        )
+        apartment = Apartment.objects.create(building=building, apartment_number="5C")
+        resident = Resident.objects.create(user=user, name="Chat", surname="User")
+        Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
+        ticket = Ticket.objects.create(
+            apartment=apartment,
+            title="Existing Ticket",
+            description="Desc",
+            category="general",
+            created_by=user,
+        )
+        mu = MessengerUser.objects.create(
+            telegram_chat_id=999003,
+            resident=resident,
+            conversation_state={"step": "chatting_with_ticket", "ticket_id": str(ticket.id)},
+        )
+
+        chat_id = 999003
+        url = reverse("messenger:telegram-webhook")
+
+        api_client.post(
+            url,
+            data=json.dumps(
+                {
+                    "update_id": 20,
+                    "message": {
+                        "message_id": 20,
+                        "from": {"id": chat_id, "is_bot": False, "first_name": "Chat"},
+                        "chat": {"id": chat_id, "type": "private"},
+                        "date": 1234567890,
+                        "text": "Still waiting for the repair team",
+                    },
+                }
+            ),
+            content_type="application/json",
+        )
+
+        comment = TicketComment.objects.filter(ticket=ticket, content="Still waiting for the repair team").first()
+        assert comment is not None
+
+        bot_msg = BotMessage.objects.filter(
+            messenger_user=mu, ticket=ticket, text="Still waiting for the repair team"
+        ).first()
+        assert bot_msg is not None
+        assert bot_msg.direction == BotMessage.Direction.INBOUND
