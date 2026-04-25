@@ -148,6 +148,47 @@ class TestOwnershipViewSet:
         response = admin_client.get("/api/v2/residents/ownerships/", {"role": "owner"})
         assert response.status_code == status.HTTP_200_OK
 
+    def test_update_account(self, admin_client, personal_account):
+        """Admin can update a personal account."""
+        payload = {"balance": 100}
+        response = admin_client.patch(f"/api/v2/residents/accounts/{personal_account.id}/", payload, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        personal_account.refresh_from_db()
+        assert float(personal_account.balance) == 100
+
+    def test_delete_account(self, admin_client, personal_account):
+        """Admin can delete a personal account."""
+        response = admin_client.delete(f"/api/v2/residents/accounts/{personal_account.id}/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_retrieve_account_404(self, admin_client):
+        """Retrieve non-existent account returns 404."""
+        response = admin_client.get("/api/v2/residents/accounts/99999/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_update_ownership(self, admin_client, ownership):
+        """Admin can update an ownership."""
+        payload = {"role": "tenant"}
+        response = admin_client.patch(f"/api/v2/residents/ownerships/{ownership.id}/", payload, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        ownership.refresh_from_db()
+        assert ownership.role == "tenant"
+
+    def test_delete_ownership(self, admin_client, ownership):
+        """Admin can delete an ownership."""
+        response = admin_client.delete(f"/api/v2/residents/ownerships/{ownership.id}/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    def test_retrieve_ownership_404(self, admin_client):
+        """Retrieve non-existent ownership returns 404."""
+        response = admin_client.get("/api/v2/residents/ownerships/99999/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_retrieve_resident_404(self, admin_client):
+        """Retrieve non-existent resident returns 404."""
+        response = admin_client.get("/api/v2/residents/residents/99999/")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
 
 class TestResidentViewSetResidentAccess:
     """Tests for resident-scoped resident profile access."""
