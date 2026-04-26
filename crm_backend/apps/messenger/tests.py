@@ -1202,3 +1202,33 @@ class TestMessengerConsumer:
         assert response["author_name"] == "Resident"
 
         await communicator.disconnect()
+
+
+class TestMessengerUserValidation:
+    def test_conversation_state_accepts_valid_schema(self):
+        mu = MessengerUser(
+            telegram_chat_id=123456,
+            conversation_state={"step": "waiting_for_contact"},
+        )
+        mu.full_clean()
+        assert mu.conversation_state["step"] == "waiting_for_contact"
+
+    def test_conversation_state_rejects_invalid_step(self):
+        from django.core.exceptions import ValidationError
+
+        mu = MessengerUser(
+            telegram_chat_id=123456,
+            conversation_state={"step": "invalid_step"},
+        )
+        with pytest.raises(ValidationError):
+            mu.full_clean()
+
+    def test_conversation_state_rejects_non_object(self):
+        from django.core.exceptions import ValidationError
+
+        mu = MessengerUser(
+            telegram_chat_id=123456,
+            conversation_state="not-a-dict",
+        )
+        with pytest.raises(ValidationError):
+            mu.full_clean()

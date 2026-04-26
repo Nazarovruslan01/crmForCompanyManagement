@@ -5,7 +5,7 @@ from datetime import date, timedelta
 import pytest
 from rest_framework import status
 
-from apps.billing.models import AidatCharge
+from apps.billing.models import AidatCharge, Payment
 
 pytestmark = pytest.mark.django_db
 
@@ -102,7 +102,7 @@ class TestAidatChargeViewSet:
         )
         response = admin_client.get("/api/v2/billing/aidat-charges/overdue/")
         assert response.status_code == status.HTTP_200_OK
-        assert "count" in response.data
+        assert "results" in response.data
         assert "next" in response.data
         assert "previous" in response.data
 
@@ -202,7 +202,7 @@ class TestPaymentViewSet:
         """Admin can create a payment."""
         payload = {
             "apartment": apartment.id,
-            "charge_type": "aidat",
+            "charge_type": Payment.ChargeType.AIDAT,
             "amount": 600,
             "payment_method": "eft",
         }
@@ -287,7 +287,7 @@ class TestPaymentIdempotency:
         """Payment creation accepts Idempotency-Key header."""
         payload = {
             "apartment": apartment.id,
-            "charge_type": "aidat",
+            "charge_type": Payment.ChargeType.AIDAT,
             "amount": 600,
             "payment_method": "eft",
         }
@@ -306,7 +306,7 @@ class TestPaymentIdempotency:
 
         payload = {
             "apartment": apartment.id,
-            "charge_type": "aidat",
+            "charge_type": Payment.ChargeType.AIDAT,
             "amount": 600,
             "payment_method": "eft",
         }
@@ -408,7 +408,7 @@ class TestPaymentViewSetResidentAccess:
     def test_resident_cannot_create_payment(self, resident_client, apartment):
         payload = {
             "apartment": apartment.id,
-            "charge_type": "aidat",
+            "charge_type": Payment.ChargeType.AIDAT,
             "amount": 600,
             "payment_method": "eft",
         }

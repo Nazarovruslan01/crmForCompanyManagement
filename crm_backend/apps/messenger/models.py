@@ -3,6 +3,8 @@
 from django.conf import settings
 from django.db import models
 
+from core.validators import validate_conversation_state
+
 
 class MessengerUser(models.Model):
     """Links a Resident to external messenger accounts (Telegram, WhatsApp)."""
@@ -30,6 +32,7 @@ class MessengerUser(models.Model):
         default=dict,
         blank=True,
         help_text="Temporary state for multi-step bot conversations",
+        validators=[validate_conversation_state],
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

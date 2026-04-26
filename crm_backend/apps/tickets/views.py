@@ -24,7 +24,7 @@ from .serializers import (
 
 
 class TicketViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Ticket]):
-    queryset = Ticket.objects.select_related("apartment__building", "assigned_worker", "created_by").all()
+    queryset = Ticket.objects.select_related("apartment__building", "assigned_worker__user", "created_by").all()
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrWorkerOrResidentReadOwn]
     filterset_fields = ["status", "priority", "category", "assigned_worker"]

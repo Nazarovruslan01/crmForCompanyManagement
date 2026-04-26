@@ -32,6 +32,7 @@ class NotificationTemplate(models.Model):
     class Meta:
         verbose_name = "Notification Template"
         verbose_name_plural = "Notification Templates"
+        ordering = ["name"]
 
     def __str__(self) -> str:
         return f"{self.name} ({self.get_channel_display()})"

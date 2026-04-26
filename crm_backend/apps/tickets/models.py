@@ -7,6 +7,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
+from core.validators import validate_photo_urls
+
 
 class Ticket(models.Model):
     """Заявка (Talep / Şikayet)"""
@@ -38,7 +40,12 @@ class Ticket(models.Model):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW)
     title = models.CharField(max_length=255)
     description = models.TextField()
-    photo_urls = models.JSONField(default=list, blank=True, help_text="Array of photo URLs")
+    photo_urls = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Array of photo URLs",
+        validators=[validate_photo_urls],
+    )
     assigned_worker = models.ForeignKey(
         "staff.Employee", on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_tickets"
     )
@@ -66,22 +73,27 @@ class Ticket(models.Model):
             models.Index(fields=["status", "updated_at"]),
         ]
 
-    def clean(self) -> None:
+    def clean(self, *, update_fields: set[str] | None = None) -> None:
+        if self._state.adding:
+            super().clean()
+            return
+        if update_fields is not None and "status" not in update_fields:
+            super().clean()
+            return
 
-        if self.pk:
-            # Status transitions: only allow valid state machine moves.
-            # Fetch old status from DB to validate the transition.
-            try:
-                old_status = Ticket.objects.values_list("status", flat=True).get(pk=self.pk)
-            except Ticket.DoesNotExist:
-                old_status = None
+        # Status transitions: only allow valid state machine moves.
+        # Fetch old status from DB to validate the transition.
+        try:
+            old_status = Ticket.objects.values_list("status", flat=True).get(pk=self.pk)
+        except Ticket.DoesNotExist:
+            old_status = None
 
-            if old_status and old_status != self.status:
-                allowed = self._allowed_transitions(old_status)
-                if self.status not in allowed:
-                    raise ValidationError(
-                        f"Invalid status transition: {old_status} → {self.status}. Allowed: {', '.join(allowed)}"
-                    )
+        if old_status and old_status != self.status:
+            allowed = self._allowed_transitions(old_status)
+            if self.status not in allowed:
+                raise ValidationError(
+                    f"Invalid status transition: {old_status} → {self.status}. Allowed: {', '.join(allowed)}"
+                )
 
         super().clean()
 
@@ -109,7 +121,8 @@ class Ticket(models.Model):
         return transitions.get(old_status, [])
 
     def save(self, *args: Any, **kwargs: Any) -> None:
-        self.clean()
+        update_fields = kwargs.get("update_fields")
+        self.clean(update_fields=set(update_fields) if update_fields else None)
         if self.status == self.Status.RESOLVED and not self.resolved_at:
             self.resolved_at = timezone.now()
         super().save(*args, **kwargs)
@@ -124,7 +137,11 @@ class TicketComment(models.Model):
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="comments")
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     content = models.TextField()
-    photo_urls = models.JSONField(default=list, blank=True)
+    photo_urls = models.JSONField(
+        default=list,
+        blank=True,
+        validators=[validate_photo_urls],
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -152,6 +169,7 @@ class TicketAttachment(models.Model):
     class Meta:
         verbose_name = "Ticket Attachment"
         verbose_name_plural = "Ticket Attachments"
+        ordering = ["-uploaded_at"]
 
     def __str__(self) -> str:
         return self.file_name

@@ -294,6 +294,27 @@ class TestGenerateMonthlyInvoices:
         charges = AidatCharge.objects.filter(apartment=active_apt)
         assert charges.exists()
 
+    def test_idempotent_double_run(self):
+        """Running the task twice for the same period is idempotent."""
+        from apps.properties.models import Apartment, Building
+        from core.tasks import generate_monthly_invoices
+
+        building = Building.objects.create(name="Idempotent Test", address="Istanbul")
+        Apartment.objects.create(
+            building=building,
+            apartment_number="101",
+            floor=1,
+            status=Apartment.Status.ACTIVE,
+        )
+
+        first = generate_monthly_invoices()
+        assert first["charges_created"] == 1
+        assert first["charges_failed"] == 0
+
+        second = generate_monthly_invoices()
+        assert second["charges_created"] == 0
+        assert second["charges_failed"] == 0
+
 
 class TestBackupDatabase:
     """Tests for backup_database task."""

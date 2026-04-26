@@ -3,7 +3,7 @@
 from collections.abc import Iterable
 from decimal import Decimal
 
-from django.db import IntegrityError, models, transaction
+from django.db import IntegrityError, connection, models, transaction
 from django.db.models.base import ModelBase
 from django.utils import timezone
 
@@ -92,6 +92,7 @@ class ExtraordinaryCharge(models.Model):
     class Meta:
         verbose_name = "Extraordinary Charge"
         verbose_name_plural = "Extraordinary Charges"
+        ordering = ["-created_at"]
 
     def __str__(self) -> str:
         return f"{self.description} - {self.total_amount} TRY"
@@ -101,6 +102,7 @@ class Payment(models.Model):
     """Платёж (Ödeme)"""
 
     id = models.BigAutoField(primary_key=True)
+    _RECEIPT_LOCK_ID = 42_000_001  # unique advisory lock id for Payment.receipt_number
 
     class PaymentMethod(models.TextChoices):
         EFT = "eft", "EFT/Havale"
@@ -108,8 +110,13 @@ class Payment(models.Model):
         CASH = "cash", "Nakit"
         ONLINE = "online", "Online Ödeme"
 
+    class ChargeType(models.TextChoices):
+        AIDAT = "aidat", "Aidat"
+        EXTRAORDINARY = "extraordinary", "Olağanüstü Aidat"
+        OTHER = "other", "Diğer"
+
     apartment = models.ForeignKey("properties.Apartment", on_delete=models.CASCADE, related_name="payments")
-    charge_type = models.CharField(max_length=20, help_text="aidat, extraordinary, other")
+    charge_type = models.CharField(max_length=20, choices=ChargeType.choices, help_text="Type of charge being paid")
     charge_id = models.UUIDField(null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default="TRY")
@@ -150,7 +157,16 @@ class Payment(models.Model):
         update_fields: Iterable[str] | None = None,
     ) -> None:
         if not self.receipt_number:
-            self._generate_receipt_number()
+            with transaction.atomic():
+                # Serialize receipt number generation across processes on Postgres.
+                # On SQLite this is a no-op; we fall back to IntegrityError retry.
+                if connection.vendor == "postgresql":
+                    with connection.cursor() as cursor:
+                        cursor.execute(
+                            "SELECT pg_advisory_xact_lock(%s)",
+                            [self._RECEIPT_LOCK_ID],
+                        )
+                self._generate_receipt_number()
 
         for attempt in range(3):
             try:
@@ -170,30 +186,29 @@ class Payment(models.Model):
                     raise
 
     def _generate_receipt_number(self) -> None:
-        """Atomically generate the next receipt number for the current month.
+        """Generate the next receipt number for the current month.
 
-        Uses select_for_update() on Postgres to serialize access.
-        Falls back to IntegrityError retry on SQLite.
+        Must be called inside a transaction (and advisory lock on Postgres).
         """
         now = timezone.now()
         prefix = f"{now.year}{now.month:02d}"
 
-        with transaction.atomic():
-            # select_for_update is a no-op on SQLite but works on Postgres.
-            last_payment = (
-                Payment.objects.select_for_update()
-                .filter(receipt_number__startswith=prefix)
-                .order_by("-receipt_number")
-                .first()
-            )
+        # select_for_update is an extra safety net on Postgres.
+        # On SQLite it is a no-op, but IntegrityError retry in save() covers us.
+        last_payment = (
+            Payment.objects.select_for_update()
+            .filter(receipt_number__startswith=prefix)
+            .order_by("-receipt_number")
+            .first()
+        )
 
-            if last_payment and last_payment.receipt_number:
-                last_seq = int(last_payment.receipt_number[6:])
-                new_seq = last_seq + 1
-            else:
-                new_seq = 1
+        if last_payment and last_payment.receipt_number:
+            last_seq = int(last_payment.receipt_number[6:])
+            new_seq = last_seq + 1
+        else:
+            new_seq = 1
 
-            self.receipt_number = f"{prefix}{new_seq:04d}"
+        self.receipt_number = f"{prefix}{new_seq:04d}"
 
 
 class Receipt(models.Model):
@@ -207,6 +222,7 @@ class Receipt(models.Model):
     class Meta:
         verbose_name = "Receipt"
         verbose_name_plural = "Receipts"
+        ordering = ["-generated_at"]
 
     def __str__(self) -> str:
         return f"Makbuz {self.payment.receipt_number}"

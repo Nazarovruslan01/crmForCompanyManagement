@@ -90,13 +90,13 @@ class TestPayment:
         """Receipt numbers within the same month increment sequentially."""
         p1 = Payment.objects.create(
             apartment=apartment,
-            charge_type="aidat",
+            charge_type=Payment.ChargeType.AIDAT,
             amount=100,
             payment_method=Payment.PaymentMethod.CASH,
         )
         p2 = Payment.objects.create(
             apartment=apartment,
-            charge_type="aidat",
+            charge_type=Payment.ChargeType.AIDAT,
             amount=200,
             payment_method=Payment.PaymentMethod.EFT,
         )

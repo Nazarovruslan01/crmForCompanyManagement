@@ -13,6 +13,7 @@ class Department(models.Model):
     class Meta:
         verbose_name = "Department"
         verbose_name_plural = "Departments"
+        ordering = ["name"]
 
     def __str__(self) -> str:
         return self.name
@@ -43,6 +44,7 @@ class Employee(models.Model):
     class Meta:
         verbose_name = "Employee"
         verbose_name_plural = "Employees"
+        ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["department", "is_active"]),
         ]
