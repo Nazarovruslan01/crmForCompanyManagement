@@ -179,9 +179,7 @@ class MessengerConsumer(AsyncJsonWebsocketConsumer):  # type: ignore[misc]
             employee_profile = getattr(user, "employee_profile", None)
             if employee_profile is None:
                 return False
-            return bool(
-                ticket.assigned_worker_id and employee_profile.id == ticket.assigned_worker_id
-            )
+            return bool(ticket.assigned_worker_id and employee_profile.id == ticket.assigned_worker_id)
 
         return await _employee_access()
 
