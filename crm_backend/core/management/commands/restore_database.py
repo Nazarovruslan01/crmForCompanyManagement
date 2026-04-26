@@ -1,19 +1,20 @@
 """Management command to restore PostgreSQL database from a backup file."""
 
 import subprocess
+from typing import Any
 
 from django.conf import settings
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand, CommandError, CommandParser
 
 
 class Command(BaseCommand):
     help = "Restore PostgreSQL database from a pg_dump .sql.gz backup file."
 
-    def add_arguments(self, parser):  # type: ignore[override]
+    def add_arguments(self, parser: CommandParser) -> None:
         parser.add_argument("backup_file", type=str, help="Path to the .sql.gz backup file")
         parser.add_argument("--dry-run", action="store_true", help="Validate file without restoring")
 
-    def handle(self, *args, **options):  # type: ignore[override]
+    def handle(self, *args: Any, **options: Any) -> None:
         backup_file: str = options["backup_file"]
         dry_run: bool = options["dry_run"]
 
