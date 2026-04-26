@@ -18,7 +18,7 @@ class TestEmployeeAdminActions:
         user = User.objects.create_user(username="worker1", password="test")
         emp = Employee.objects.create(user=user, department=dept, role=Employee.Role.MASTER, is_active=False)
 
-        activate_employees(None, None, Employee.objects.filter(pk=emp.pk))  # type: ignore[arg-type]
+        activate_employees(None, None, Employee.all_objects.filter(pk=emp.pk))  # type: ignore[arg-type]
 
         emp.refresh_from_db()
         assert emp.is_active is True

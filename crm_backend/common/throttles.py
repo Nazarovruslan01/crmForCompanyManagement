@@ -66,3 +66,54 @@ class UserWriteThrottle(SimpleRateThrottle):
         if request.user.is_authenticated:
             return f"throttle_user_write:{request.user.pk}"
         return None
+
+
+class TelegramWebhookThrottle(SimpleRateThrottle):
+    """
+    Rate limit Telegram webhook endpoint: 10 per minute per IP.
+    Telegram sends webhook requests; this prevents abuse.
+    """
+
+    scope = "telegram_webhook"
+
+    def get_cache_key(self, request: Request, view: APIView) -> str | None:
+        return f"throttle_telegram_webhook:{self.get_ident(request)}"
+
+    def get_ident(self, request: Request) -> str:
+        """Get client IP from X-Forwarded-For or REMOTE_ADDR."""
+        xff = request.META.get("HTTP_X_FORWARDED_FOR")
+        if xff:
+            return str(xff.split(",")[0].strip())
+        return str(request.META.get("REMOTE_ADDR", "unknown"))
+
+
+class PresignedUploadThrottle(SimpleRateThrottle):
+    """
+    Rate limit presigned upload URL generation: 20 per minute per user.
+    """
+
+    scope = "presigned_upload"
+
+    def get_cache_key(self, request: Request, view: APIView) -> str | None:
+        if request.user.is_authenticated:
+            return f"throttle_presigned_upload:{request.user.pk}"
+        return None
+
+
+class MFAVerifyThrottle(SimpleRateThrottle):
+    """
+    Rate limit MFA verification attempts: 5 per minute per IP + username.
+    """
+
+    scope = "mfa_verify"
+
+    def get_cache_key(self, request: Request, view: APIView) -> str | None:
+        ident = self.get_ident(request)
+        return f"throttle_mfa_verify:{ident}"
+
+    def get_ident(self, request: Request) -> str:
+        """Get client IP from X-Forwarded-For or REMOTE_ADDR."""
+        xff = request.META.get("HTTP_X_FORWARDED_FOR")
+        if xff:
+            return str(xff.split(",")[0].strip())
+        return str(request.META.get("REMOTE_ADDR", "unknown"))

@@ -6,6 +6,10 @@ from rest_framework.routers import DefaultRouter
 from .auth_views import (
     LoginView,
     LogoutView,
+    MFADisableView,
+    MFASetupView,
+    MFAStatusView,
+    MFAVerifyView,
     PasswordChangeView,
     PasswordResetConfirmView,
     PasswordResetRequestView,
@@ -24,4 +28,9 @@ urlpatterns = [
     path("password/reset/", PasswordResetRequestView.as_view(), name="password-reset-request"),
     path("password/reset/<str:token>/", PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
     path("password/change/", PasswordChangeView.as_view(), name="password-change"),
+    # MFA endpoints
+    path("mfa/setup/", MFASetupView.as_view(), name="mfa-setup"),
+    path("mfa/verify/", MFAVerifyView.as_view(), name="mfa-verify"),
+    path("mfa/disable/", MFADisableView.as_view(), name="mfa-disable"),
+    path("mfa/status/", MFAStatusView.as_view(), name="mfa-status"),
 ]

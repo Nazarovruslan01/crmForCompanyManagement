@@ -10,8 +10,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManagerOrWorkerOrResidentReadOwn
-from common.throttles import UserReadThrottle, UserWriteThrottle
+from common.throttles import PresignedUploadThrottle, UserReadThrottle, UserWriteThrottle
 from core.mixins import ResidentQuerySetMixin
 
 from .models import Ticket, TicketAttachment, TicketComment
@@ -23,7 +24,7 @@ from .serializers import (
 )
 
 
-class TicketViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Ticket]):
+class TicketViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Ticket]):
     queryset = Ticket.objects.select_related("apartment__building", "assigned_worker__user", "created_by").all()
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrWorkerOrResidentReadOwn]
@@ -65,7 +66,7 @@ class TicketViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Ticket]):
         return Response(serializer.data)
 
 
-class TicketCommentViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[TicketComment]):
+class TicketCommentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[TicketComment]):
     queryset = TicketComment.objects.select_related("author", "ticket").all()
     serializer_class = TicketCommentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrWorkerOrResidentReadOwn]
@@ -74,7 +75,7 @@ class TicketCommentViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[TicketCo
     resident_lookup = "ticket__apartment__ownerships__resident__user"
 
 
-class TicketAttachmentViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[TicketAttachment]):
+class TicketAttachmentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[TicketAttachment]):
     queryset = TicketAttachment.objects.select_related("uploaded_by", "ticket").all()
     serializer_class = TicketAttachmentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrWorkerOrResidentReadOwn]
@@ -102,7 +103,7 @@ class PresignedUploadView(APIView):
     """
 
     permission_classes = [permissions.IsAuthenticated]
-    throttle_classes = [UserWriteThrottle]
+    throttle_classes = [PresignedUploadThrottle]
 
     # Whitelist of allowed MIME types for ticket attachments.
     ALLOWED_CONTENT_TYPES = {

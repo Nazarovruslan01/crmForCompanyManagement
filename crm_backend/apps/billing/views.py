@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
 from core.mixins import ResidentQuerySetMixin
@@ -18,7 +19,7 @@ from .serializers import (
 )
 
 
-class AidatChargeViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[AidatCharge]):
+class AidatChargeViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[AidatCharge]):
     queryset = AidatCharge.objects.select_related("apartment__building").all()
     serializer_class = AidatChargeSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -40,7 +41,7 @@ class AidatChargeViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[AidatCharg
         return Response(serializer.data)
 
 
-class ExtraordinaryChargeViewSet(viewsets.ModelViewSet[ExtraordinaryCharge]):
+class ExtraordinaryChargeViewSet(AuditLogMixin, viewsets.ModelViewSet[ExtraordinaryCharge]):
     queryset = ExtraordinaryCharge.objects.select_related("building").all()
     serializer_class = ExtraordinaryChargeSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
@@ -50,7 +51,7 @@ class ExtraordinaryChargeViewSet(viewsets.ModelViewSet[ExtraordinaryCharge]):
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
 
-class PaymentViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Payment]):
+class PaymentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Payment]):
     queryset = Payment.objects.select_related("apartment__building").all()
     serializer_class = PaymentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -82,7 +83,7 @@ class PaymentViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Payment]):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class ReceiptViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Receipt]):
+class ReceiptViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Receipt]):
     queryset = Receipt.objects.select_related("payment__apartment__building").all()
     serializer_class = ReceiptSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]

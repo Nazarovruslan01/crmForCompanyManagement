@@ -3,6 +3,8 @@
 from django.conf import settings
 from django.db import models
 
+from core.models import SoftDeleteMixin
+
 
 class Department(models.Model):
     """Department (Departman)"""
@@ -19,7 +21,7 @@ class Department(models.Model):
         return self.name
 
 
-class Employee(models.Model):
+class Employee(SoftDeleteMixin, models.Model):
     """Employee (Çalışan)"""
 
     class Role(models.TextChoices):

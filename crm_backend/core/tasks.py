@@ -1,7 +1,9 @@
 """Celery tasks for async operations."""
 
+import errno
 import logging
 import os
+import shutil
 import subprocess
 from datetime import datetime, timedelta
 from typing import Any, TypedDict
@@ -550,6 +552,19 @@ def backup_database(self: Any) -> BackupResult:
     backup_dir = getattr(settings, "BACKUP_DIR", "/app/backups")
     os.makedirs(backup_dir, exist_ok=True)
 
+    # Pre-check: ensure sufficient disk space before starting pg_dump.
+    # Require at least 100 MB free — compressing usually yields ~10-30%
+    # of raw DB size, but this is a safe floor.
+    MIN_FREE_BYTES = 100 * 1024 * 1024
+    disk_usage = shutil.disk_usage(backup_dir)
+    if disk_usage.free < MIN_FREE_BYTES:
+        return BackupResult(
+            success=False,
+            file_path="",
+            size_bytes=0,
+            error=f"Insufficient disk space: {disk_usage.free // (1024 * 1024)} MB free, {MIN_FREE_BYTES // (1024 * 1024)} MB required",
+        )
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"crm_db_backup_{timestamp}.sql.gz"
     local_path = os.path.join(backup_dir, filename)
@@ -620,6 +635,19 @@ def backup_database(self: Any) -> BackupResult:
 
         return BackupResult(success=True, file_path=local_path, size_bytes=size_bytes, error=None)
 
+    except OSError as exc:
+        if exc.errno == errno.ENOSPC:
+            logger.error("Database backup failed: disk full (ENOSPC)")
+            if os.path.exists(local_path):
+                os.remove(local_path)
+            # Do not retry — disk will still be full.
+            return BackupResult(
+                success=False,
+                file_path="",
+                size_bytes=0,
+                error="Disk full — backup aborted",
+            )
+        raise
     except Exception as exc:
         logger.error("Database backup failed: %s", exc)
         # Clean up partial file

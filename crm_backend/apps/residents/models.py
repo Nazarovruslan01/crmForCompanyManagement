@@ -4,8 +4,10 @@ from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 
+from core.models import SoftDeleteMixin
 
-class Resident(models.Model):
+
+class Resident(SoftDeleteMixin, models.Model):
     """Жилец / Собственник (Kat Mali / Sakli)"""
 
     class OwnerType(models.TextChoices):
@@ -35,6 +37,7 @@ class Resident(models.Model):
     email = models.EmailField(null=True, blank=True)
     is_foreign_owner = models.BooleanField(default=False, verbose_name="Foreign Owner (Yabancı Mal Sahibi)")
     owner_type = models.CharField(max_length=20, choices=OwnerType.choices, default=OwnerType.OWNER)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

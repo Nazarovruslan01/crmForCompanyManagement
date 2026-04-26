@@ -1,0 +1,58 @@
+# Production docker-compose — no source volume mounts, restart policies, healthchecks.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Environment variables that MUST be set in production:
+#   DJANGO_SECRET_KEY, DATABASE_URL, REDIS_URL,
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME (optional),
+#   SENTRY_DSN (optional)
+
+services:
+  web:
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.base
+      DEBUG: "False"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  worker:
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.base
+      DEBUG: "False"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    build:
+      context: .
+      target: production
+    restart: unless-stopped
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.base
+      DEBUG: "False"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy

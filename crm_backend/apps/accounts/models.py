@@ -53,6 +53,16 @@ class User(AbstractUser):
     def is_resident(self) -> bool:
         return self.role == self.Role.RESIDENT
 
+    def delete(self, using: Any = None, keep_parents: bool = False) -> tuple[int, dict[str, int]]:
+        """Soft delete: deactivate instead of hard-deleting."""
+        self.is_active = False
+        self.save(update_fields=["is_active"])
+        return 0, {}
+
+    def hard_delete(self, using: Any = None, keep_parents: bool = False) -> tuple[int, dict[str, int]]:
+        """Permanently remove the user from the database."""
+        return super().delete(using=using, keep_parents=keep_parents)
+
 
 class AuditAction(models.TextChoices):
     """Audit action types."""
@@ -144,3 +154,29 @@ class AuditLog(models.Model):
             ip_address=ip_address,
             user_agent=user_agent or "",
         )
+
+
+class TOTPDevice(models.Model):
+    """TOTP device for MFA (admin/manager accounts only)."""
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="totp_device",
+    )
+    secret_key = models.CharField(max_length=100, help_text="Base32-encoded TOTP secret")
+    confirmed = models.BooleanField(default=False, help_text="Has the user confirmed setup by entering a valid code")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "totp_device"
+        verbose_name = "TOTP Device"
+        verbose_name_plural = "TOTP Devices"
+
+    def __str__(self) -> str:
+        return f"TOTP for {self.user.username}"
+
+    @property
+    def is_active(self) -> bool:
+        return self.confirmed
