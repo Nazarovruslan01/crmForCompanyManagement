@@ -173,16 +173,13 @@ class MessengerConsumer(AsyncJsonWebsocketConsumer):  # type: ignore[misc]
         if ticket.created_by_id and ticket.created_by_id == user.id:
             return True
 
-        # Assigned worker or any employee with a profile
+        # Only the assigned worker can access
         @sync_to_async
         def _employee_access() -> bool:
             employee_profile = getattr(user, "employee_profile", None)
             if employee_profile is None:
                 return False
-            if ticket.assigned_worker_id and employee_profile.id == ticket.assigned_worker_id:
-                return True
-            # Any employee with a profile can view ticket chats
-            return True
+            return bool(ticket.assigned_worker_id and employee_profile.id == ticket.assigned_worker_id)
 
         return await _employee_access()
 
