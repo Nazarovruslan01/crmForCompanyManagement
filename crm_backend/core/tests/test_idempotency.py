@@ -87,3 +87,19 @@ class TestIdempotencyKeyMiddleware:
         # Same key should not return cached error — still hits the view
         r2 = admin_client.post("/api/v2/properties/apartments/", payload, format="json", **headers)
         assert r2.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_cached_response_preserves_headers(self, admin_client, building):
+        """Cached responses must preserve custom headers (e.g. X-Request-ID)."""
+        payload = {"apartment_number": "888", "floor": 1, "area_m2": "50.00", "building": building.pk}
+        headers = {"HTTP_IDEMPOTENCY_KEY": "header-key"}
+
+        first = admin_client.post("/api/v2/properties/apartments/", payload, format="json", **headers)
+        assert first.status_code == status.HTTP_201_CREATED
+        # RequestIdMiddleware adds X-Request-ID to every response
+        assert "X-Request-ID" in first.headers
+
+        second = admin_client.post("/api/v2/properties/apartments/", payload, format="json", **headers)
+        assert second.status_code == status.HTTP_201_CREATED
+        assert second.json()["id"] == first.json()["id"]
+        # Headers must be present in cached response too
+        assert "X-Request-ID" in second.headers

@@ -1,5 +1,6 @@
 """Django middleware for production observability and idempotency."""
 
+import hashlib
 import logging
 import uuid
 from collections.abc import Callable
@@ -84,17 +85,20 @@ class IdempotencyKeyMiddleware:
         # We hash the Authorization header to scope keys per bearer token.
         idempotency_key = str(raw_key)[:128]
         auth_header = request.META.get("HTTP_AUTHORIZATION", "")
-        scope = str(hash(auth_header)) if auth_header else "anon"
+        scope = hashlib.sha256(auth_header.encode()).hexdigest()[:16] if auth_header else "anon"
         cache_key = f"{self.cache_prefix}:{scope}:{idempotency_key}"
 
         # Check for a cached response
         cached = cache.get(cache_key)
         if cached is not None:
-            return HttpResponse(
+            resp = HttpResponse(
                 content=cached["body"],
                 status=cached["status"],
                 content_type=cached["content_type"],
             )
+            for key, value in cached.get("headers", {}).items():
+                resp[key] = value
+            return resp
 
         response = self.get_response(request)
 
@@ -107,6 +111,7 @@ class IdempotencyKeyMiddleware:
                     "body": body.decode("utf-8", errors="replace"),
                     "status": response.status_code,
                     "content_type": response.get("Content-Type", "application/json"),
+                    "headers": dict(response.items()),
                 },
                 timeout=_IDEMPOTENCY_TTL,
             )
