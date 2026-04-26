@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import TYPE_CHECKING, cast
 
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
@@ -13,6 +14,9 @@ from common.throttles import LoginRateThrottle, MFAVerifyThrottle, PasswordReset
 from core.tasks import send_email_async
 
 from .serializers import UserSerializer
+
+if TYPE_CHECKING:
+    from apps.accounts.models import User as UserType
 
 User = get_user_model()
 
@@ -279,7 +283,7 @@ class MFASetupView(APIView):
         },
     )
     def post(self, request: Request) -> Response:
-        user = request.user
+        user = cast("UserType", request.user)
         if user.role not in (User.Role.ADMIN, User.Role.MANAGER):  # type: ignore[attr-defined]
             return Response(
                 {"error": "MFA is only available for admin and manager accounts"},
@@ -410,7 +414,7 @@ class MFADisableView(APIView):
         },
     )
     def post(self, request: Request) -> Response:
-        user = request.user
+        user = cast("UserType", request.user)
         password = request.data.get("password")
 
         if not password:
@@ -444,7 +448,7 @@ class MFAStatusView(APIView):
         },
     )
     def get(self, request: Request) -> Response:
-        user = request.user
+        user = cast("UserType", request.user)
         mfa_enabled = hasattr(user, "totp_device") and user.totp_device.is_active  # type: ignore[attr-defined]
         mfa_required = user.role in (User.Role.ADMIN, User.Role.MANAGER)  # type: ignore[attr-defined]
 
