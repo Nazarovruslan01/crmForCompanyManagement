@@ -258,7 +258,7 @@ def paid_aidat_charge(db, apartment):
 def payment(db, apartment):
     """Create a test payment."""
     return Payment.objects.create(
-        apartment=apartment, charge_type="aidat", amount=500, payment_method=Payment.PaymentMethod.EFT
+        apartment=apartment, charge_type=Payment.ChargeType.AIDAT, amount=500, payment_method=Payment.PaymentMethod.EFT
     )
 
 

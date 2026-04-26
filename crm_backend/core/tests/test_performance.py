@@ -37,10 +37,83 @@ class TestBillingApiNPlus1:
             due_date=date(2026, 3, 15),
             status=AidatCharge.Status.PENDING,
         )
-        # DRF paginated list = COUNT + SELECT with select_related
-        with django_assert_num_queries(2):
+        # Cursor pagination = SELECT only (no COUNT)
+        with django_assert_num_queries(1):
             response = admin_client.get("/api/v2/billing/aidat-charges/")
         assert response.status_code == 200
+
+
+class TestTicketsApiNPlus1:
+    """N+1 tests for tickets endpoints."""
+
+    def test_list_tickets_constant_queries(
+        self, admin_client, apartment, django_assert_num_queries, admin_user, employee
+    ):
+        """Ticket list uses select_related (apartment__building, assigned_worker__user)."""
+        from apps.tickets.models import Ticket
+
+        Ticket.objects.create(
+            apartment=apartment,
+            title="Ticket 1",
+            description="Test",
+            created_by=admin_user,
+            assigned_worker=employee,
+        )
+        Ticket.objects.create(
+            apartment=apartment,
+            title="Ticket 2",
+            description="Test",
+            created_by=admin_user,
+        )
+        with django_assert_num_queries(1):
+            response = admin_client.get("/api/v2/tickets/tickets/")
+        assert response.status_code == 200
+
+
+class TestPaymentsApiNPlus1:
+    """N+1 tests for billing payment endpoints."""
+
+    def test_list_payments_constant_queries(self, admin_client, apartment, django_assert_num_queries):
+        """Payment list uses select_related (apartment__building)."""
+        from apps.billing.models import Payment
+
+        Payment.objects.create(
+            apartment=apartment,
+            charge_type=Payment.ChargeType.AIDAT,
+            amount=100,
+            payment_method=Payment.PaymentMethod.EFT,
+        )
+        Payment.objects.create(
+            apartment=apartment,
+            charge_type=Payment.ChargeType.AIDAT,
+            amount=200,
+            payment_method=Payment.PaymentMethod.CASH,
+        )
+        with django_assert_num_queries(1):
+            response = admin_client.get("/api/v2/billing/payments/")
+        assert response.status_code == 200
+
+
+class TestCursorPagination:
+    """Tests verifying CursorPagination is active on list endpoints."""
+
+    def test_list_returns_cursor_links(self, admin_client, apartment):
+        """Cursor pagination returns next/previous instead of page numbers."""
+        from apps.billing.models import Payment
+
+        Payment.objects.create(
+            apartment=apartment,
+            charge_type=Payment.ChargeType.AIDAT,
+            amount=100,
+            payment_method=Payment.PaymentMethod.EFT,
+        )
+        response = admin_client.get("/api/v2/billing/payments/")
+        assert response.status_code == 200
+        assert "results" in response.data
+        assert "next" in response.data
+        assert "previous" in response.data
+        # Cursor pagination does not include count by default
+        assert "count" not in response.data
 
 
 class TestPropertiesApiNPlus1:
@@ -53,7 +126,7 @@ class TestPropertiesApiNPlus1:
         building = Building.objects.create(name="B1", address="A1")
         Apartment.objects.create(building=building, apartment_number="1", floor=1, status=Apartment.Status.ACTIVE)
         Apartment.objects.create(building=building, apartment_number="2", floor=1, status=Apartment.Status.ACTIVE)
-        # DRF paginated list = COUNT + SELECT with select_related
-        with django_assert_num_queries(2):
+        # Cursor pagination = SELECT only (no COUNT)
+        with django_assert_num_queries(1):
             response = admin_client.get("/api/v2/properties/apartments/")
         assert response.status_code == 200

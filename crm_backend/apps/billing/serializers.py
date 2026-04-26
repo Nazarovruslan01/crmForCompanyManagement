@@ -51,6 +51,7 @@ class ExtraordinaryChargeSerializer(serializers.ModelSerializer):
 
 class PaymentSerializer(serializers.ModelSerializer):
     apartment_display = serializers.CharField(source="apartment.__str__", read_only=True)
+    charge_type_display = serializers.CharField(source="get_charge_type_display", read_only=True)
 
     class Meta:
         model = Payment
@@ -59,6 +60,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             "apartment",
             "apartment_display",
             "charge_type",
+            "charge_type_display",
             "charge_id",
             "amount",
             "currency",

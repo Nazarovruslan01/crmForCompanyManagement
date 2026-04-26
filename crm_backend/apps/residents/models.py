@@ -70,6 +70,7 @@ class PersonalAccount(models.Model):
     class Meta:
         verbose_name = "Personal Account"
         verbose_name_plural = "Personal Accounts"
+        ordering = ["account_number"]
 
     def __str__(self) -> str:
         return f"{self.account_number} - {self.apartment}"
@@ -96,6 +97,7 @@ class Ownership(models.Model):
     class Meta:
         verbose_name = "Ownership"
         verbose_name_plural = "Ownerships"
+        ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(
                 fields=["resident", "apartment", "role"],

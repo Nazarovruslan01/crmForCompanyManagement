@@ -40,6 +40,32 @@ class TestTicket:
         )
         assert len(ticket.photo_urls) == 2
 
+    def test_ticket_photo_urls_rejects_non_array(self, user, apartment):
+        from django.core.exceptions import ValidationError
+
+        ticket = Ticket(
+            apartment=apartment,
+            title="Invalid photos",
+            description="Test",
+            created_by=user,
+            photo_urls="not-a-list",
+        )
+        with pytest.raises(ValidationError):
+            ticket.full_clean()
+
+    def test_ticket_photo_urls_rejects_non_string_items(self, user, apartment):
+        from django.core.exceptions import ValidationError
+
+        ticket = Ticket(
+            apartment=apartment,
+            title="Invalid photos",
+            description="Test",
+            created_by=user,
+            photo_urls=["https://example.com/photo.jpg", 123],
+        )
+        with pytest.raises(ValidationError):
+            ticket.full_clean()
+
     def test_ticket_status_choices(self):
         assert Ticket.Status.NEW == "new"
         assert Ticket.Status.ASSIGNED == "assigned"
@@ -61,6 +87,39 @@ class TestTicket:
         assert Ticket.Priority.HIGH == "high"
         assert Ticket.Priority.URGENT == "urgent"
 
+    def test_clean_skips_select_on_insert(self, user, apartment, django_assert_num_queries):
+        """clean() on a new instance should not perform a status-transition SELECT."""
+        ticket = Ticket(
+            apartment=apartment,
+            title="New",
+            description="Test",
+            created_by=user,
+            status=Ticket.Status.NEW,
+        )
+        with django_assert_num_queries(0):
+            ticket.clean()
+
+    def test_clean_skips_select_when_update_fields_excludes_status(self, user, apartment, django_assert_num_queries):
+        """save(update_fields=['title']) should skip the status-transition SELECT.
+
+        Expected queries:
+        1. pre_save signal (capture old status)
+        2. UPDATE ticket
+        3. post_save signal (look up primary resident)
+        """
+        ticket = Ticket.objects.create(
+            apartment=apartment,
+            title="Old",
+            description="Test",
+            created_by=user,
+            status=Ticket.Status.NEW,
+        )
+        ticket.title = "Updated"
+        with django_assert_num_queries(3):
+            ticket.save(update_fields=["title"])
+        ticket.refresh_from_db()
+        assert ticket.title == "Updated"
+
 
 class TestTicketComment:
     def test_create_comment(self, user, apartment):
@@ -73,6 +132,19 @@ class TestTicketComment:
         ticket = Ticket.objects.create(apartment=apartment, title="Test", description="Test", created_by=user)
         comment = TicketComment.objects.create(ticket=ticket, author=user, content="Short")
         assert "Ticket" in str(comment)
+
+    def test_comment_photo_urls_rejects_non_array(self, user, apartment):
+        from django.core.exceptions import ValidationError
+
+        ticket = Ticket.objects.create(apartment=apartment, title="Test", description="Test", created_by=user)
+        comment = TicketComment(
+            ticket=ticket,
+            author=user,
+            content="Test",
+            photo_urls="not-a-list",
+        )
+        with pytest.raises(ValidationError):
+            comment.full_clean()
 
 
 class TestTicketAttachment:

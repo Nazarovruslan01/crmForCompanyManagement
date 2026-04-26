@@ -10,6 +10,7 @@ import requests
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db import transaction
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
@@ -475,49 +476,60 @@ def generate_monthly_invoices(self: Any) -> InvoiceGenerationResult:
 
     due_date = period_end + timedelta(days=15)
 
-    created = 0
-    failed = 0
-
     apartments = Apartment.objects.filter(
         status=Apartment.Status.ACTIVE,
     ).select_related("building")
 
-    # Pre-check existing charges in a single query instead of N+1 exists()
-    existing_ids = set(
-        AidatCharge.objects.filter(
-            billing_period_start=period_start,
-        ).values_list("apartment_id", flat=True)
-    )
-
-    charges_to_create: list[AidatCharge] = []
-    for apartment in apartments:
-        if apartment.id in existing_ids:
-            continue
-        charges_to_create.append(
-            AidatCharge(
-                apartment=apartment,
+    try:
+        with transaction.atomic():
+            # Snapshot count before creation to compute actual inserts.
+            before_count = AidatCharge.objects.filter(
                 billing_period_start=period_start,
-                billing_period_end=period_end,
-                base_amount=settings.AIDAT_DEFAULT_BASE_AMOUNT,
-                late_fee_rate=settings.AIDAT_DEFAULT_LATE_FEE_RATE,
-                due_date=due_date,
-                status=AidatCharge.Status.PENDING,
-            )
-        )
+            ).count()
 
-    if charges_to_create:
-        try:
-            AidatCharge.objects.bulk_create(
-                charges_to_create,
-                batch_size=500,
+            # Pre-check existing charges inside the transaction to prevent races.
+            existing_ids = set(
+                AidatCharge.objects.filter(
+                    billing_period_start=period_start,
+                ).values_list("apartment_id", flat=True)
             )
-            created = len(charges_to_create)
-        except Exception as exc:
-            logger.error("Failed to bulk create aidat charges: %s", exc)
-            failed = len(charges_to_create)
 
-    logger.info("Generated %d monthly invoices, %d failed", created, failed)
-    return InvoiceGenerationResult(charges_created=created, charges_failed=failed)
+            charges_to_create: list[AidatCharge] = []
+            for apartment in apartments:
+                if apartment.id in existing_ids:
+                    continue
+                charges_to_create.append(
+                    AidatCharge(
+                        apartment=apartment,
+                        billing_period_start=period_start,
+                        billing_period_end=period_end,
+                        base_amount=settings.AIDAT_DEFAULT_BASE_AMOUNT,
+                        late_fee_rate=settings.AIDAT_DEFAULT_LATE_FEE_RATE,
+                        due_date=due_date,
+                        status=AidatCharge.Status.PENDING,
+                    )
+                )
+
+            if charges_to_create:
+                # ignore_conflicts makes the task idempotent — safe to retry or
+                # run concurrently without IntegrityError on the unique constraint.
+                AidatCharge.objects.bulk_create(
+                    charges_to_create,
+                    batch_size=500,
+                    ignore_conflicts=True,
+                )
+
+            after_count = AidatCharge.objects.filter(
+                billing_period_start=period_start,
+            ).count()
+            created = after_count - before_count
+
+    except Exception as exc:
+        logger.error("Failed to generate monthly invoices: %s", exc)
+        return InvoiceGenerationResult(charges_created=0, charges_failed=apartments.count())
+
+    logger.info("Generated %d monthly invoices", created)
+    return InvoiceGenerationResult(charges_created=created, charges_failed=0)
 
 
 @shared_task(bind=True, max_retries=2, default_retry_delay=300)

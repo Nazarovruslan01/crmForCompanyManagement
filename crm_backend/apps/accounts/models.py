@@ -32,6 +32,7 @@ class User(AbstractUser):
         db_table = "auth_user"
         verbose_name = "User"
         verbose_name_plural = "Users"
+        ordering = ["-date_joined"]
 
     def __str__(self) -> str:
         return self.get_full_name() or self.username
