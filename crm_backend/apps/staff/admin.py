@@ -36,6 +36,10 @@ class EmployeeAdmin(admin.ModelAdmin):
     raw_id_fields = ["user", "department"]
     actions = [activate_employees, deactivate_employees]
 
+    def get_queryset(self, request):
+        # Use all_objects so admins can see inactive employees too.
+        return Employee.all_objects.all()
+
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):

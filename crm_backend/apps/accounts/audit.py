@@ -1,10 +1,11 @@
-"""Audit logging middleware and decorators."""
+"""Audit logging middleware, decorators, and DRF mixins."""
 
 import functools
 from collections.abc import Callable
 from typing import Any, TypeVar
 
 from django.contrib.auth import user_logged_in, user_logged_out
+from django.db import models
 from django.dispatch import receiver
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -47,6 +48,77 @@ def audit_action(
         return wrapper  # type: ignore[return-value]
 
     return decorator
+
+
+class AuditLogMixin:
+    """Automatically log create, update, and destroy actions on DRF ModelViewSets.
+
+    Add this mixin to any ModelViewSet to get automatic audit logging.
+    Set ``audit_enabled = False`` on the viewset to opt out.
+    """
+
+    audit_enabled: bool = True
+
+    def perform_create(self, serializer: Any) -> Any:
+        instance = serializer.save()
+        if self.audit_enabled:
+            self._audit_log(
+                AuditAction.CREATE,
+                instance,
+                changes=self._safe_changes(serializer.validated_data),
+            )
+        return instance
+
+    def perform_update(self, serializer: Any) -> Any:
+        instance = serializer.instance
+        old_values: dict[str, Any] = {}
+        if instance is not None:
+            for field in serializer.validated_data:
+                old_values[field] = getattr(instance, field, None)
+
+        instance = serializer.save()
+
+        if self.audit_enabled:
+            changes: dict[str, Any] = {}
+            for field, new_val in serializer.validated_data.items():
+                old_val = old_values.get(field)
+                if old_val != new_val:
+                    changes[field] = {"old": self._serialize_value(old_val), "new": self._serialize_value(new_val)}
+            self._audit_log(AuditAction.UPDATE, instance, changes=changes or None)
+        return instance
+
+    def perform_destroy(self, instance: Any) -> None:
+        if self.audit_enabled:
+            self._audit_log(AuditAction.DELETE, instance)
+        super().perform_destroy(instance)  # type: ignore[misc]
+
+    def _audit_log(self, action: str, instance: Any, changes: dict[str, Any] | None = None) -> None:
+        request: Request = self.request  # type: ignore[attr-defined]
+        AuditLog.log(
+            action=action,
+            user=request.user if request.user.is_authenticated else None,
+            content_object=instance,
+            changes=changes or {},
+            ip_address=_get_client_ip(request),
+            user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
+        )
+
+    @staticmethod
+    def _serialize_value(value: Any) -> Any:
+        """Convert non-JSON-serializable values to primitives."""
+        from decimal import Decimal
+
+        if isinstance(value, Decimal):
+            return float(value)
+        if isinstance(value, models.Model):
+            return str(value)
+        if hasattr(value, "isoformat"):
+            return value.isoformat()
+        return value
+
+    @classmethod
+    def _safe_changes(cls, data: dict[str, Any]) -> dict[str, Any]:
+        return {k: cls._serialize_value(v) for k, v in data.items()}
 
 
 def _get_client_ip(request: Request) -> str | None:

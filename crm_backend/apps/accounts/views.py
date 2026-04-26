@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManager
 from common.throttles import UserReadThrottle, UserWriteThrottle
 
@@ -15,8 +16,8 @@ from .serializers import UserCreateSerializer, UserMeSerializer, UserSerializer
 User = get_user_model()
 
 
-class UserViewSet(viewsets.ModelViewSet[User]):
-    queryset = User.objects.all()
+class UserViewSet(AuditLogMixin, viewsets.ModelViewSet[User]):
+    queryset = User.objects.filter(is_active=True)
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     filterset_fields = ["role", "is_active", "is_staff"]
@@ -33,13 +34,6 @@ class UserViewSet(viewsets.ModelViewSet[User]):
         if self.action == "create":
             return UserCreateSerializer
         return UserSerializer
-
-    def destroy(self, request: Request, *args: object, **kwargs: object) -> Response:
-        """Soft-delete: deactivate instead of hard-delete."""
-        user = self.get_object()
-        user.is_active = False
-        user.save(update_fields=["is_active"])
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class LogoutView(APIView):

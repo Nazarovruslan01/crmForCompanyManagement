@@ -8,6 +8,8 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
+from common.throttles import TelegramWebhookThrottle
+
 from .models import BotMessage, MessengerUser, RegistrationRequest
 
 logger = logging.getLogger(__name__)
@@ -17,6 +19,7 @@ logger = logging.getLogger(__name__)
 class TelegramWebhookView(View):
     """Receive Telegram updates via webhook."""
 
+    throttle_classes = [TelegramWebhookThrottle]
     http_method_names = ["post", "head"]
 
     def post(self, request, *args, **kwargs):

@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
 from core.mixins import ResidentQuerySetMixin
@@ -17,7 +18,7 @@ from .serializers import (
 )
 
 
-class ResidentViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Resident]):
+class ResidentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Resident]):
     queryset = Resident.objects.select_related("user").all()
     serializer_class = ResidentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -28,7 +29,7 @@ class ResidentViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Resident]):
     resident_lookup = "user"
 
 
-class PersonalAccountViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[PersonalAccount]):
+class PersonalAccountViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[PersonalAccount]):
     queryset = PersonalAccount.objects.select_related("apartment__building").all()
     serializer_class = PersonalAccountSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -39,7 +40,7 @@ class PersonalAccountViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Person
     resident_lookup = "apartment__ownerships__resident__user"
 
 
-class OwnershipViewSet(ResidentQuerySetMixin, viewsets.ModelViewSet[Ownership]):
+class OwnershipViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Ownership]):
     queryset = Ownership.objects.select_related("resident", "apartment__building").all()
     serializer_class = OwnershipSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]

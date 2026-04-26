@@ -6,6 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.accounts.audit import AuditLogMixin
 from apps.billing.models import AidatCharge
 from apps.residents.models import Ownership
 from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
@@ -21,7 +22,7 @@ from .serializers import (
 )
 
 
-class BuildingViewSet(CacheListRetrieveMixin, viewsets.ModelViewSet[Building]):
+class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewSet[Building]):
     queryset = Building.objects.all()
     serializer_class = BuildingSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
@@ -77,7 +78,7 @@ class BuildingViewSet(CacheListRetrieveMixin, viewsets.ModelViewSet[Building]):
         )
 
 
-class ApartmentViewSet(CacheListRetrieveMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Apartment]):
+class ApartmentViewSet(AuditLogMixin, CacheListRetrieveMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Apartment]):
     queryset = Apartment.objects.select_related("building").all()
     serializer_class = ApartmentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]

@@ -9,10 +9,7 @@ omit =
     */apps.py
     # Django admin configs - thin wrappers
     */admin.py
-    # API views - would require API integration tests
-    */views.py
-    # Serializers - would require API integration tests
-    */serializers.py
+    # API views and serializers are covered by integration tests (test_api.py)
     # Init files
     */__init__.py
 
