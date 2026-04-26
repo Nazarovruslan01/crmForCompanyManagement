@@ -43,7 +43,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await api.logout();
+    try {
+      await api.logout();
+    } catch {
+      // Server-side token blacklist may fail (network error, server down).
+      // Always clear local state regardless.
+    }
     setUser(null);
   }, []);
 
