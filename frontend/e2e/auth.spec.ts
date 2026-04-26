@@ -1,29 +1,13 @@
 /**
  * E2E tests for authentication UI flows.
  * Tests the browser experience: login form, redirects, logout.
+ *
+ * Test user is seeded by `python manage.py create_test_users` before E2E runs.
  */
 import { test, expect } from '@playwright/test';
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
-const API = `${BACKEND_URL}/api/v2`;
-
-// Unique user per test run to avoid collisions across CI jobs
-const testUsername = `e2e_worker_${Date.now()}`;
-const testPassword = 'E2eTestPass123!';
-
-test.beforeAll(async ({ request }) => {
-  const res = await request.post(`${API}/accounts/users/`, {
-    data: {
-      username: testUsername,
-      email: `${testUsername}@e2e.test`,
-      password: testPassword,
-      role: 'worker',
-    },
-  });
-  if (!res.ok()) {
-    throw new Error(`Failed to create test user: ${res.status()} ${await res.text()}`);
-  }
-});
+const testUsername = 'worker';
+const testPassword = 'worker123!';
 
 test('unauthenticated access to /dashboard redirects to /login', async ({ page }) => {
   await page.goto('/dashboard');

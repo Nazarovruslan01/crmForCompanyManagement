@@ -2,6 +2,9 @@
  * API-level E2E smoke tests.
  * Tests critical backend flows directly: login, token refresh, ticket CRUD.
  * No browser needed — uses Playwright's request fixture.
+ *
+ * Users are seeded by `python manage.py create_test_users` before E2E runs.
+ * Admin credentials: admin / admin123!
  */
 import { test, expect } from '@playwright/test';
 
@@ -10,13 +13,26 @@ const API = `${BACKEND_URL}/api/v2`;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+async function loginAdmin(
+  request: Parameters<Parameters<typeof test>[1]>[0]['request'],
+) {
+  const res = await request.post(`${API}/accounts/login/`, {
+    data: { username: 'admin', password: 'admin123!' },
+  });
+  expect(res.ok(), 'admin login failed').toBeTruthy();
+  const data = (await res.json()) as { access: string; refresh: string };
+  return data.access;
+}
+
 async function createUser(
   request: Parameters<Parameters<typeof test>[1]>[0]['request'],
   role: string,
+  adminToken: string,
 ) {
   const username = `e2e_${role}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const password = 'E2eTestPass123!';
   const res = await request.post(`${API}/accounts/users/`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
     data: { username, email: `${username}@e2e.test`, password, role },
   });
   expect(res.ok(), `create ${role} user failed: ${res.status()}`).toBeTruthy();
@@ -39,7 +55,8 @@ async function login(
 
 test.describe('Login API', () => {
   test('worker login returns full JWT', async ({ request }) => {
-    const { username, password } = await createUser(request, 'worker');
+    const adminToken = await loginAdmin(request);
+    const { username, password } = await createUser(request, 'worker', adminToken);
     const res = await request.post(`${API}/accounts/login/`, {
       data: { username, password },
     });
@@ -67,7 +84,8 @@ test.describe('Login API', () => {
   });
 
   test('token refresh returns new access token', async ({ request }) => {
-    const { username, password } = await createUser(request, 'worker');
+    const adminToken = await loginAdmin(request);
+    const { username, password } = await createUser(request, 'worker', adminToken);
     const { refresh } = await login(request, username, password);
 
     const res = await request.post(`${BACKEND_URL}/api/v2/auth/token/refresh/`, {
@@ -88,9 +106,11 @@ test.describe('Ticket API', () => {
   let workerToken: string;
 
   test.beforeAll(async ({ request }) => {
+    adminToken = await loginAdmin(request);
+
     // Create admin and worker
-    const admin = await createUser(request, 'admin');
-    const worker = await createUser(request, 'worker');
+    const admin = await createUser(request, 'admin', adminToken);
+    const worker = await createUser(request, 'worker', adminToken);
 
     const adminAuth = await login(request, admin.username, admin.password);
     adminToken = adminAuth.access;
