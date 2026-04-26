@@ -20,6 +20,7 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 # Application definition
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -27,6 +28,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # Third party
+    "channels",
     "rest_framework",
     "rest_framework_simplejwt",
     "django_filters",
@@ -240,6 +242,16 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1"),
     }
+}
+
+# Channels (WebSocket)
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")],
+        },
+    },
 }
 
 # Celery
