@@ -43,7 +43,7 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 
 # Static/Media
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.manifest.staticfiles.Storage"
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
 DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 
 # AWS S3 / MinIO / Backblaze B2
