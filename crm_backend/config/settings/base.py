@@ -117,9 +117,6 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
-# Media files
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -333,25 +330,5 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
-# Sentry error tracking
-SENTRY_DSN = os.getenv("SENTRY_DSN", "")
-SENTRY_ENVIRONMENT = os.getenv("SENTRY_ENVIRONMENT", "local")
-SENTRY_RELEASE = os.getenv("SENTRY_RELEASE", "")
-
-if SENTRY_DSN:
-    import sentry_sdk
-    from sentry_sdk.integrations.celery import CeleryIntegration
-    from sentry_sdk.integrations.django import DjangoIntegration
-
-    sentry_sdk.init(
-        dsn=SENTRY_DSN,
-        environment=SENTRY_ENVIRONMENT,
-        release=SENTRY_RELEASE or None,
-        integrations=[
-            DjangoIntegration(),
-            CeleryIntegration(),
-        ],
-        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
-        profiles_sample_rate=float(os.getenv("SENTRY_PROFILES_SAMPLE_RATE", "0.0")),
-        send_default_pii=False,
-    )
+# Sentry is initialized in environment-specific settings (production.py, local.py)
+# to allow per-environment integrations (e.g. RedisIntegration in production only)
