@@ -301,7 +301,7 @@ class TestPaymentIdempotency:
         assert response.data["idempotency_key"] == "test-key-123"
 
     def test_duplicate_idempotency_key_returns_existing(self, admin_client, apartment):
-        """Retry with same Idempotency-Key returns existing payment with 200."""
+        """Retry with same Idempotency-Key returns cached response (no duplicate created)."""
         from apps.billing.models import Payment
 
         payload = {
@@ -320,15 +320,15 @@ class TestPaymentIdempotency:
         assert response1.status_code == status.HTTP_201_CREATED
         payment_id = response1.data["id"]
 
-        # Second request with same key — should return existing
+        # Second request with same key — middleware returns cached 201 response
         response2 = admin_client.post(
             "/api/v2/billing/payments/",
             payload,
             format="json",
             HTTP_IDEMPOTENCY_KEY="dup-key-456",
         )
-        assert response2.status_code == status.HTTP_200_OK
-        assert response2.data["id"] == payment_id
+        assert response2.status_code == status.HTTP_201_CREATED
+        assert response2.json()["id"] == payment_id
         assert Payment.objects.filter(idempotency_key="dup-key-456").count() == 1
 
 
