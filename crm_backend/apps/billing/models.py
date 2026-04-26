@@ -75,6 +75,7 @@ class ExtraordinaryCharge(models.Model):
         COLLECTING = "collecting", "Tahsilatta"
         COLLECTED = "collected", "Tahsil Edildi"
 
+    id = models.BigAutoField(primary_key=True)
     building = models.ForeignKey("properties.Building", on_delete=models.CASCADE, related_name="extraordinary_charges")
     description = models.TextField()
     total_amount = models.DecimalField(max_digits=12, decimal_places=2)
@@ -198,6 +199,7 @@ class Payment(models.Model):
 class Receipt(models.Model):
     """Квитанция PDF (Makbuz)"""
 
+    id = models.BigAutoField(primary_key=True)
     payment = models.OneToOneField(Payment, on_delete=models.CASCADE, related_name="receipt")
     pdf_url = models.URLField(max_length=500)
     generated_at = models.DateTimeField(auto_now_add=True)
