@@ -35,9 +35,7 @@ def _notify_user(user_id: int, event_type: str, data: dict[str, Any]) -> None:
 
 
 @receiver(post_save, sender=Ticket)
-def broadcast_new_ticket(
-    sender: type[Ticket], instance: Ticket, created: bool, **kwargs: Any
-) -> None:
+def broadcast_new_ticket(sender: type[Ticket], instance: Ticket, created: bool, **kwargs: Any) -> None:
     """Notify staff when a new ticket is created."""
     if not created:
         return
@@ -65,9 +63,7 @@ def broadcast_new_ticket(
 
 
 @receiver(post_save, sender=TicketComment)
-def broadcast_new_comment(
-    sender: type[TicketComment], instance: TicketComment, created: bool, **kwargs: Any
-) -> None:
+def broadcast_new_comment(sender: type[TicketComment], instance: TicketComment, created: bool, **kwargs: Any) -> None:
     """Notify ticket participants when a new comment is added."""
     if not created:
         return
@@ -97,16 +93,12 @@ def broadcast_new_comment(
 
 
 @receiver(post_save, sender=Payment)
-def broadcast_payment_update(
-    sender: type[Payment], instance: Payment, created: bool, **kwargs: Any
-) -> None:
+def broadcast_payment_update(sender: type[Payment], instance: Payment, created: bool, **kwargs: Any) -> None:
     """Notify resident and admins when payment status changes."""
     from apps.residents.models import Ownership
 
     try:
-        ownership = Ownership.objects.filter(
-            apartment=instance.apartment, is_primary=True
-        ).first()
+        ownership = Ownership.objects.filter(apartment=instance.apartment, is_primary=True).first()
         if ownership is not None and ownership.resident.user_id:
             _notify_user(
                 ownership.resident.user_id,
