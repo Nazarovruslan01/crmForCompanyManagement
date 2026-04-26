@@ -40,6 +40,7 @@ SECURE_HSTS_PRELOAD = True
 
 # Security headers
 SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 X_FRAME_OPTIONS = "DENY"
 
 # Static/Media
