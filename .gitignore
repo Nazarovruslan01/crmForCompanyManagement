@@ -1,0 +1,19 @@
+# Root .gitignore — covers frontend and repo-wide files.
+# Backend-specific ignores live in crm_backend/.gitignore
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/test-results/
+frontend/playwright-report/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

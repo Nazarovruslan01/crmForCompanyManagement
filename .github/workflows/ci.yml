@@ -397,7 +397,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ─── 5. Security — non-blocking ────────────────────────────────────────────
+  # ─── 6. Security — non-blocking ────────────────────────────────────────────
   security-sast:
     name: Security SAST (bandit)
     runs-on: ubuntu-latest
