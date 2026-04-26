@@ -1,6 +1,6 @@
 import type { AuthResponse } from '../types';
 
-const API_BASE = '/api/v1';
+const API_BASE = '/api/v2';
 
 class ApiClient {
   private accessToken: string | null = null;
