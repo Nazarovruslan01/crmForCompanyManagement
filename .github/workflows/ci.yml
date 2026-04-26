@@ -225,6 +225,8 @@ jobs:
         run: |
           pytest -n auto \
             --cov=apps \
+            --cov=core \
+            --cov=common \
             --cov-report=xml \
             --cov-fail-under=80
       - name: Upload coverage to Codecov
@@ -331,6 +333,7 @@ jobs:
             -ll -iii \
             -x "${{ env.WORKING_DIRECTORY }}/apps/accounts/migrations" \
             -x "${{ env.WORKING_DIRECTORY }}/apps/billing/migrations" \
+            -x "${{ env.WORKING_DIRECTORY }}/apps/messenger/migrations" \
             -x "${{ env.WORKING_DIRECTORY }}/apps/notifications/migrations" \
             -x "${{ env.WORKING_DIRECTORY }}/apps/properties/migrations" \
             -x "${{ env.WORKING_DIRECTORY }}/apps/residents/migrations" \
