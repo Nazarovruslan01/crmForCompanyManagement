@@ -15,7 +15,7 @@ echo "Running migrations..."
 python manage.py migrate --noinput
 
 # Collect static files (only for web, but harmless for worker/beat)
-if [ "$1" = "gunicorn" ]; then
+if [ "$1" = "daphne" ]; then
   echo "Collecting static files..."
   python manage.py collectstatic --noinput --clear
 fi
