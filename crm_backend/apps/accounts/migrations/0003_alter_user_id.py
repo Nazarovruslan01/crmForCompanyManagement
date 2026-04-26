@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('accounts', '0002_auditlog'),
+        ("accounts", "0002_auditlog"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='user',
-            name='id',
+            model_name="user",
+            name="id",
             field=models.BigAutoField(primary_key=True, serialize=False),
         ),
     ]
