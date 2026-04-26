@@ -140,6 +140,31 @@ class TelegramWebhookView(View):
                 "Please complete registration first with /register or use /help for commands.",
             )
 
+    def _broadcast_to_ticket_group(self, ticket_id, text, author_name="Resident"):
+        """Broadcast incoming Telegram message to WebSocket group for real-time CRM sync."""
+        try:
+            from asgiref.sync import async_to_sync
+            from channels.layers import get_channel_layer
+
+            channel_layer = get_channel_layer()
+            if channel_layer is None:
+                return
+
+            async_to_sync(channel_layer.group_send)(
+                f"ticket_{ticket_id}",
+                {
+                    "type": "chat.message",
+                    "direction": "inbound",
+                    "text": text,
+                    "author_id": None,
+                    "author_name": author_name,
+                    "comment_id": None,
+                    "created_at": None,
+                },
+            )
+        except Exception:
+            logger.exception("Failed to broadcast message to ticket group %s", ticket_id)
+
     def _handle_registered_text(self, messenger_user, text):
         from apps.residents.models import Ownership
         from apps.tickets.models import Ticket, TicketComment
@@ -172,6 +197,12 @@ class TelegramWebhookView(View):
                 message_type=BotMessage.MessageType.TEXT,
                 text=text,
                 ticket=ticket,
+            )
+            # Broadcast to WebSocket so managers see it in real time
+            self._broadcast_to_ticket_group(
+                ticket.id,
+                text,
+                author_name=messenger_user.resident.full_name if messenger_user.resident else "Resident",
             )
             send_telegram_message(
                 messenger_user.telegram_chat_id,
@@ -600,6 +631,12 @@ class TelegramWebhookView(View):
             message_type=BotMessage.MessageType.TEXT,
             text=text,
             ticket=ticket,
+        )
+        # Broadcast to WebSocket so managers see the message in real time
+        self._broadcast_to_ticket_group(
+            ticket.id,
+            text,
+            author_name=messenger_user.resident.full_name if messenger_user.resident else "Resident",
         )
         send_telegram_message(
             messenger_user.telegram_chat_id,

@@ -15,6 +15,8 @@ class User(AbstractUser):
     built-in auth features (groups, permissions, etc.) intact.
     """
 
+    id = models.BigAutoField(primary_key=True)
+
     class Role(models.TextChoices):
         ADMIN = "admin", "Yönetici"
         MANAGER = "manager", "Müdür"

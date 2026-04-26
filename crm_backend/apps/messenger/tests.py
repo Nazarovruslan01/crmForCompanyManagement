@@ -582,7 +582,7 @@ class TestTwoWayChat:
                 "id": "cq202",
                 "from": {"id": 200002, "is_bot": False, "first_name": "Test"},
                 "message": {"message_id": 202, "chat": {"id": 200002, "type": "private"}},
-                "data": f"chat_ticket_{ticket.id}",
+                "data": f"chat_ticket_{ticket.id}",  # type: ignore[reportAttributeAccessIssue]
             },
         }
         url = reverse("messenger:telegram-webhook")
@@ -590,7 +590,7 @@ class TestTwoWayChat:
 
         mu.refresh_from_db()
         assert mu.conversation_state.get("step") == "chatting_with_ticket"
-        assert mu.conversation_state.get("ticket_id") == str(ticket.id)
+        assert mu.conversation_state.get("ticket_id") == str(ticket.id)  # type: ignore[reportAttributeAccessIssue]
 
 
 class TestRegistrationRequestAdmin:
@@ -1005,3 +1005,200 @@ class TestTelegramWebhookE2E:
         ).first()
         assert bot_msg is not None
         assert bot_msg.direction == BotMessage.Direction.INBOUND
+
+
+class TestMessengerConsumer:
+    """Tests for MessengerConsumer WebSocket real-time chat."""
+
+    @pytest.fixture
+    def manager_user(self, db):
+        """Create a manager user with staff privileges."""
+        from apps.accounts.models import User
+
+        return User.objects.create_user(
+            username="managerws",
+            email="managerws@example.com",
+            password="testpass123",
+            role=User.Role.MANAGER,
+            is_staff=True,
+        )
+
+    @pytest.fixture
+    def manager_token(self, manager_user):
+        """Generate JWT token for manager user."""
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        refresh = RefreshToken.for_user(manager_user)
+        return str(refresh.access_token)
+
+    @pytest.fixture
+    def ticket_with_resident(self, user, db):
+        """Create a ticket linked to a resident with an apartment."""
+        from apps.properties.models import Apartment, Building
+        from apps.residents.models import Ownership, Resident
+        from apps.tickets.models import Ticket
+
+        building = Building.objects.create(
+            name="WS Tower",
+            address="WS Address",
+            city="Antalya",
+            district="Alanya",
+        )
+        apartment = Apartment.objects.create(building=building, apartment_number="WS1")
+        resident = Resident.objects.create(user=user, name="WS", surname="Resident")
+        Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
+        ticket = Ticket.objects.create(
+            apartment=apartment,
+            title="WS Test Ticket",
+            description="WS Description",
+            category="general",
+            created_by=user,
+        )
+        return ticket
+
+    @pytest.mark.django_db(transaction=True)
+    async def test_connect_with_valid_token_and_permission(self, manager_user, manager_token, ticket_with_resident):
+        """Authenticated manager can connect to ticket WebSocket."""
+        from channels.testing import WebsocketCommunicator
+
+        from config.asgi import application
+
+        communicator = WebsocketCommunicator(
+            application,
+            f"/ws/messenger/tickets/{ticket_with_resident.id}/?token={manager_token}",
+        )
+        connected, subprotocol = await communicator.connect()
+        assert connected is True
+        await communicator.disconnect()
+
+    @pytest.mark.django_db(transaction=True)
+    async def test_connect_without_token(self, ticket_with_resident):
+        """Connection without token is rejected."""
+        from channels.testing import WebsocketCommunicator
+
+        from config.asgi import application
+
+        communicator = WebsocketCommunicator(
+            application,
+            f"/ws/messenger/tickets/{ticket_with_resident.id}/",
+        )
+        connected, subprotocol = await communicator.connect()
+        assert connected is False
+        await communicator.disconnect()
+
+    @pytest.mark.django_db(transaction=True)
+    async def test_connect_with_invalid_token(self, ticket_with_resident):
+        """Connection with invalid token is rejected."""
+        from channels.testing import WebsocketCommunicator
+
+        from config.asgi import application
+
+        communicator = WebsocketCommunicator(
+            application,
+            f"/ws/messenger/tickets/{ticket_with_resident.id}/?token=invalid-token",
+        )
+        connected, subprotocol = await communicator.connect()
+        assert connected is False
+        await communicator.disconnect()
+
+    @pytest.mark.django_db(transaction=True)
+    async def test_connect_without_permission(self, staff_user, ticket_with_resident):
+        """Staff worker without permission on ticket cannot connect."""
+        from channels.testing import WebsocketCommunicator
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        from config.asgi import application
+
+        refresh = RefreshToken.for_user(staff_user)
+        staff_token = str(refresh.access_token)
+
+        communicator = WebsocketCommunicator(
+            application,
+            f"/ws/messenger/tickets/{ticket_with_resident.id}/?token={staff_token}",
+        )
+        connected, subprotocol = await communicator.connect()
+        assert connected is False
+        await communicator.disconnect()
+
+    @pytest.mark.django_db(transaction=True)
+    async def test_send_message_creates_comment_and_broadcasts(
+        self, manager_user, manager_token, ticket_with_resident
+    ):
+        """Manager sends message → TicketComment created → broadcast to group."""
+        from channels.testing import WebsocketCommunicator
+
+        from apps.tickets.models import TicketComment
+        from config.asgi import application
+
+        communicator = WebsocketCommunicator(
+            application,
+            f"/ws/messenger/tickets/{ticket_with_resident.id}/?token={manager_token}",
+        )
+        connected, _ = await communicator.connect()
+        assert connected is True
+
+        # Send message from manager
+        await communicator.send_json_to({"text": "We will fix it tomorrow"})
+
+        # Receive broadcast back
+        response = await communicator.receive_json_from(timeout=2)
+        assert response["type"] == "chat.message"
+        assert response["direction"] == "outbound"
+        assert response["text"] == "We will fix it tomorrow"
+        assert response["author_id"] == manager_user.id
+
+        # Verify TicketComment was created in DB
+        from asgiref.sync import sync_to_async
+
+        @sync_to_async
+        def _check_db():
+            comment = TicketComment.objects.filter(
+                ticket=ticket_with_resident,
+                content="We will fix it tomorrow",
+                author=manager_user,
+            ).first()
+            assert comment is not None
+
+        await _check_db()
+
+        await communicator.disconnect()
+
+    @pytest.mark.django_db(transaction=True)
+    async def test_receive_incoming_message_from_channel_layer(
+        self, manager_user, manager_token, ticket_with_resident
+    ):
+        """Incoming Telegram message broadcast via channel_layer reaches manager."""
+        from channels.layers import get_channel_layer
+        from channels.testing import WebsocketCommunicator
+
+        from config.asgi import application
+
+        channel_layer = get_channel_layer()
+        communicator = WebsocketCommunicator(
+            application,
+            f"/ws/messenger/tickets/{ticket_with_resident.id}/?token={manager_token}",
+        )
+        connected, _ = await communicator.connect()
+        assert connected is True
+
+        # Simulate incoming message from webhook handler
+        await channel_layer.group_send(
+            f"ticket_{ticket_with_resident.id}",
+            {
+                "type": "chat.message",
+                "direction": "inbound",
+                "text": "Hello from resident",
+                "author_id": None,
+                "author_name": "Resident",
+                "comment_id": None,
+                "created_at": None,
+            },
+        )
+
+        response = await communicator.receive_json_from(timeout=2)
+        assert response["type"] == "chat.message"
+        assert response["direction"] == "inbound"
+        assert response["text"] == "Hello from resident"
+        assert response["author_name"] == "Resident"
+
+        await communicator.disconnect()
