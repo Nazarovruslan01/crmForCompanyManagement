@@ -59,6 +59,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.IdempotencyKeyMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
@@ -221,7 +222,7 @@ REST_FRAMEWORK = {
         "mfa_verify": "5/m",
     },
     "DEFAULT_VERSION": "v2",
-    "ALLOWED_VERSIONS": ["v1", "v2"],
+    "ALLOWED_VERSIONS": ["v2"],
     "VERSION_PARAM": "version",
 }
 

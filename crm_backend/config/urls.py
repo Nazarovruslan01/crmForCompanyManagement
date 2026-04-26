@@ -16,22 +16,7 @@ urlpatterns = [
     path("api/ready/", ReadinessCheckView.as_view(), name="readiness"),
     # Prometheus metrics
     path("", include("django_prometheus.urls")),
-    # API v1 (legacy)
-    path(
-        "api/v1/",
-        include(
-            [
-                path("accounts/", include("apps.accounts.urls")),
-                path("properties/", include("apps.properties.urls")),
-                path("residents/", include("apps.residents.urls")),
-                path("tickets/", include("apps.tickets.urls")),
-                path("billing/", include("apps.billing.urls")),
-                path("staff/", include("apps.staff.urls")),
-                path("notifications/", include("apps.notifications.urls")),
-            ]
-        ),
-    ),
-    # API v2 (current)
+    # API v2
     path(
         "api/v2/",
         include(

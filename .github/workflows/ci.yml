@@ -228,7 +228,7 @@ jobs:
             --cov=core \
             --cov=common \
             --cov-report=xml \
-            --cov-fail-under=80
+            --cov-fail-under=90
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
@@ -354,6 +354,9 @@ jobs:
       - name: Apply migrations
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: python manage.py migrate --noinput
+      - name: Seed E2E test users
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: python manage.py create_test_users
       - name: Start Django backend
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
