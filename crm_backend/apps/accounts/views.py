@@ -25,11 +25,6 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet[User]):
     ordering_fields = ["username", "date_joined"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
-    def get_permissions(self) -> list[permissions.BasePermission]:
-        if self.action == "create":
-            return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated(), IsAdminOrManager()]
-
     def get_serializer_class(self) -> type[UserSerializer | UserCreateSerializer]:
         if self.action == "create":
             return UserCreateSerializer

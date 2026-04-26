@@ -22,6 +22,18 @@ class TestUserViewSet:
         response = api_client.get("/api/v2/accounts/users/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
+    def test_create_user_unauthenticated(self, api_client):
+        """Unauthenticated request to create user returns 401."""
+        payload = {
+            "username": "hacker",
+            "email": "hacker@example.com",
+            "password": "TestPass123!",
+            "role": "admin",
+        }
+        response = api_client.post("/api/v2/accounts/users/", payload, format="json")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert not User.objects.filter(username="hacker").exists()
+
     def test_create_user(self, admin_client):
         """Admin can create a new user."""
         payload = {
