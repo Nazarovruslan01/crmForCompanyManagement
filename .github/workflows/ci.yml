@@ -450,7 +450,7 @@ jobs:
       - name: Start Django backend
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
-          uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers 2 > /tmp/django.log 2>&1 &
+          uvicorn config.asgi:application --host 0.0.0.0 --port 8000 > /tmp/django.log 2>&1 &
           sleep 5
           curl -sSf http://localhost:8000/api/health/ || (cat /tmp/django.log && exit 1)
       - name: Generate admin JWT token for load tests
