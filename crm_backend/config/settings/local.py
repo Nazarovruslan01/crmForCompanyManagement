@@ -40,7 +40,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 # We keep rates defined (ViewSets reference them by scope) but set them very high.
 if os.getenv("DISABLE_THROTTLING"):
     REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []  # type: ignore[name-defined]
-    _rates: dict[str, str] = REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]  # type: ignore[name-defined]
+    _rates = REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]  # type: ignore[name-defined]
     REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {k: "999999/min" for k in _rates}  # type: ignore[name-defined]
 
 # Telegram Bot token for local tests
