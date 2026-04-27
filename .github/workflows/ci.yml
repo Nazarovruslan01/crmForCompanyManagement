@@ -481,6 +481,9 @@ jobs:
             --headless \
             --html=loadtest-report.html \
             --csv=loadtest
+      - name: Print Django logs on failure
+        if: failure()
+        run: cat /tmp/django.log || true
       - name: Check load test thresholds
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
