@@ -40,8 +40,17 @@ CORS_ALLOW_ALL_ORIGINS = True
 # We keep rates defined (ViewSets reference them by scope) but set them very high.
 if os.getenv("DISABLE_THROTTLING"):
     REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []  # type: ignore[name-defined]
-    _rates = REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]  # type: ignore[name-defined]
-    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {k: "999999/min" for k in _rates}  # type: ignore[name-defined]
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # type: ignore[name-defined]
+        "anon": "999999/min",
+        "user": "999999/min",
+        "login": "999999/min",
+        "password_reset": "999999/min",
+        "user_read": "999999/min",
+        "user_write": "999999/min",
+        "telegram_webhook": "999999/min",
+        "presigned_upload": "999999/min",
+        "mfa_verify": "999999/min",
+    }
 
 # Telegram Bot token for local tests
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "test-bot-token-for-local-dev-only")
