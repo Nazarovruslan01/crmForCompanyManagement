@@ -71,7 +71,7 @@ class CRMAdminUser(HttpUser):
         self._post(
             "/api/v2/properties/buildings/",
             {
-                "name": f"LoadTest Building {self.user_count}",
+                "name": f"LoadTest Building {id(self)}",
                 "address": "Test Caddesi 1",
                 "city": "Antalya",
                 "district": "Alanya",
