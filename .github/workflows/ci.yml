@@ -469,10 +469,6 @@ jobs:
           print(str(token.access_token))
           ")
           echo "LOCUST_ADMIN_TOKEN=$TOKEN" >> $GITHUB_ENV
-      - name: Verify authenticated endpoint
-        run: |
-          curl -s -H "Authorization: Bearer $LOCUST_ADMIN_TOKEN" -H "Accept: application/json" http://localhost:8000/api/v2/properties/buildings/ 2>&1 | head -c 5000
-          echo ""
       - name: Run Locust load tests
         working-directory: ${{ env.WORKING_DIRECTORY }}
         env:
