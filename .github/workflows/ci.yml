@@ -462,9 +462,27 @@ jobs:
             --spawn-rate=10 \
             --headless \
             --html=loadtest-report.html \
-            --csv=loadtest \
-            --expect-max-response-time=500 \
-            --expect-failure-percent=5.0
+            --csv=loadtest
+      - name: Check load test thresholds
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          # Parse CSV stats and enforce thresholds
+          python -c "
+          import csv, sys
+          with open('loadtest_stats.csv') as f:
+              reader = csv.DictReader(f)
+              for row in reader:
+                  if row['Name'] == 'Aggregated':
+                      p95 = float(row['95%'])
+                      fail_rate = float(row['Failure Count']) / max(float(row['Request Count']), 1) * 100
+                      print(f'p95={p95:.0f}ms, failure_rate={fail_rate:.1f}%')
+                      if p95 > 500:
+                          print('FAIL: p95 response time > 500ms')
+                          sys.exit(1)
+                      if fail_rate > 5:
+                          print('FAIL: failure rate > 5%')
+                          sys.exit(1)
+          "
 
   # ─── 6. Security — non-blocking ────────────────────────────────────────────
   security-sast:
