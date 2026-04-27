@@ -36,5 +36,10 @@ CACHES = {
 
 CORS_ALLOW_ALL_ORIGINS = True
 
+# Disable throttling for load-test / CI runs
+if os.getenv("DISABLE_THROTTLING"):
+    REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []  # type: ignore[name-defined]
+    REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {}     # type: ignore[name-defined]
+
 # Telegram Bot token for local tests
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "test-bot-token-for-local-dev-only")

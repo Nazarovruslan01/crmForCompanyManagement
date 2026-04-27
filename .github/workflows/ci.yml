@@ -406,6 +406,7 @@ jobs:
       DATABASE_URL: postgresql://crm_user:crm_password@localhost:5432/crm_test
       DJANGO_SETTINGS_MODULE: config.settings.local
       REDIS_URL: redis://localhost:6379/0
+      DISABLE_THROTTLING: 1
     services:
       postgres:
         image: postgres:16-alpine
