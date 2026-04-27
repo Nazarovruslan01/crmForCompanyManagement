@@ -32,9 +32,7 @@ class CRMAdminUser(HttpUser):
             self.token = data["access"]
             self.headers = {"Authorization": f"Bearer {self.token}"}
         else:
-            raise RuntimeError(
-                "Admin login failed. Run `python manage.py create_test_users` first."
-            )
+            raise RuntimeError("Admin login failed. Run `python manage.py create_test_users` first.")
 
     def _get(self, url: str) -> None:
         self.client.get(url, headers=self.headers)
@@ -76,13 +74,16 @@ class CRMAdminUser(HttpUser):
 
     @task(1)
     def create_building(self) -> None:
-        self._post("/api/v2/properties/buildings/", {
-            "name": f"LoadTest Building {self.user_count}",
-            "address": "Test Caddesi 1",
-            "city": "Antalya",
-            "district": "Alanya",
-            "management_type": "self_managed",
-        })
+        self._post(
+            "/api/v2/properties/buildings/",
+            {
+                "name": f"LoadTest Building {self.user_count}",
+                "address": "Test Caddesi 1",
+                "city": "Antalya",
+                "district": "Alanya",
+                "management_type": "self_managed",
+            },
+        )
 
 
 class CRMReadOnlyUser(HttpUser):
@@ -101,9 +102,7 @@ class CRMReadOnlyUser(HttpUser):
             self.token = data["access"]
             self.headers = {"Authorization": f"Bearer {self.token}"}
         else:
-            raise RuntimeError(
-                "Admin login failed. Run `python manage.py create_test_users` first."
-            )
+            raise RuntimeError("Admin login failed. Run `python manage.py create_test_users` first.")
 
     @task(10)
     def list_buildings(self) -> None:
