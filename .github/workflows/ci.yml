@@ -450,7 +450,7 @@ jobs:
       - name: Start Django backend
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
-          python manage.py runserver 0.0.0.0:8000 > /tmp/django.log 2>&1 &
+          gunicorn config.wsgi:application -b 0.0.0.0:8000 --access-logfile /tmp/django.log --error-logfile /tmp/django.log &
           sleep 5
           curl -sSf http://localhost:8000/api/health/ || (cat /tmp/django.log && exit 1)
       - name: Generate admin JWT token for load tests
