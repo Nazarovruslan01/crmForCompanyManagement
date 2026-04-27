@@ -2,18 +2,16 @@
 Locust load test for CRM backend.
 
 Usage (local):
-    python manage.py create_test_users
+    export LOCUST_ADMIN_TOKEN=$(python get_admin_token.py)
     locust -f loadtests/locustfile.py --host=http://localhost:8000
-
-Prerequisites:
-    Test users must exist (run `python manage.py create_test_users`).
 """
+
+import os
 
 from locust import HttpUser, between, task
 
-# Admin credentials from create_test_users command
-_ADMIN_USERNAME = "admin"
-_ADMIN_PASSWORD = "admin123!"  # noqa: S105
+# Admin JWT token — generated externally and passed via env var
+_ADMIN_TOKEN = os.getenv("LOCUST_ADMIN_TOKEN", "")
 
 
 class CRMAdminUser(HttpUser):
@@ -22,17 +20,13 @@ class CRMAdminUser(HttpUser):
     wait_time = between(1, 3)
 
     def on_start(self) -> None:
-        """Login and store JWT tokens."""
-        response = self.client.post(
-            "/api/v2/accounts/login/",
-            json={"username": _ADMIN_USERNAME, "password": _ADMIN_PASSWORD},
-        )
-        if response.status_code == 200:
-            data = response.json()
-            self.token = data["access"]
-            self.headers = {"Authorization": f"Bearer {self.token}"}
-        else:
-            raise RuntimeError("Admin login failed. Run `python manage.py create_test_users` first.")
+        """Set auth header from pre-generated token."""
+        if not _ADMIN_TOKEN:
+            raise RuntimeError(
+                "LOCUST_ADMIN_TOKEN env var is required. "
+                "Generate it: python manage.py shell -c \"from rest_framework_simplejwt.tokens import RefreshToken; from django.contrib.auth import get_user_model; u=get_user_model().objects.get(username='admin'); print(RefreshToken.for_user(u).access_token)\""
+            )
+        self.headers = {"Authorization": f"Bearer {_ADMIN_TOKEN}"}
 
     def _get(self, url: str) -> None:
         self.client.get(url, headers=self.headers)
@@ -92,17 +86,10 @@ class CRMReadOnlyUser(HttpUser):
     wait_time = between(2, 5)
 
     def on_start(self) -> None:
-        """Login and store JWT tokens."""
-        response = self.client.post(
-            "/api/v2/accounts/login/",
-            json={"username": _ADMIN_USERNAME, "password": _ADMIN_PASSWORD},
-        )
-        if response.status_code == 200:
-            data = response.json()
-            self.token = data["access"]
-            self.headers = {"Authorization": f"Bearer {self.token}"}
-        else:
-            raise RuntimeError("Admin login failed. Run `python manage.py create_test_users` first.")
+        """Set auth header from pre-generated token."""
+        if not _ADMIN_TOKEN:
+            raise RuntimeError("LOCUST_ADMIN_TOKEN env var is required.")
+        self.headers = {"Authorization": f"Bearer {_ADMIN_TOKEN}"}
 
     @task(10)
     def list_buildings(self) -> None:

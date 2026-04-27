@@ -452,8 +452,25 @@ jobs:
           python manage.py runserver 0.0.0.0:8000 > /tmp/django.log 2>&1 &
           sleep 5
           curl -sSf http://localhost:8000/api/health/ || (cat /tmp/django.log && exit 1)
+      - name: Generate admin JWT token for load tests
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          TOKEN=$(python -c "
+          import os, django
+          os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.local')
+          django.setup()
+          from rest_framework_simplejwt.tokens import RefreshToken
+          from django.contrib.auth import get_user_model
+          User = get_user_model()
+          user = User.objects.get(username='admin')
+          token = RefreshToken.for_user(user)
+          print(str(token.access_token))
+          ")
+          echo "LOCUST_ADMIN_TOKEN=$TOKEN" >> $GITHUB_ENV
       - name: Run Locust load tests
         working-directory: ${{ env.WORKING_DIRECTORY }}
+        env:
+          LOCUST_ADMIN_TOKEN: ${{ env.LOCUST_ADMIN_TOKEN }}
         run: |
           locust -f loadtests/locustfile.py \
             --host=http://localhost:8000 \
