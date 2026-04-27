@@ -454,6 +454,7 @@ jobs:
           sleep 5
           curl -sSf http://localhost:8000/api/health/ || (cat /tmp/django.log && exit 1)
       - name: Generate admin JWT token for load tests
+        id: gen_token
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |
           TOKEN=$(python -c "
@@ -468,6 +469,10 @@ jobs:
           print(str(token.access_token))
           ")
           echo "LOCUST_ADMIN_TOKEN=$TOKEN" >> $GITHUB_ENV
+      - name: Verify authenticated endpoint
+        run: |
+          curl -s -H "Authorization: Bearer $LOCUST_ADMIN_TOKEN" http://localhost:8000/api/v2/properties/buildings/ | head -c 2000
+          echo ""
       - name: Run Locust load tests
         working-directory: ${{ env.WORKING_DIRECTORY }}
         env:
