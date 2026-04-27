@@ -1,57 +1,46 @@
 """
 Locust load test for CRM backend.
 
-Usage:
-    pip install locust
+Usage (local):
+    python manage.py create_test_users
     locust -f loadtests/locustfile.py --host=http://localhost:8000
 
-Creates a test user on startup, then simulates realistic CRM usage patterns.
+Prerequisites:
+    Test users must exist (run `python manage.py create_test_users`).
 """
 
 from locust import HttpUser, between, task
 
-# Test credentials — created by on_start
-_TEST_USERNAME = "loadtest_user"
-_TEST_PASSWORD = "LoadTest123!"  # noqa: S105
+# Admin credentials from create_test_users command
+_ADMIN_USERNAME = "admin"
+_ADMIN_PASSWORD = "admin123!"  # noqa: S105
 
 
-class CRMUser(HttpUser):
-    """Simulates a CRM manager browsing buildings, tickets, and billing."""
+class CRMAdminUser(HttpUser):
+    """Simulates an admin user browsing CRM."""
 
     wait_time = between(1, 3)
 
     def on_start(self) -> None:
         """Login and store JWT tokens."""
-        # Try to create test user (may already exist from previous run)
-        self.client.post(
-            "/api/v2/accounts/users/",
-            json={
-                "username": _TEST_USERNAME,
-                "email": "loadtest@crm.test",
-                "password": _TEST_PASSWORD,
-                "role": "admin",
-            },
-            # Need admin auth to create users — use login endpoint instead
-            # This will fail if user doesn't exist yet; see below
-        )
-
-        # Login
         response = self.client.post(
             "/api/v2/accounts/login/",
-            json={"username": _TEST_USERNAME, "password": _TEST_PASSWORD},
+            json={"username": _ADMIN_USERNAME, "password": _ADMIN_PASSWORD},
         )
         if response.status_code == 200:
             data = response.json()
             self.token = data["access"]
             self.headers = {"Authorization": f"Bearer {self.token}"}
         else:
-            # If login fails, create user via Django management command beforehand:
-            # python manage.py create_test_users
-            self.token = ""
-            self.headers = {}
+            raise RuntimeError(
+                "Admin login failed. Run `python manage.py create_test_users` first."
+            )
 
     def _get(self, url: str) -> None:
         self.client.get(url, headers=self.headers)
+
+    def _post(self, url: str, json_data: dict | None = None) -> None:
+        self.client.post(url, json=json_data or {}, headers=self.headers)
 
     @task(5)
     def list_buildings(self) -> None:
@@ -82,5 +71,44 @@ class CRMUser(HttpUser):
         self._get("/api/v2/accounts/me/")
 
     @task(1)
+    def health_check(self) -> None:
+        self.client.get("/api/health/")
+
+    @task(1)
+    def create_building(self) -> None:
+        self._post("/api/v2/properties/buildings/", {
+            "name": f"LoadTest Building {self.user_count}",
+            "address": "Test Caddesi 1",
+            "city": "Antalya",
+            "district": "Alanya",
+            "management_type": "self_managed",
+        })
+
+
+class CRMReadOnlyUser(HttpUser):
+    """Simulates a read-only user (resident) browsing CRM."""
+
+    wait_time = between(2, 5)
+
+    def on_start(self) -> None:
+        """Login and store JWT tokens."""
+        response = self.client.post(
+            "/api/v2/accounts/login/",
+            json={"username": _ADMIN_USERNAME, "password": _ADMIN_PASSWORD},
+        )
+        if response.status_code == 200:
+            data = response.json()
+            self.token = data["access"]
+            self.headers = {"Authorization": f"Bearer {self.token}"}
+        else:
+            raise RuntimeError(
+                "Admin login failed. Run `python manage.py create_test_users` first."
+            )
+
+    @task(10)
+    def list_buildings(self) -> None:
+        self.client.get("/api/v2/properties/buildings/", headers=self.headers)
+
+    @task(5)
     def health_check(self) -> None:
         self.client.get("/api/health/")

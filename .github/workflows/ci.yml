@@ -397,6 +397,75 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  # ─── 6. Load tests (Locust) ──────────────────────────────────────────────────
+  load-tests:
+    name: Load tests (Locust)
+    runs-on: ubuntu-latest
+    needs: [test]
+    env:
+      DATABASE_URL: postgresql://crm_user:crm_password@localhost:5432/crm_test
+      DJANGO_SETTINGS_MODULE: config.settings.local
+      REDIS_URL: redis://localhost:6379/0
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: crm_test
+          POSTGRES_USER: crm_user
+          POSTGRES_PASSWORD: crm_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U crm_user -d crm_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
+      - name: Install dependencies
+        run: pip install -r ${{ env.WORKING_DIRECTORY }}/requirements/local.txt
+      - name: Create static directory
+        run: mkdir -p ${{ env.WORKING_DIRECTORY }}/static
+      - name: Apply migrations
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: python manage.py migrate --noinput
+      - name: Seed test users
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: python manage.py create_test_users
+      - name: Start Django backend
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          python manage.py runserver 0.0.0.0:8000 > /tmp/django.log 2>&1 &
+          sleep 5
+          curl -sSf http://localhost:8000/api/health/ || (cat /tmp/django.log && exit 1)
+      - name: Run Locust load tests
+        working-directory: ${{ env.WORKING_DIRECTORY }}
+        run: |
+          locust -f loadtests/locustfile.py \
+            --host=http://localhost:8000 \
+            --run-time=30s \
+            --users=50 \
+            --spawn-rate=10 \
+            --headless \
+            --html=loadtest-report.html \
+            --csv=loadtest \
+            --expect-max-response-time=500 \
+            --expect-failure-percent=5.0
+
   # ─── 6. Security — non-blocking ────────────────────────────────────────────
   security-sast:
     name: Security SAST (bandit)
