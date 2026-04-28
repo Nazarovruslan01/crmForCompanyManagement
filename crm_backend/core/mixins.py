@@ -65,6 +65,14 @@ class CacheListRetrieveMixin:
         version = self._cache_version()
         return f"{self.__class__.__name__}:v{version}:{action}:{request.build_absolute_uri()}"
 
+    def _bump_cache_version(self) -> None:
+        """Invalidate all cached list/retrieve entries for this model."""
+        key = self._cache_version_key()
+        try:
+            cache.incr(key)
+        except ValueError:
+            cache.set(key, 2, timeout=None)
+
     def list(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         key = self._cache_key(request, "list")
         cached = cache.get(key)
@@ -81,4 +89,24 @@ class CacheListRetrieveMixin:
             return Response(cached)
         response = super().retrieve(request, *args, **kwargs)  # type: ignore[misc]
         cache.set(key, response.data, self.cache_timeout)
+        return cast(Response, response)
+
+    def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        response = super().create(request, *args, **kwargs)  # type: ignore[misc]
+        self._bump_cache_version()
+        return cast(Response, response)
+
+    def update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        response = super().update(request, *args, **kwargs)  # type: ignore[misc]
+        self._bump_cache_version()
+        return cast(Response, response)
+
+    def partial_update(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        response = super().partial_update(request, *args, **kwargs)  # type: ignore[misc]
+        self._bump_cache_version()
+        return cast(Response, response)
+
+    def destroy(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        response = super().destroy(request, *args, **kwargs)  # type: ignore[misc]
+        self._bump_cache_version()
         return cast(Response, response)

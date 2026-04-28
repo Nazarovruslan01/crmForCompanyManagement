@@ -43,9 +43,15 @@ SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "strict-origin-when-cross-origin"
 X_FRAME_OPTIONS = "DENY"
 
-# Static/Media
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
-DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+# Static/Media — Django 5.2+ STORAGES dict (replaces deprecated STATICFILES_STORAGE / DEFAULT_FILE_STORAGE)
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+    },
+}
 
 # AWS S3 / MinIO / Backblaze B2
 AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
