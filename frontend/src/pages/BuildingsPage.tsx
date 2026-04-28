@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
@@ -45,6 +46,7 @@ const columns: Column<Building>[] = [
 ];
 
 export function BuildingsPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
     useList<Building>(params => api.buildings.list(params), search ? { search } : undefined);
@@ -59,6 +61,7 @@ export function BuildingsPage() {
         error={error}
         keyExtractor={b => b.id}
         emptyText="Нет зданий"
+        onRowClick={b => navigate(`/buildings/${b.id}`)}
       />
       <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
     </PageLayout>

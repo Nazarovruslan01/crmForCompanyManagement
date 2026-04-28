@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage';
 import { DashboardLayout } from './components/DashboardLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { BuildingsPage } from './pages/BuildingsPage';
+import { BuildingDetailPage } from './pages/BuildingDetailPage';
 import { TicketsPage } from './pages/TicketsPage';
 import { TicketDetailPage } from './pages/TicketDetailPage';
 import { ResidentsPage } from './pages/ResidentsPage';
@@ -71,6 +72,7 @@ function AppRoutes() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard"     element={<DashboardPage />} />
         <Route path="buildings"     element={<BuildingsPage />} />
+        <Route path="buildings/:id" element={<BuildingDetailPage />} />
         <Route path="tickets"       element={<TicketsPage />} />
         <Route path="tickets/:id"    element={<TicketDetailPage />} />
         <Route path="residents"     element={<ResidentsPage />} />
