@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { TicketStatusBadge, TicketPriorityBadge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
+import { SearchInput } from '../components/ui/SearchInput';
 import type { Ticket, TicketStatus } from '../types';
 
 const STATUS_TABS: { value: TicketStatus | ''; label: string }[] = [
@@ -71,13 +72,21 @@ const columns: Column<Ticket>[] = [
 
 export function TicketsPage() {
   const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('');
+  const [search, setSearch] = useState('');
 
-  const params = statusFilter ? { status: statusFilter } : undefined;
+  const params = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (statusFilter) p.status = statusFilter;
+    if (search) p.search = search;
+    return Object.keys(p).length ? p : undefined;
+  }, [statusFilter, search]);
+
   const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
     useList<Ticket>(p => api.tickets.list(p), params);
 
   return (
     <PageLayout title="Заявки">
+      <SearchInput placeholder="Поиск по заявке или квартире" onSearch={setSearch} />
       {/* Status tabs */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, flexWrap: 'wrap' }}>
         {STATUS_TABS.map(tab => (

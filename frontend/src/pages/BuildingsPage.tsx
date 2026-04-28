@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
+import { SearchInput } from '../components/ui/SearchInput';
 import type { Building } from '../types';
 
 const mgmtColor = (t: Building['management_type']) =>
@@ -43,11 +45,13 @@ const columns: Column<Building>[] = [
 ];
 
 export function BuildingsPage() {
+  const [search, setSearch] = useState('');
   const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
-    useList<Building>(params => api.buildings.list(params));
+    useList<Building>(params => api.buildings.list(params), search ? { search } : undefined);
 
   return (
     <PageLayout title="Здания">
+      <SearchInput placeholder="Поиск по названию или адресу" onSearch={setSearch} />
       <DataTable
         columns={columns}
         rows={data}

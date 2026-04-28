@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
+import { SearchInput } from '../components/ui/SearchInput';
 import type { Resident } from '../types';
 
 const columns: Column<Resident>[] = [
@@ -45,11 +47,13 @@ const columns: Column<Resident>[] = [
 ];
 
 export function ResidentsPage() {
+  const [search, setSearch] = useState('');
   const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
-    useList<Resident>(p => api.residents.list(p));
+    useList<Resident>(p => api.residents.list(p), search ? { search } : undefined);
 
   return (
     <PageLayout title="Жильцы">
+      <SearchInput placeholder="Поиск по ФИО, ТС или паспорту" onSearch={setSearch} />
       <DataTable
         columns={columns}
         rows={data}

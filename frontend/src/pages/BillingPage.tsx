@@ -5,6 +5,7 @@ import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { AidatStatusBadge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
+import { SearchInput } from '../components/ui/SearchInput';
 import type { AidatCharge, Payment } from '../types';
 
 type Tab = 'aidat' | 'payments';
@@ -90,12 +91,15 @@ const paymentColumns: Column<Payment>[] = [
 
 export function BillingPage() {
   const [tab, setTab] = useState<Tab>('aidat');
+  const [search, setSearch] = useState('');
+  const params = search ? { search } : undefined;
 
-  const aidat = useList<AidatCharge>(p => api.aidatCharges.list(p));
-  const payments = useList<Payment>(p => api.payments.list(p));
+  const aidat = useList<AidatCharge>(p => api.aidatCharges.list(p), params);
+  const payments = useList<Payment>(p => api.payments.list(p), params);
 
   return (
     <PageLayout title="Платежи">
+      <SearchInput placeholder="Поиск по квартире или квитанции" onSearch={setSearch} />
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         <button style={tabStyle(tab === 'aidat')} onClick={() => setTab('aidat')}>
           Айдат (квартплата)

@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
+import { SearchInput } from '../components/ui/SearchInput';
 import type { Employee } from '../types';
 
 const columns: Column<Employee>[] = [
@@ -42,11 +44,13 @@ const columns: Column<Employee>[] = [
 ];
 
 export function StaffPage() {
+  const [search, setSearch] = useState('');
   const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
-    useList<Employee>(p => api.employees.list(p));
+    useList<Employee>(p => api.employees.list(p), search ? { search } : undefined);
 
   return (
     <PageLayout title="Сотрудники">
+      <SearchInput placeholder="Поиск по имени или должности" onSearch={setSearch} />
       <DataTable
         columns={columns}
         rows={data}

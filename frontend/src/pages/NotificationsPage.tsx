@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { Badge, type BadgeColor } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
+import { SearchInput } from '../components/ui/SearchInput';
 import type { NotificationLog } from '../types';
 
 const statusColor: Record<NotificationLog['status'], BadgeColor> = {
@@ -51,11 +53,13 @@ const columns: Column<NotificationLog>[] = [
 ];
 
 export function NotificationsPage() {
+  const [search, setSearch] = useState('');
   const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
-    useList<NotificationLog>(p => api.notificationLogs.list(p));
+    useList<NotificationLog>(p => api.notificationLogs.list(p), search ? { search } : undefined);
 
   return (
     <PageLayout title="Уведомления">
+      <SearchInput placeholder="Поиск по получателю или теме" onSearch={setSearch} />
       <DataTable
         columns={columns}
         rows={data}

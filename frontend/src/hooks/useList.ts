@@ -34,10 +34,16 @@ export function useList<T>(
   const [prevUrl, setPrevUrl] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
 
-  const refetch = useCallback(() => {
-    setParams(initialParams);
+  const refetch = useCallback((newParams?: Record<string, string>) => {
+    setParams(newParams !== undefined ? newParams : initialParams);
     setTick(t => t + 1);
   }, [initialParams]);
+
+  // refetch when initialParams change from outside
+  useEffect(() => {
+    setParams(initialParams);
+    setTick(t => t + 1);
+  }, [JSON.stringify(initialParams)]);
 
   const goNext = useCallback(() => {
     const cursor = extractCursor(nextUrl);
