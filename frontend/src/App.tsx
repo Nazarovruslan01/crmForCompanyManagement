@@ -10,6 +10,7 @@ import { ResidentsPage } from './pages/ResidentsPage';
 import { StaffPage } from './pages/StaffPage';
 import { BillingPage } from './pages/BillingPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -74,28 +75,10 @@ function AppRoutes() {
         <Route path="staff"         element={<StaffPage />} />
         <Route path="billing"       element={<BillingPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
-        <Route path="settings"      element={<SettingsStub />} />
+        <Route path="settings"      element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
-  );
-}
-
-function SettingsStub() {
-  return (
-    <div className="page-wrapper">
-      <div className="page-header"><h1>Настройки</h1></div>
-      <div className="page-content" style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: 300,
-        color: 'var(--color-gray-7)',
-        fontSize: 15,
-      }}>
-        Раздел в разработке
-      </div>
-    </div>
   );
 }
 

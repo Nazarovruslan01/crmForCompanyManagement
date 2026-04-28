@@ -132,6 +132,13 @@ class ApiClient {
     return this.request<User>('/accounts/me/');
   }
 
+  async changePassword(old_password: string, new_password: string): Promise<{ detail: string }> {
+    return this.request<{ detail: string }>('/accounts/password/change/', {
+      method: 'POST',
+      body: JSON.stringify({ old_password, new_password }),
+    });
+  }
+
   // ─── Generic list helper ────────────────────────────────────────────────────
   // Cursor pagination: { next, previous, results }
 
