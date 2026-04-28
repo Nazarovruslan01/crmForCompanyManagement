@@ -29,6 +29,7 @@ urlpatterns = [
                 path("staff/", include("apps.staff.urls")),
                 path("notifications/", include("apps.notifications.urls")),
                 path("messenger/", include("apps.messenger.urls")),
+                path("documents/", include("apps.documents.urls")),
             ]
         ),
     ),
