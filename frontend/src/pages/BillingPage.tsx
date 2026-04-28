@@ -4,6 +4,7 @@ import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { AidatStatusBadge } from '../components/ui/Badge';
+import { Pagination } from '../components/ui/Pagination';
 import type { AidatCharge, Payment } from '../types';
 
 type Tab = 'aidat' | 'payments';
@@ -105,23 +106,39 @@ export function BillingPage() {
       </div>
 
       {tab === 'aidat' ? (
-        <DataTable
-          columns={aidatColumns}
-          rows={aidat.data}
-          loading={aidat.loading}
-          error={aidat.error}
-          keyExtractor={a => a.id}
-          emptyText="Нет начислений"
-        />
+        <>
+          <DataTable
+            columns={aidatColumns}
+            rows={aidat.data}
+            loading={aidat.loading}
+            error={aidat.error}
+            keyExtractor={a => a.id}
+            emptyText="Нет начислений"
+          />
+          <Pagination
+            hasPrevious={aidat.hasPrevious}
+            hasNext={aidat.hasNext}
+            onPrevious={aidat.goPrevious}
+            onNext={aidat.goNext}
+          />
+        </>
       ) : (
-        <DataTable
-          columns={paymentColumns}
-          rows={payments.data}
-          loading={payments.loading}
-          error={payments.error}
-          keyExtractor={p => p.id}
-          emptyText="Нет платежей"
-        />
+        <>
+          <DataTable
+            columns={paymentColumns}
+            rows={payments.data}
+            loading={payments.loading}
+            error={payments.error}
+            keyExtractor={p => p.id}
+            emptyText="Нет платежей"
+          />
+          <Pagination
+            hasPrevious={payments.hasPrevious}
+            hasNext={payments.hasNext}
+            onPrevious={payments.goPrevious}
+            onNext={payments.goNext}
+          />
+        </>
       )}
     </PageLayout>
   );

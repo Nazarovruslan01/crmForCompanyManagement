@@ -3,6 +3,7 @@ import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
+import { Pagination } from '../components/ui/Pagination';
 import type { Resident } from '../types';
 
 const columns: Column<Resident>[] = [
@@ -44,7 +45,8 @@ const columns: Column<Resident>[] = [
 ];
 
 export function ResidentsPage() {
-  const { data, loading, error } = useList<Resident>(p => api.residents.list(p));
+  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
+    useList<Resident>(p => api.residents.list(p));
 
   return (
     <PageLayout title="Жильцы">
@@ -56,6 +58,7 @@ export function ResidentsPage() {
         keyExtractor={r => r.id}
         emptyText="Нет жильцов"
       />
+      <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
     </PageLayout>
   );
 }

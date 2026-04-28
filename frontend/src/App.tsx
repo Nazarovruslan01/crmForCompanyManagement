@@ -10,6 +10,7 @@ import { ResidentsPage } from './pages/ResidentsPage';
 import { StaffPage } from './pages/StaffPage';
 import { BillingPage } from './pages/BillingPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -102,7 +103,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <ErrorBoundary>
+          <AppRoutes />
+        </ErrorBoundary>
       </AuthProvider>
     </BrowserRouter>
   );

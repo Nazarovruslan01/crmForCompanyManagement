@@ -3,6 +3,7 @@ import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
+import { Pagination } from '../components/ui/Pagination';
 import type { Employee } from '../types';
 
 const columns: Column<Employee>[] = [
@@ -41,7 +42,8 @@ const columns: Column<Employee>[] = [
 ];
 
 export function StaffPage() {
-  const { data, loading, error } = useList<Employee>(p => api.employees.list(p));
+  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
+    useList<Employee>(p => api.employees.list(p));
 
   return (
     <PageLayout title="Сотрудники">
@@ -53,6 +55,7 @@ export function StaffPage() {
         keyExtractor={e => e.id}
         emptyText="Нет сотрудников"
       />
+      <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
     </PageLayout>
   );
 }

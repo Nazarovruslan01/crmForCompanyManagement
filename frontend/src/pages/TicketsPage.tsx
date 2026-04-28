@@ -4,6 +4,7 @@ import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { TicketStatusBadge, TicketPriorityBadge } from '../components/ui/Badge';
+import { Pagination } from '../components/ui/Pagination';
 import type { Ticket, TicketStatus } from '../types';
 
 const STATUS_TABS: { value: TicketStatus | ''; label: string }[] = [
@@ -72,7 +73,8 @@ export function TicketsPage() {
   const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('');
 
   const params = statusFilter ? { status: statusFilter } : undefined;
-  const { data, loading, error } = useList<Ticket>(p => api.tickets.list(p), params);
+  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
+    useList<Ticket>(p => api.tickets.list(p), params);
 
   return (
     <PageLayout title="Заявки">
@@ -97,6 +99,7 @@ export function TicketsPage() {
         keyExtractor={t => t.id}
         emptyText="Нет заявок"
       />
+      <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
     </PageLayout>
   );
 }

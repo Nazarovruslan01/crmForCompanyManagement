@@ -3,6 +3,7 @@ import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
+import { Pagination } from '../components/ui/Pagination';
 import type { Building } from '../types';
 
 const mgmtColor = (t: Building['management_type']) =>
@@ -42,7 +43,8 @@ const columns: Column<Building>[] = [
 ];
 
 export function BuildingsPage() {
-  const { data, loading, error } = useList<Building>(params => api.buildings.list(params));
+  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
+    useList<Building>(params => api.buildings.list(params));
 
   return (
     <PageLayout title="Здания">
@@ -54,6 +56,7 @@ export function BuildingsPage() {
         keyExtractor={b => b.id}
         emptyText="Нет зданий"
       />
+      <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
     </PageLayout>
   );
 }

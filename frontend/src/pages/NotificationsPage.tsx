@@ -3,6 +3,7 @@ import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { Badge, type BadgeColor } from '../components/ui/Badge';
+import { Pagination } from '../components/ui/Pagination';
 import type { NotificationLog } from '../types';
 
 const statusColor: Record<NotificationLog['status'], BadgeColor> = {
@@ -50,7 +51,8 @@ const columns: Column<NotificationLog>[] = [
 ];
 
 export function NotificationsPage() {
-  const { data, loading, error } = useList<NotificationLog>(p => api.notificationLogs.list(p));
+  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
+    useList<NotificationLog>(p => api.notificationLogs.list(p));
 
   return (
     <PageLayout title="Уведомления">
@@ -62,6 +64,7 @@ export function NotificationsPage() {
         keyExtractor={n => n.id}
         emptyText="Нет уведомлений"
       />
+      <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
     </PageLayout>
   );
 }
