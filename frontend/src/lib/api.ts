@@ -1,4 +1,21 @@
-import type { AuthResponse } from '../types';
+import type {
+  AuthResponse,
+  PaginatedResponse,
+  Building,
+  Apartment,
+  Resident,
+  Ownership,
+  PersonalAccount,
+  Ticket,
+  TicketComment,
+  AidatCharge,
+  Payment,
+  Department,
+  Employee,
+  Task,
+  NotificationLog,
+  User,
+} from '../types';
 
 const API_BASE = '/api/v2';
 
@@ -27,65 +44,57 @@ class ApiClient {
     return this.accessToken;
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private getRefreshToken(): string | null {
+    if (!this.refreshToken) {
+      this.refreshToken = localStorage.getItem('refresh_token');
+    }
+    return this.refreshToken;
+  }
+
+  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE}${endpoint}`;
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
 
     const token = this.getAccessToken();
-    if (token) {
-      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-    }
+    if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
+    let response = await fetch(url, { ...options, headers });
 
-    if (response.status === 401 && this.refreshToken) {
+    if (response.status === 401) {
       const refreshed = await this.refreshAccessToken();
       if (refreshed) {
-        const retryHeaders = { ...headers };
-        (retryHeaders as Record<string, string>)['Authorization'] = `Bearer ${this.accessToken}`;
-        const retryResponse = await fetch(url, {
-          ...options,
-          headers: retryHeaders,
-        });
-        if (!retryResponse.ok) {
-          throw new Error(`HTTP ${retryResponse.status}`);
-        }
-        return retryResponse.json();
+        headers['Authorization'] = `Bearer ${this.accessToken}`;
+        response = await fetch(url, { ...options, headers });
       }
     }
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      const body = await response.json().catch(() => ({}));
+      const message = body?.detail ?? body?.error ?? `HTTP ${response.status}`;
+      throw new Error(message as string);
     }
 
-    return response.json();
+    if (response.status === 204) return undefined as T;
+    return response.json() as Promise<T>;
   }
 
   private async refreshAccessToken(): Promise<boolean> {
-    if (!this.refreshToken) return false;
+    const refresh = this.getRefreshToken();
+    if (!refresh) return false;
 
     try {
       const response = await fetch(`${API_BASE}/auth/token/refresh/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh: this.refreshToken }),
+        body: JSON.stringify({ refresh }),
       });
 
-      if (!response.ok) {
-        this.clearTokens();
-        return false;
-      }
+      if (!response.ok) { this.clearTokens(); return false; }
 
-      const data = await response.json();
+      const data = await response.json() as { access: string };
       this.accessToken = data.access;
       localStorage.setItem('access_token', data.access);
       return true;
@@ -95,7 +104,8 @@ class ApiClient {
     }
   }
 
-  // Auth
+  // ─── Auth ───────────────────────────────────────────────────────────────────
+
   async login(username: string, password: string): Promise<AuthResponse> {
     const data = await this.request<AuthResponse>('/accounts/login/', {
       method: 'POST',
@@ -109,46 +119,133 @@ class ApiClient {
     try {
       await this.request('/accounts/logout/', {
         method: 'POST',
-        body: JSON.stringify({ refresh: this.refreshToken }),
+        body: JSON.stringify({ refresh: this.getRefreshToken() }),
       });
     } finally {
       this.clearTokens();
     }
   }
 
-  async getCurrentUser() {
-    return this.request('/accounts/me/');
+  async getCurrentUser(): Promise<User> {
+    return this.request<User>('/accounts/me/');
   }
 
-  // Generic CRUD
-  async getList<T>(endpoint: string, params?: Record<string, string>) {
-    const searchParams = params ? `?${new URLSearchParams(params)}` : '';
-    return this.request<{ results: T[]; count: number }>(`${endpoint}/${searchParams}`);
+  // ─── Generic list helper ────────────────────────────────────────────────────
+  // Cursor pagination: { next, previous, results }
+
+  private list<T>(path: string, params?: Record<string, string>): Promise<PaginatedResponse<T>> {
+    const qs = params ? `?${new URLSearchParams(params)}` : '';
+    return this.request<PaginatedResponse<T>>(`${path}${qs}`);
   }
 
-  async get<T>(endpoint: string) {
-    return this.request<T>(endpoint);
-  }
+  // ─── Properties ─────────────────────────────────────────────────────────────
 
-  async create<T>(endpoint: string, data: Partial<T>) {
-    return this.request<T>(`${endpoint}/`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
+  buildings = {
+    list: (params?: Record<string, string>) => this.list<Building>('/properties/buildings/', params),
+    get: (id: number) => this.request<Building>(`/properties/buildings/${id}/`),
+    create: (data: Partial<Building>) =>
+      this.request<Building>('/properties/buildings/', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: Partial<Building>) =>
+      this.request<Building>(`/properties/buildings/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: number) => this.request<void>(`/properties/buildings/${id}/`, { method: 'DELETE' }),
+  };
 
-  async update<T>(endpoint: string, data: Partial<T>) {
-    return this.request<T>(`${endpoint}/`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-  }
+  apartments = {
+    list: (params?: Record<string, string>) => this.list<Apartment>('/properties/apartments/', params),
+    get: (id: number) => this.request<Apartment>(`/properties/apartments/${id}/`),
+    create: (data: Partial<Apartment>) =>
+      this.request<Apartment>('/properties/apartments/', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: Partial<Apartment>) =>
+      this.request<Apartment>(`/properties/apartments/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: number) => this.request<void>(`/properties/apartments/${id}/`, { method: 'DELETE' }),
+  };
 
-  async delete(endpoint: string) {
-    return this.request<void>(`${endpoint}/`, {
-      method: 'DELETE',
-    });
-  }
+  // ─── Residents ──────────────────────────────────────────────────────────────
+
+  residents = {
+    list: (params?: Record<string, string>) => this.list<Resident>('/residents/residents/', params),
+    get: (id: number) => this.request<Resident>(`/residents/residents/${id}/`),
+    create: (data: Partial<Resident>) =>
+      this.request<Resident>('/residents/residents/', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: Partial<Resident>) =>
+      this.request<Resident>(`/residents/residents/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: number) => this.request<void>(`/residents/residents/${id}/`, { method: 'DELETE' }),
+  };
+
+  ownerships = {
+    list: (params?: Record<string, string>) => this.list<Ownership>('/residents/ownerships/', params),
+    byApartment: (apartmentId: number) =>
+      this.request<Ownership[]>(`/residents/ownerships/by_apartment/?apartment_id=${apartmentId}`),
+  };
+
+  personalAccounts = {
+    list: (params?: Record<string, string>) => this.list<PersonalAccount>('/residents/personal-accounts/', params),
+  };
+
+  // ─── Tickets ────────────────────────────────────────────────────────────────
+
+  tickets = {
+    list: (params?: Record<string, string>) => this.list<Ticket>('/tickets/tickets/', params),
+    get: (id: number) => this.request<Ticket>(`/tickets/tickets/${id}/`),
+    create: (data: Partial<Ticket>) =>
+      this.request<Ticket>('/tickets/tickets/', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: Partial<Ticket>) =>
+      this.request<Ticket>(`/tickets/tickets/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+    resolve: (id: number) =>
+      this.request<Ticket>(`/tickets/tickets/${id}/resolve/`, { method: 'POST' }),
+    close: (id: number) =>
+      this.request<Ticket>(`/tickets/tickets/${id}/close/`, { method: 'POST' }),
+  };
+
+  comments = {
+    list: (params?: Record<string, string>) => this.list<TicketComment>('/tickets/comments/', params),
+    create: (data: Partial<TicketComment>) =>
+      this.request<TicketComment>('/tickets/comments/', { method: 'POST', body: JSON.stringify(data) }),
+  };
+
+  // ─── Billing ────────────────────────────────────────────────────────────────
+
+  aidatCharges = {
+    list: (params?: Record<string, string>) => this.list<AidatCharge>('/billing/aidat-charges/', params),
+    get: (id: number) => this.request<AidatCharge>(`/billing/aidat-charges/${id}/`),
+    overdue: (params?: Record<string, string>) => this.list<AidatCharge>('/billing/aidat-charges/overdue/', params),
+  };
+
+  payments = {
+    list: (params?: Record<string, string>) => this.list<Payment>('/billing/payments/', params),
+    get: (id: number) => this.request<Payment>(`/billing/payments/${id}/`),
+    create: (data: Partial<Payment>, idempotencyKey?: string) =>
+      this.request<Payment>('/billing/payments/', {
+        method: 'POST',
+        headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
+        body: JSON.stringify(data),
+      }),
+  };
+
+  // ─── Staff ──────────────────────────────────────────────────────────────────
+
+  departments = {
+    list: (params?: Record<string, string>) => this.list<Department>('/staff/departments/', params),
+  };
+
+  employees = {
+    list: (params?: Record<string, string>) => this.list<Employee>('/staff/employees/', params),
+    get: (id: number) => this.request<Employee>(`/staff/employees/${id}/`),
+    create: (data: Partial<Employee>) =>
+      this.request<Employee>('/staff/employees/', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: Partial<Employee>) =>
+      this.request<Employee>(`/staff/employees/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+  };
+
+  tasks = {
+    list: (params?: Record<string, string>) => this.list<Task>('/staff/tasks/', params),
+  };
+
+  // ─── Notifications ───────────────────────────────────────────────────────────
+
+  notificationLogs = {
+    list: (params?: Record<string, string>) => this.list<NotificationLog>('/notifications/logs/', params),
+  };
 }
 
 export const api = new ApiClient();

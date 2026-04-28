@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Eye, EyeOff, LogIn } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
+import { HouseraLogo } from '../components/HouseraLogo';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -16,90 +17,115 @@ export function LoginPage() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
     try {
       await login(username, password);
       navigate('/dashboard');
     } catch {
-      setError('Invalid username or password');
+      setError('Неверный логин или пароль');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-xl shadow-lg p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900">CRM Dashboard</h1>
-            <p className="text-gray-500 mt-2">Sign in to your account</p>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#f5f5f5',
+    }}>
+      <div style={{
+        width: '100%',
+        maxWidth: 420,
+        background: '#fff',
+        borderRadius: 16,
+        padding: '40px 40px 48px',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+      }}>
+        {/* Logo */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
+          <HouseraLogo height={140} />
+        </div>
+
+        {/* Title */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <h1 style={{ margin: '0 0 6px', fontSize: 24, fontWeight: 700, color: '#1f1f1f' }}>
+            Вход в систему
+          </h1>
+          <p style={{ margin: 0, fontSize: 14, color: '#8c8c8c' }}>
+            Введите данные для входа
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {error && (
+            <div style={{
+              background: '#fff2f0',
+              border: '1px solid #ffccc7',
+              borderRadius: 8,
+              padding: '10px 14px',
+              fontSize: 14,
+              color: '#ff4d4f',
+            }}>
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="username" className="form-label">Логин</label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              className="form-input"
+              placeholder="Введите логин"
+              required
+              disabled={isLoading}
+              autoFocus
+            />
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg">
-                {error}
-              </div>
-            )}
-
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
-                Username
-              </label>
+          <div>
+            <label htmlFor="password" className="form-label">Пароль</label>
+            <div style={{ position: 'relative' }}>
               <input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
-                placeholder="Enter your username"
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="form-input"
+                placeholder="Введите пароль"
+                style={{ paddingRight: 40 }}
                 required
                 disabled={isLoading}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute', right: 12, top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', padding: 0,
+                  cursor: 'pointer', color: '#8c8c8c',
+                  display: 'flex', alignItems: 'center',
+                }}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
+          </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none pr-10"
-                  placeholder="Enter your password"
-                  required
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {isLoading ? (
-                <span className="animate-pulse">Signing in...</span>
-              ) : (
-                <>
-                  <LogIn size={18} />
-                  Sign in
-                </>
-              )}
-            </button>
-          </form>
-        </div>
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="btn-primary"
+            style={{ marginTop: 6 }}
+          >
+            {isLoading ? 'Вход...' : 'Войти'}
+          </button>
+        </form>
       </div>
     </div>
   );
