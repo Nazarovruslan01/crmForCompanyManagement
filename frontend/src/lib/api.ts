@@ -14,6 +14,8 @@ import type {
   Employee,
   Task,
   NotificationLog,
+  Document,
+  Meeting,
   User,
 } from '../types';
 
@@ -245,6 +247,39 @@ class ApiClient {
 
   notificationLogs = {
     list: (params?: Record<string, string>) => this.list<NotificationLog>('/notifications/logs/', params),
+  };
+
+  // ─── Documents ───────────────────────────────────────────────────────────────
+
+  documents = {
+    list: (params?: Record<string, string>) => this.list<Document>('/documents/documents/', params),
+    get: (id: number) => this.request<Document>(`/documents/documents/${id}/`),
+    create: (data: Partial<Document>) =>
+      this.request<Document>('/documents/documents/', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: Partial<Document>) =>
+      this.request<Document>(`/documents/documents/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: number) => this.request<void>(`/documents/documents/${id}/`, { method: 'DELETE' }),
+  };
+
+  // ─── Meetings ─────────────────────────────────────────────────────────────────
+
+  meetings = {
+    list: (params?: Record<string, string>) => this.list<Meeting>('/meetings/meetings/', params),
+    get: (id: number) => this.request<Meeting>(`/meetings/meetings/${id}/`),
+    create: (data: Partial<Meeting>) =>
+      this.request<Meeting>('/meetings/meetings/', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: Partial<Meeting>) =>
+      this.request<Meeting>(`/meetings/meetings/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id: number) => this.request<void>(`/meetings/meetings/${id}/`, { method: 'DELETE' }),
+    start: (id: number) =>
+      this.request<Meeting>(`/meetings/meetings/${id}/start/`, { method: 'POST' }),
+    close: (id: number) =>
+      this.request<Meeting>(`/meetings/meetings/${id}/close/`, { method: 'POST' }),
+    vote: (id: number, agendaItemId: number, voteChoice: 'yes' | 'no' | 'abstain') =>
+      this.request<Meeting>(`/meetings/meetings/${id}/vote/`, {
+        method: 'POST',
+        body: JSON.stringify({ agenda_item: agendaItemId, vote_choice: voteChoice }),
+      }),
   };
 }
 

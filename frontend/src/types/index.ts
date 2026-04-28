@@ -228,6 +228,76 @@ export interface Task {
   completed_at: string | null;
 }
 
+// ─── Documents ────────────────────────────────────────────────────────────────
+export type DocumentType = 'contract' | 'protocol' | 'receipt' | 'act' | 'other';
+
+export interface Document {
+  id: number;
+  title: string;
+  description: string;
+  file: string | null;
+  document_type: DocumentType;
+  document_type_display: string;
+  building: number | null;
+  building_display: string | null;
+  apartment: number | null;
+  apartment_display: string | null;
+  resident: number | null;
+  resident_display: string | null;
+  uploaded_by: number | null;
+  uploaded_by_display: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── Meetings ─────────────────────────────────────────────────────────────────
+export type MeetingStatus = 'scheduled' | 'active' | 'completed' | 'cancelled';
+
+export interface AgendaItem {
+  id: number;
+  meeting: number;
+  title: string;
+  description: string;
+  order: number;
+  created_at: string;
+}
+
+export interface Vote {
+  id: number;
+  agenda_item: number;
+  resident: number;
+  resident_display: string;
+  vote_choice: 'yes' | 'no' | 'abstain';
+  vote_choice_display: string;
+  created_at: string;
+}
+
+export interface MeetingProtocol {
+  id: number;
+  meeting: number;
+  content: string;
+  file: string | null;
+  approved_at: string | null;
+  created_at: string;
+}
+
+export interface Meeting {
+  id: number;
+  building: number;
+  building_display: string;
+  title: string;
+  description: string;
+  scheduled_date: string;
+  status: MeetingStatus;
+  status_display: string;
+  quorum_required: number;
+  created_by: number | null;
+  created_by_display: string | null;
+  agenda_items: AgendaItem[];
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── Notifications ────────────────────────────────────────────────────────────
 export interface NotificationLog {
   id: number;
