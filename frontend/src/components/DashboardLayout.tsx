@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import type { User } from '../types';
 import {
   BarChart2,
   Building2,
@@ -16,15 +17,24 @@ import {
 } from 'lucide-react';
 import { HouseraLogo } from './HouseraLogo';
 
-const navItems = [
-  { to: '/dashboard',     icon: BarChart2,     label: 'Аналитика' },
-  { to: '/tickets',       icon: ClipboardList, label: 'Заявки' },
-  { to: '/buildings',     icon: Building2,     label: 'Здания' },
-  { to: '/residents',     icon: Users,         label: 'Жильцы' },
-  { to: '/staff',         icon: Briefcase,     label: 'Сотрудники' },
-  { to: '/billing',       icon: Wallet,        label: 'Платежи' },
-  { to: '/notifications', icon: Bell,          label: 'Уведомления' },
-  { to: '/settings',      icon: Settings,      label: 'Настройки' },
+type UserRole = User['role'];
+
+interface NavItem {
+  to: string;
+  icon: React.ElementType;
+  label: string;
+  roles: UserRole[];
+}
+
+const navItems: NavItem[] = [
+  { to: '/dashboard',     icon: BarChart2,     label: 'Аналитика',     roles: ['admin', 'manager', 'worker', 'resident'] },
+  { to: '/tickets',       icon: ClipboardList, label: 'Заявки',        roles: ['admin', 'manager', 'worker', 'resident'] },
+  { to: '/buildings',     icon: Building2,     label: 'Здания',        roles: ['admin', 'manager'] },
+  { to: '/residents',     icon: Users,         label: 'Жильцы',        roles: ['admin', 'manager'] },
+  { to: '/staff',         icon: Briefcase,     label: 'Сотрудники',    roles: ['admin', 'manager'] },
+  { to: '/billing',       icon: Wallet,        label: 'Платежи',       roles: ['admin', 'manager', 'resident'] },
+  { to: '/notifications', icon: Bell,          label: 'Уведомления',   roles: ['admin', 'manager', 'worker', 'resident'] },
+  { to: '/settings',      icon: Settings,      label: 'Настройки',     roles: ['admin', 'manager', 'worker', 'resident'] },
 ];
 
 export function DashboardLayout() {
@@ -56,17 +66,19 @@ export function DashboardLayout() {
 
         {/* Nav */}
         <nav className="sidebar-menu">
-          {navItems.map(({ to, icon: Icon, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) => `menu-item${isActive ? ' active' : ''}`}
-              title={collapsed ? label : undefined}
-            >
-              <Icon size={20} />
-              <span>{label}</span>
-            </NavLink>
-          ))}
+          {navItems
+            .filter(item => user && item.roles.includes(user.role))
+            .map(({ to, icon: Icon, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                className={({ isActive }) => `menu-item${isActive ? ' active' : ''}`}
+                title={collapsed ? label : undefined}
+              >
+                <Icon size={20} />
+                <span>{label}</span>
+              </NavLink>
+            ))}
         </nav>
 
         {/* User block */}
