@@ -14,6 +14,7 @@ interface DataTableProps<T> {
   error?: string | null;
   emptyText?: string;
   keyExtractor: (row: T) => string | number;
+  onRowClick?: (row: T) => void;
 }
 
 const th: React.CSSProperties = {
@@ -41,6 +42,7 @@ export function DataTable<T>({
   error,
   emptyText = 'Нет данных',
   keyExtractor,
+  onRowClick,
 }: DataTableProps<T>) {
   return (
     <div style={{
@@ -82,9 +84,11 @@ export function DataTable<T>({
             rows.map((row, idx) => (
               <tr
                 key={keyExtractor(row)}
+                onClick={() => onRowClick?.(row)}
                 style={{
                   borderBottom: idx < rows.length - 1 ? '1px solid var(--color-gray-3)' : 'none',
                   transition: 'background 120ms ease',
+                  cursor: onRowClick ? 'pointer' : 'default',
                 }}
                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-gray-1)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}

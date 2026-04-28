@@ -6,6 +6,7 @@ import { DashboardLayout } from './components/DashboardLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { BuildingsPage } from './pages/BuildingsPage';
 import { TicketsPage } from './pages/TicketsPage';
+import { TicketDetailPage } from './pages/TicketDetailPage';
 import { ResidentsPage } from './pages/ResidentsPage';
 import { StaffPage } from './pages/StaffPage';
 import { BillingPage } from './pages/BillingPage';
@@ -71,6 +72,7 @@ function AppRoutes() {
         <Route path="dashboard"     element={<DashboardPage />} />
         <Route path="buildings"     element={<BuildingsPage />} />
         <Route path="tickets"       element={<TicketsPage />} />
+        <Route path="tickets/:id"    element={<TicketDetailPage />} />
         <Route path="residents"     element={<ResidentsPage />} />
         <Route path="staff"         element={<StaffPage />} />
         <Route path="billing"       element={<BillingPage />} />

@@ -120,6 +120,17 @@ export type TicketCategory = 'plumbing' | 'electrical' | 'cleaning' | 'security'
 export type TicketPriority = 'low' | 'medium' | 'high' | 'urgent';
 export type TicketStatus = 'new' | 'assigned' | 'in_progress' | 'resolved' | 'closed';
 
+export interface TicketAttachment {
+  id: number;
+  ticket: number;
+  file_url: string;
+  file_name: string;
+  file_type: string;
+  uploaded_by: number;
+  uploaded_by_display: string;
+  uploaded_at: string;
+}
+
 export interface Ticket {
   id: number;
   apartment: number;
@@ -139,6 +150,8 @@ export interface Ticket {
   created_at: string;
   updated_at: string;
   resolved_at: string | null;
+  comments?: TicketComment[];
+  attachments?: TicketAttachment[];
 }
 
 export interface TicketComment {

@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
@@ -71,6 +72,7 @@ const columns: Column<Ticket>[] = [
 ];
 
 export function TicketsPage() {
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('');
   const [search, setSearch] = useState('');
 
@@ -107,6 +109,7 @@ export function TicketsPage() {
         error={error}
         keyExtractor={t => t.id}
         emptyText="Нет заявок"
+        onRowClick={t => navigate(`/tickets/${t.id}`)}
       />
       <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
     </PageLayout>
