@@ -1,3 +1,5 @@
+import type { TicketStatus, TicketPriority, AidatStatus } from '../../types';
+
 type BadgeColor = 'green' | 'red' | 'orange' | 'blue' | 'gray' | 'purple';
 
 const colors: Record<BadgeColor, { bg: string; color: string }> = {
@@ -29,8 +31,7 @@ export function Badge({ label, color }: { label: string; color: BadgeColor }) {
 
 // ─── Domain badge helpers ────────────────────────────────────────────────────
 
-import type { TicketStatus, TicketPriority, AidatStatus } from '../../types';
-import type { BadgeColor as BC } from './Badge';
+type BC = BadgeColor;
 
 // re-export type for consumers
 export type { BadgeColor };
