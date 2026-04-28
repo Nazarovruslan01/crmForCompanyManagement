@@ -67,7 +67,7 @@ export function DashboardLayout() {
         {/* Nav */}
         <nav className="sidebar-menu">
           {navItems
-            .filter(item => user && item.roles.includes(user.role))
+            .filter(item => user && (user.is_superuser || item.roles.includes(user.role)))
             .map(({ to, icon: Icon, label }) => (
               <NavLink
                 key={to}
