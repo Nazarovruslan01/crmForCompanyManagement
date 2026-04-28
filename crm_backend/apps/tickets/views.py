@@ -14,6 +14,7 @@ from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManagerOrWorkerOrResidentReadOwn
 from common.throttles import PresignedUploadThrottle, UserReadThrottle, UserWriteThrottle
 from core.mixins import ResidentQuerySetMixin
+from core.search import FullTextSearchMixin
 
 from .models import Ticket, TicketAttachment, TicketComment
 from .serializers import (
@@ -24,7 +25,7 @@ from .serializers import (
 )
 
 
-class TicketViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Ticket]):
+class TicketViewSet(AuditLogMixin, ResidentQuerySetMixin, FullTextSearchMixin, viewsets.ModelViewSet[Ticket]):
     queryset = Ticket.objects.select_related("apartment__building", "assigned_worker__user", "created_by").all()
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrWorkerOrResidentReadOwn]
@@ -33,6 +34,7 @@ class TicketViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[
     ordering_fields = ["priority", "created_at", "updated_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
     resident_lookup = "apartment__ownerships__resident__user"
+    ft_search_fields = ["title", "description"]
 
     def get_queryset(self) -> "models.QuerySet[Ticket]":
         qs = super().get_queryset()

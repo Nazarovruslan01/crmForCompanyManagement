@@ -9,6 +9,7 @@ from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
 from core.mixins import ResidentQuerySetMixin
+from core.search import FullTextSearchMixin
 
 from .models import Ownership, PersonalAccount, Resident
 from .serializers import (
@@ -18,7 +19,7 @@ from .serializers import (
 )
 
 
-class ResidentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Resident]):
+class ResidentViewSet(AuditLogMixin, ResidentQuerySetMixin, FullTextSearchMixin, viewsets.ModelViewSet[Resident]):
     queryset = Resident.objects.select_related("user").all()
     serializer_class = ResidentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -27,6 +28,7 @@ class ResidentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSe
     ordering_fields = ["surname", "name", "created_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
     resident_lookup = "user"
+    ft_search_fields = ["name", "surname", "phone", "email", "tc_kimlik_no"]
 
 
 class PersonalAccountViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[PersonalAccount]):

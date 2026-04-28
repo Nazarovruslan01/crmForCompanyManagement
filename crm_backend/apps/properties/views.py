@@ -12,6 +12,7 @@ from apps.residents.models import Ownership
 from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
 from core.mixins import CacheListRetrieveMixin, ResidentQuerySetMixin
+from core.search import FullTextSearchMixin
 
 from .models import Apartment, Building
 from .serializers import (
@@ -22,7 +23,7 @@ from .serializers import (
 )
 
 
-class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewSet[Building]):
+class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, FullTextSearchMixin, viewsets.ModelViewSet[Building]):
     queryset = Building.objects.all()
     serializer_class = BuildingSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
@@ -30,6 +31,7 @@ class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewS
     search_fields = ["name", "address"]
     ordering_fields = ["name", "created_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    ft_search_fields = ["name", "address"]
 
     @action(detail=True, methods=["get"], url_path="chessboard")
     def chessboard(self, request: Request, pk: int | None = None) -> Response:  # noqa: ARG002
@@ -78,7 +80,7 @@ class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewS
         )
 
 
-class ApartmentViewSet(AuditLogMixin, CacheListRetrieveMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Apartment]):
+class ApartmentViewSet(AuditLogMixin, CacheListRetrieveMixin, ResidentQuerySetMixin, FullTextSearchMixin, viewsets.ModelViewSet[Apartment]):
     queryset = Apartment.objects.select_related("building").all()
     serializer_class = ApartmentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -87,6 +89,7 @@ class ApartmentViewSet(AuditLogMixin, CacheListRetrieveMixin, ResidentQuerySetMi
     ordering_fields = ["building", "apartment_number", "created_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
     resident_lookup = "ownerships__resident__user"
+    ft_search_fields = ["apartment_number", "block", "tapu_number"]
 
 
 class ApartmentMinimalViewSet(
