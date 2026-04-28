@@ -1,80 +1,161 @@
+import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
-  Building,
+  BarChart2,
+  Building2,
   Users,
-  Ticket,
-  Receipt,
+  ClipboardList,
+  Wallet,
   Bell,
+  Briefcase,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
   LogOut,
-  LayoutDashboard,
 } from 'lucide-react';
+import { HouseraLogo } from './HouseraLogo';
 
 const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/buildings', icon: Building, label: 'Buildings' },
-  { to: '/tickets', icon: Ticket, label: 'Tickets' },
-  { to: '/residents', icon: Users, label: 'Residents' },
-  { to: '/billing', icon: Receipt, label: 'Billing' },
-  { to: '/notifications', icon: Bell, label: 'Notifications' },
+  { to: '/dashboard',     icon: BarChart2,     label: 'Аналитика' },
+  { to: '/tickets',       icon: ClipboardList, label: 'Заявки' },
+  { to: '/buildings',     icon: Building2,     label: 'Здания' },
+  { to: '/residents',     icon: Users,         label: 'Жильцы' },
+  { to: '/staff',         icon: Briefcase,     label: 'Сотрудники' },
+  { to: '/billing',       icon: Wallet,        label: 'Платежи' },
+  { to: '/notifications', icon: Bell,          label: 'Уведомления' },
+  { to: '/settings',      icon: Settings,      label: 'Настройки' },
 ];
 
 export function DashboardLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
 
-  return (
-    <div className="min-h-screen bg-gray-100">
-      <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center gap-8">
-              <h1 className="text-xl font-semibold text-gray-900">CRM</h1>
-              <div className="flex gap-1">
-                {navItems.map(({ to, icon: Icon, label }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    className={({ isActive }) =>
-                      `flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        isActive
-                          ? 'bg-purple-100 text-purple-700'
-                          : 'text-gray-600 hover:bg-gray-100'
-                      }`
-                    }
-                  >
-                    <Icon size={18} />
-                    {label}
-                  </NavLink>
-                ))}
-              </div>
-            </div>
+  const toggleLeft = collapsed
+    ? 'calc(var(--collapsed-side-menu-width) - 12px)'
+    : 'calc(var(--side-menu-width) - 12px)';
 
-            <div className="flex items-center gap-4">
-              <div className="text-sm">
-                <p className="font-medium text-gray-900">{user?.full_name}</p>
-                <p className="text-gray-500 text-xs">{user?.role_display}</p>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <LogOut size={18} />
-                Logout
-              </button>
+  const initial = (user?.full_name ?? user?.username ?? '?').charAt(0).toUpperCase();
+
+  return (
+    <div style={{ display: 'flex', minHeight: '100vh', position: 'relative' }}>
+
+      {/* ── Sidebar ── */}
+      <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
+
+        {/* Logo */}
+        <div className="sidebar-logo">
+          <HouseraLogo collapsed={collapsed} height={collapsed ? 48 : 110} />
+        </div>
+
+        {/* Nav */}
+        <nav className="sidebar-menu">
+          {navItems.map(({ to, icon: Icon, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) => `menu-item${isActive ? ' active' : ''}`}
+              title={collapsed ? label : undefined}
+            >
+              <Icon size={20} />
+              <span>{label}</span>
+            </NavLink>
+          ))}
+        </nav>
+
+        {/* User block */}
+        <div style={{
+          padding: collapsed ? '16px' : '16px 20px',
+          borderTop: '1px solid var(--color-gray-3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          overflow: 'hidden',
+          flexShrink: 0,
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: '50%',
+            background: '#F26522', color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 13, fontWeight: 600, flexShrink: 0,
+          }}>
+            {initial}
+          </div>
+
+          {!collapsed && (
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: '#1f1f1f', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user?.full_name ?? user?.username}
+              </p>
+              <p style={{ margin: 0, fontSize: 11, color: '#8c8c8c', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user?.role_display}
+              </p>
+            </div>
+          )}
+
+          {!collapsed && (
+            <button
+              onClick={handleLogout}
+              title="Выйти"
+              style={{
+                background: 'none', border: 'none', padding: 4, cursor: 'pointer',
+                color: '#8c8c8c', display: 'flex', alignItems: 'center',
+                borderRadius: 6, transition: 'color 150ms ease', flexShrink: 0,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#1f1f1f')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#8c8c8c')}
+            >
+              <LogOut size={16} />
+            </button>
+          )}
+        </div>
+      </aside>
+
+      {/* ── Toggle button (outside sidebar to avoid clip) ── */}
+      <button
+        className="sidebar-toggle"
+        onClick={() => setCollapsed(!collapsed)}
+        title={collapsed ? 'Развернуть' : 'Свернуть'}
+        style={{ left: toggleLeft }}
+      >
+        {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+      </button>
+
+      {/* ── Main area ── */}
+      <div className={`sub-layout${collapsed ? ' collapsed' : ''}`}>
+
+        {/* Header */}
+        <header className="main-header">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: '#1f1f1f' }}>
+                {user?.full_name ?? user?.username}
+              </p>
+              <p style={{ margin: 0, fontSize: 11, color: '#8c8c8c' }}>
+                {user?.role_display}
+              </p>
+            </div>
+            <div style={{
+              width: 34, height: 34, borderRadius: '50%',
+              background: '#F26522', color: '#fff',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 13, fontWeight: 600, flexShrink: 0,
+            }}>
+              {initial}
             </div>
           </div>
-        </div>
-      </nav>
+        </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
-        <Outlet />
-      </main>
+        <main style={{ flex: 1 }}>
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

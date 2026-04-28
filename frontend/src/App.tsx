@@ -4,22 +4,32 @@ import { useAuth } from './hooks/useAuth';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardLayout } from './components/DashboardLayout';
 import { DashboardPage } from './pages/DashboardPage';
+import { BuildingsPage } from './pages/BuildingsPage';
+import { TicketsPage } from './pages/TicketsPage';
+import { ResidentsPage } from './pages/ResidentsPage';
+import { StaffPage } from './pages/StaffPage';
+import { BillingPage } from './pages/BillingPage';
+import { NotificationsPage } from './pages/NotificationsPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-gray-500">Loading...</div>
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--color-gray-7)',
+        fontSize: 14,
+      }}>
+        Загрузка...
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -28,8 +38,15 @@ function AppRoutes() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-gray-500">Loading...</div>
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'var(--color-gray-7)',
+        fontSize: 14,
+      }}>
+        Загрузка...
       </div>
     );
   }
@@ -49,15 +66,35 @@ function AppRoutes() {
         }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="buildings" element={<div className="text-gray-500">Buildings page coming soon</div>} />
-        <Route path="tickets" element={<div className="text-gray-500">Tickets page coming soon</div>} />
-        <Route path="residents" element={<div className="text-gray-500">Residents page coming soon</div>} />
-        <Route path="billing" element={<div className="text-gray-500">Billing page coming soon</div>} />
-        <Route path="notifications" element={<div className="text-gray-500">Notifications page coming soon</div>} />
+        <Route path="dashboard"     element={<DashboardPage />} />
+        <Route path="buildings"     element={<BuildingsPage />} />
+        <Route path="tickets"       element={<TicketsPage />} />
+        <Route path="residents"     element={<ResidentsPage />} />
+        <Route path="staff"         element={<StaffPage />} />
+        <Route path="billing"       element={<BillingPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
+        <Route path="settings"      element={<SettingsStub />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+  );
+}
+
+function SettingsStub() {
+  return (
+    <div className="page-wrapper">
+      <div className="page-header"><h1>Настройки</h1></div>
+      <div className="page-content" style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: 300,
+        color: 'var(--color-gray-7)',
+        fontSize: 15,
+      }}>
+        Раздел в разработке
+      </div>
+    </div>
   );
 }
 
