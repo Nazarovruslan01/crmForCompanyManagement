@@ -13,10 +13,13 @@ from core.mixins import ResidentQuerySetMixin
 from .models import AidatCharge, ExtraordinaryCharge, Payment, Receipt
 from .serializers import (
     AidatChargeSerializer,
+    AidatGenerationResponseSerializer,
+    BulkAidatGenerationSerializer,
     ExtraordinaryChargeSerializer,
     PaymentSerializer,
     ReceiptSerializer,
 )
+from .services.aidat import generate_aidat_for_building
 
 
 class AidatChargeViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[AidatCharge]):
@@ -39,6 +42,30 @@ class AidatChargeViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelVie
             return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(overdue, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=["post"], url_path="generate")
+    def generate(self, request: Request) -> Response:
+        """Bulk generate aidat charges for all active apartments in a building.
+
+        Idempotent — skips apartments that already have a charge for the period.
+        """
+        serializer = BulkAidatGenerationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+        result = generate_aidat_for_building(
+            building_id=data["building"],
+            billing_period_start=data["billing_period_start"],
+            billing_period_end=data["billing_period_end"],
+            due_date=data["due_date"],
+            base_amount=data.get("base_amount"),
+            late_fee_rate=data.get("late_fee_rate"),
+        )
+
+        return Response(
+            AidatGenerationResponseSerializer(result).data,
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class ExtraordinaryChargeViewSet(AuditLogMixin, viewsets.ModelViewSet[ExtraordinaryCharge]):
