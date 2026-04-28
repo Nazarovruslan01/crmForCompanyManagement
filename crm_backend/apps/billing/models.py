@@ -133,6 +133,26 @@ class Payment(models.Model):
         db_index=True,
         help_text="Client-generated key to prevent duplicate payments on retries.",
     )
+    # İyzico tracking fields
+    iyzico_payment_id = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="İyzico paymentId (e.g. 123456789)",
+    )
+    iyzico_conversation_id = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        help_text="İyzico conversationId returned in checkout form init",
+    )
+    iyzico_token = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text="İyzico token returned in callback",
+    )
     paid_at = models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
