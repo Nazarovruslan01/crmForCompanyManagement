@@ -179,7 +179,7 @@ class ApiClient {
   };
 
   personalAccounts = {
-    list: (params?: Record<string, string>) => this.list<PersonalAccount>('/residents/personal-accounts/', params),
+    list: (params?: Record<string, string>) => this.list<PersonalAccount>('/residents/accounts/', params),
   };
 
   // ─── Tickets ────────────────────────────────────────────────────────────────

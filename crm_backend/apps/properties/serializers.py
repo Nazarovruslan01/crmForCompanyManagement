@@ -11,6 +11,10 @@ from .models import Apartment, Building
 
 
 class BuildingSerializer(serializers.ModelSerializer):
+    management_type_display = serializers.CharField(
+        source="get_management_type_display", read_only=True
+    )
+
     class Meta:
         model = Building
         fields = [
@@ -20,6 +24,7 @@ class BuildingSerializer(serializers.ModelSerializer):
             "city",
             "district",
             "management_type",
+            "management_type_display",
             "annual_budget",
             "created_at",
             "updated_at",
@@ -29,6 +34,7 @@ class BuildingSerializer(serializers.ModelSerializer):
 
 class ApartmentSerializer(serializers.ModelSerializer):
     building_display = serializers.CharField(source="building.__str__", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
     share_ratio = serializers.SerializerMethodField()
 
     class Meta:
@@ -46,6 +52,7 @@ class ApartmentSerializer(serializers.ModelSerializer):
             "share_ratio",
             "tapu_number",
             "status",
+            "status_display",
             "created_at",
             "updated_at",
         ]

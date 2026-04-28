@@ -7,6 +7,7 @@ from .models import AidatCharge, ExtraordinaryCharge, Payment, Receipt
 
 class AidatChargeSerializer(serializers.ModelSerializer):
     apartment_display = serializers.CharField(source="apartment.__str__", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
 
     class Meta:
         model = AidatCharge
@@ -20,6 +21,7 @@ class AidatChargeSerializer(serializers.ModelSerializer):
             "late_fee_rate",
             "due_date",
             "status",
+            "status_display",
             "paid_at",
             "paid_amount",
             "created_at",
@@ -52,6 +54,9 @@ class ExtraordinaryChargeSerializer(serializers.ModelSerializer):
 class PaymentSerializer(serializers.ModelSerializer):
     apartment_display = serializers.CharField(source="apartment.__str__", read_only=True)
     charge_type_display = serializers.CharField(source="get_charge_type_display", read_only=True)
+    payment_method_display = serializers.CharField(
+        source="get_payment_method_display", read_only=True
+    )
 
     class Meta:
         model = Payment
@@ -65,6 +70,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             "amount",
             "currency",
             "payment_method",
+            "payment_method_display",
             "bank_reference",
             "receipt_number",
             "idempotency_key",
