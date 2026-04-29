@@ -66,14 +66,14 @@ def invalidate_apartment_cache(sender: type[Apartment], **kwargs: Any) -> None:
 # ─── Ownership ───────────────────────────────────────────────────────────────
 
 @receiver(post_save, sender=Ownership)
-def invalidate_ownership_chessboard_on_save(_sender: type[Ownership], **kwargs: Any) -> None:
+def invalidate_ownership_chessboard_on_save(sender: type[Ownership], **kwargs: Any) -> None:
     instance = kwargs.get("instance")
     if instance and instance.apartment_id:
         invalidate_building_chessboard(instance.apartment.building_id)
 
 
 @receiver(post_delete, sender=Ownership)
-def invalidate_ownership_chessboard_on_delete(_sender: type[Ownership], **kwargs: Any) -> None:
+def invalidate_ownership_chessboard_on_delete(sender: type[Ownership], **kwargs: Any) -> None:
     """Handle post_delete safely: apartment may already be gone (cascade)."""
     instance = kwargs.get("instance")
     if not instance or not instance.apartment_id:
@@ -95,14 +95,14 @@ def invalidate_ownership_chessboard_on_delete(_sender: type[Ownership], **kwargs
 # ─── AidatCharge ─────────────────────────────────────────────────────────────
 
 @receiver(post_save, sender=AidatCharge)
-def invalidate_aidat_chessboard_on_save(_sender: type[AidatCharge], **kwargs: Any) -> None:
+def invalidate_aidat_chessboard_on_save(sender: type[AidatCharge], **kwargs: Any) -> None:
     instance = kwargs.get("instance")
     if instance and instance.apartment_id:
         invalidate_building_chessboard(instance.apartment.building_id)
 
 
 @receiver(post_delete, sender=AidatCharge)
-def invalidate_aidat_chessboard_on_delete(_sender: type[AidatCharge], **kwargs: Any) -> None:
+def invalidate_aidat_chessboard_on_delete(sender: type[AidatCharge], **kwargs: Any) -> None:
     """Handle post_delete safely: apartment may already be gone (cascade)."""
     instance = kwargs.get("instance")
     if not instance or not instance.apartment_id:
