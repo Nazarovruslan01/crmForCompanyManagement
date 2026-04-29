@@ -1203,6 +1203,100 @@ class TestMessengerConsumer:
 
         await communicator.disconnect()
 
+    @pytest.mark.django_db(transaction=True)
+    async def test_connect_ticket_not_found(self, manager_user, manager_token):
+        """Connection with non-existent ticket_id is rejected."""
+        from channels.testing import WebsocketCommunicator
+        from config.asgi import application
+
+        communicator = WebsocketCommunicator(
+            application,
+            f"/ws/messenger/tickets/99999/?token={manager_token}",
+        )
+        connected, _ = await communicator.connect()
+        assert connected is False
+        await communicator.disconnect()
+
+    @pytest.mark.django_db(transaction=True)
+    async def test_send_empty_text(self, manager_user, manager_token, ticket_with_resident):
+        """Empty text message returns error."""
+        from channels.testing import WebsocketCommunicator
+        from config.asgi import application
+
+        communicator = WebsocketCommunicator(
+            application,
+            f"/ws/messenger/tickets/{ticket_with_resident.id}/?token={manager_token}",
+        )
+        connected, _ = await communicator.connect()
+        assert connected is True
+
+        await communicator.send_json_to({"text": "  "})
+        response = await communicator.receive_json_from(timeout=2)
+        assert response["type"] == "error"
+        assert "required" in response["message"].lower()
+
+        await communicator.disconnect()
+
+    @pytest.mark.django_db(transaction=True)
+    async def test_send_text_too_long(self, manager_user, manager_token, ticket_with_resident):
+        """Text over 4000 chars returns error."""
+        from channels.testing import WebsocketCommunicator
+        from config.asgi import application
+
+        communicator = WebsocketCommunicator(
+            application,
+            f"/ws/messenger/tickets/{ticket_with_resident.id}/?token={manager_token}",
+        )
+        connected, _ = await communicator.connect()
+        assert connected is True
+
+        await communicator.send_json_to({"text": "x" * 4001})
+        response = await communicator.receive_json_from(timeout=2)
+        assert response["type"] == "error"
+        assert "too long" in response["message"].lower()
+
+        await communicator.disconnect()
+
+    @pytest.mark.django_db(transaction=True)
+    async def test_ticket_creator_can_connect(self, user, ticket_with_resident):
+        """Ticket creator can connect without staff role."""
+        from channels.testing import WebsocketCommunicator
+        from rest_framework_simplejwt.tokens import RefreshToken
+        from config.asgi import application
+
+        refresh = RefreshToken.for_user(user)
+        token = str(refresh.access_token)
+
+        communicator = WebsocketCommunicator(
+            application,
+            f"/ws/messenger/tickets/{ticket_with_resident.id}/?token={token}",
+        )
+        connected, _ = await communicator.connect()
+        assert connected is True
+        await communicator.disconnect()
+
+    @pytest.mark.django_db(transaction=True)
+    async def test_assigned_worker_can_connect(self, employee, ticket_with_resident):
+        """Assigned worker can connect to their ticket."""
+        from channels.testing import WebsocketCommunicator
+        from rest_framework_simplejwt.tokens import RefreshToken
+        from config.asgi import application
+
+        ticket_with_resident.assigned_worker = employee
+        from asgiref.sync import sync_to_async
+        await sync_to_async(ticket_with_resident.save)()
+
+        refresh = RefreshToken.for_user(employee.user)
+        token = str(refresh.access_token)
+
+        communicator = WebsocketCommunicator(
+            application,
+            f"/ws/messenger/tickets/{ticket_with_resident.id}/?token={token}",
+        )
+        connected, _ = await communicator.connect()
+        assert connected is True
+        await communicator.disconnect()
+
 
 class TestMessengerUserValidation:
     def test_conversation_state_accepts_valid_schema(self):
