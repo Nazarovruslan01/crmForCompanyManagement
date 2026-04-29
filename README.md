@@ -89,6 +89,7 @@ crm_for_company_manage/
 ├── frontend/              # React 19 + Vite
 │   ├── src/
 │   └── package.json
+├── scripts/               # Developer helper scripts
 ├── docker/                # Dockerfile, nginx.conf
 ├── docker-compose.yml
 ├── .github/workflows/     # CI (lint, test, security, docker)
@@ -155,6 +156,24 @@ Requirements:
 
 ---
 
+## Developer Scripts
+
+Helper scripts live in `scripts/`:
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/create_dev_superuser.py` | Idempotent superuser creation for new devs. Args: `-u`, `-p`, `--role` |
+| `scripts/generate_test_data.py` | Seed the DB with realistic test data (buildings, apartments, residents, tickets, billing) |
+
+Usage:
+```bash
+cd scripts
+python create_dev_superuser.py -u admin -p admin --role admin
+python generate_test_data.py
+```
+
+---
+
 ## CI / CD
 
 GitHub Actions workflow (`.github/workflows/ci.yml`):
@@ -175,6 +194,17 @@ GitHub Actions workflow (`.github/workflows/ci.yml`):
 - SAST: `bandit` (Python), `detect-secrets` (secrets baseline)
 - Dependency CVE scanning: `pip-audit`
 - Secrets baseline: `.secrets.baseline` (managed with `detect-secrets`)
+
+---
+
+## Key Features
+
+| Feature | Description |
+|---------|-------------|
+| Building Chessboard | Apartment grid grouped by block and floor with real-time status and cached backend (`/buildings/:id/chessboard`) |
+| Detail Pages | Reusable `DetailPageLayout` + `useDetail` hook for consistent entity views (apartments, residents, tickets) |
+| Generic API Client | `crud<T>` factory in `api.ts` eliminates boilerplate for standard list/get/create/update/delete operations |
+| Superuser Bypass | All permission classes allow superusers full access regardless of role |
 
 ---
 
