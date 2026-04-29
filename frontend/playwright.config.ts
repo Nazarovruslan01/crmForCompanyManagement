@@ -27,6 +27,33 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     {
+      name: 'chromium-worker',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/worker.json',
+      },
+      testMatch: /(?!auth\.spec\.ts$).*\.spec\.ts$/,
+      dependencies: ['setup'],
+    },
+    {
+      name: 'chromium-resident',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/resident.json',
+      },
+      testMatch: /(?!auth\.spec\.ts$).*\.spec\.ts$/,
+      dependencies: ['setup'],
+    },
+    {
+      name: 'chromium-manager',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/manager.json',
+      },
+      testMatch: /(?!auth\.spec\.ts$).*\.spec\.ts$/,
+      dependencies: ['setup'],
+    },
+    {
       name: 'chromium-auth',
       use: { ...devices['Desktop Chrome'] },
       testMatch: /auth\.spec\.ts$/,
