@@ -329,3 +329,45 @@ export interface NotificationLog {
   delivered_at: string | null;
   created_at: string;
 }
+
+// ─── Chessboard (Shakhmatka) ──────────────────────────────────────────────────
+
+export interface ChessboardResident {
+  id: number;
+  name: string;
+  surname: string;
+  full_name: string;
+  phone: string | null;
+  owner_type: string;
+}
+
+export interface ChessboardApartment {
+  id: number;
+  apartment_number: string;
+  floor: number | null;
+  block: string | null;
+  status: 'active' | 'inactive' | 'pending_handover';
+  status_display: string;
+  latest_aidat_status: AidatStatus | null;
+  total_debt: string;
+  primary_resident: ChessboardResident | null;
+  residents: ChessboardResident[];
+}
+
+export interface ChessboardFloor {
+  floor: number;
+  apartments: ChessboardApartment[];
+}
+
+export interface ChessboardBlock {
+  block: string;
+  floors: ChessboardFloor[];
+}
+
+export interface ChessboardResponse {
+  building: {
+    id: number;
+    name: string;
+  };
+  blocks: ChessboardBlock[];
+}

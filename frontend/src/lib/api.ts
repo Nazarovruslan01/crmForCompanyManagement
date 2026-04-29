@@ -17,6 +17,7 @@ import type {
   Document,
   Meeting,
   User,
+  ChessboardResponse,
 } from '../types';
 
 const API_BASE = '/api/v2';
@@ -147,70 +148,41 @@ class ApiClient {
     return this.request<PaginatedResponse<T>>(`${path}${qs}`);
   }
 
+  /** Generic CRUD factory — replaces boilerplate per-entity definitions. */
+  crud<T>(basePath: string) {
+    return {
+      list:   (params?: Record<string, string>) => this.list<T>(`${basePath}/`, params),
+      get:    (id: number)              => this.request<T>(`${basePath}/${id}/`),
+      create: (data: Partial<T>)       => this.request<T>(`${basePath}/`,   { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: number, data: Partial<T>) => this.request<T>(`${basePath}/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+      delete: (id: number)              => this.request<void>(`${basePath}/${id}/`, { method: 'DELETE' }),
+    };
+  }
+
   // ─── Properties ─────────────────────────────────────────────────────────────
 
   buildings = {
-    list: (params?: Record<string, string>) => this.list<Building>('/properties/buildings/', params),
-    get: (id: number) => this.request<Building>(`/properties/buildings/${id}/`),
-    create: (data: Partial<Building>) =>
-      this.request<Building>('/properties/buildings/', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: number, data: Partial<Building>) =>
-      this.request<Building>(`/properties/buildings/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
-    delete: (id: number) => this.request<void>(`/properties/buildings/${id}/`, { method: 'DELETE' }),
+    ...this.crud<Building>('/properties/buildings'),
+    chessboard: (id: number) => this.request<ChessboardResponse>(`/properties/buildings/${id}/chessboard/`),
   };
+  apartments   = this.crud<Apartment>  ('/properties/apartments');
 
-  apartments = {
-    list: (params?: Record<string, string>) => this.list<Apartment>('/properties/apartments/', params),
-    get: (id: number) => this.request<Apartment>(`/properties/apartments/${id}/`),
-    create: (data: Partial<Apartment>) =>
-      this.request<Apartment>('/properties/apartments/', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: number, data: Partial<Apartment>) =>
-      this.request<Apartment>(`/properties/apartments/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
-    delete: (id: number) => this.request<void>(`/properties/apartments/${id}/`, { method: 'DELETE' }),
+  residents      = this.crud<Resident>       ('/residents/residents');
+  ownerships     = {
+    list:        (params?: Record<string, string>) => this.list<Ownership>('/residents/ownerships/', params),
+    byApartment: (apartmentId: number) => this.request<Ownership[]>(`/residents/ownerships/by_apartment/?apartment_id=${apartmentId}`),
   };
-
-  // ─── Residents ──────────────────────────────────────────────────────────────
-
-  residents = {
-    list: (params?: Record<string, string>) => this.list<Resident>('/residents/residents/', params),
-    get: (id: number) => this.request<Resident>(`/residents/residents/${id}/`),
-    create: (data: Partial<Resident>) =>
-      this.request<Resident>('/residents/residents/', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: number, data: Partial<Resident>) =>
-      this.request<Resident>(`/residents/residents/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
-    delete: (id: number) => this.request<void>(`/residents/residents/${id}/`, { method: 'DELETE' }),
-  };
-
-  ownerships = {
-    list: (params?: Record<string, string>) => this.list<Ownership>('/residents/ownerships/', params),
-    byApartment: (apartmentId: number) =>
-      this.request<Ownership[]>(`/residents/ownerships/by_apartment/?apartment_id=${apartmentId}`),
-  };
-
-  personalAccounts = {
-    list: (params?: Record<string, string>) => this.list<PersonalAccount>('/residents/accounts/', params),
-  };
+  personalAccounts = { list: (params?: Record<string, string>) => this.list<PersonalAccount>('/residents/accounts/', params) };
 
   // ─── Tickets ────────────────────────────────────────────────────────────────
 
   tickets = {
-    list: (params?: Record<string, string>) => this.list<Ticket>('/tickets/tickets/', params),
-    get: (id: number) => this.request<Ticket>(`/tickets/tickets/${id}/`),
-    create: (data: Partial<Ticket>) =>
-      this.request<Ticket>('/tickets/tickets/', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: number, data: Partial<Ticket>) =>
-      this.request<Ticket>(`/tickets/tickets/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
-    resolve: (id: number) =>
-      this.request<Ticket>(`/tickets/tickets/${id}/resolve/`, { method: 'POST' }),
-    close: (id: number) =>
-      this.request<Ticket>(`/tickets/tickets/${id}/close/`, { method: 'POST' }),
+    ...this.crud<Ticket>('/tickets/tickets'),
+    resolve: (id: number) => this.request<Ticket>(`/tickets/tickets/${id}/resolve/`, { method: 'POST' }),
+    close:   (id: number) => this.request<Ticket>(`/tickets/tickets/${id}/close/`,  { method: 'POST' }),
   };
 
-  comments = {
-    list: (params?: Record<string, string>) => this.list<TicketComment>('/tickets/comments/', params),
-    create: (data: Partial<TicketComment>) =>
-      this.request<TicketComment>('/tickets/comments/', { method: 'POST', body: JSON.stringify(data) }),
-  };
+  comments = { list: (params?: Record<string, string>) => this.list<TicketComment>('/tickets/comments/', params), create: (data: Partial<TicketComment>) => this.request<TicketComment>('/tickets/comments/', { method: 'POST', body: JSON.stringify(data) }) };
 
   // ─── Billing ────────────────────────────────────────────────────────────────
 
@@ -233,22 +205,9 @@ class ApiClient {
 
   // ─── Staff ──────────────────────────────────────────────────────────────────
 
-  departments = {
-    list: (params?: Record<string, string>) => this.list<Department>('/staff/departments/', params),
-  };
-
-  employees = {
-    list: (params?: Record<string, string>) => this.list<Employee>('/staff/employees/', params),
-    get: (id: number) => this.request<Employee>(`/staff/employees/${id}/`),
-    create: (data: Partial<Employee>) =>
-      this.request<Employee>('/staff/employees/', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: number, data: Partial<Employee>) =>
-      this.request<Employee>(`/staff/employees/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
-  };
-
-  tasks = {
-    list: (params?: Record<string, string>) => this.list<Task>('/staff/tasks/', params),
-  };
+  employees    = this.crud<Employee>      ('/staff/employees');
+  departments  = { list: (params?: Record<string, string>) => this.list<Department>('/staff/departments/', params) };
+  tasks        = { list: (params?: Record<string, string>) => this.list<Task>('/staff/tasks/', params) };
 
   // ─── Notifications ───────────────────────────────────────────────────────────
 
@@ -258,31 +217,15 @@ class ApiClient {
 
   // ─── Documents ───────────────────────────────────────────────────────────────
 
-  documents = {
-    list: (params?: Record<string, string>) => this.list<Document>('/documents/documents/', params),
-    get: (id: number) => this.request<Document>(`/documents/documents/${id}/`),
-    create: (data: Partial<Document>) =>
-      this.request<Document>('/documents/documents/', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: number, data: Partial<Document>) =>
-      this.request<Document>(`/documents/documents/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
-    delete: (id: number) => this.request<void>(`/documents/documents/${id}/`, { method: 'DELETE' }),
-  };
+  documents = this.crud<Document>('/documents/documents');
 
   // ─── Meetings ─────────────────────────────────────────────────────────────────
 
   meetings = {
-    list: (params?: Record<string, string>) => this.list<Meeting>('/meetings/meetings/', params),
-    get: (id: number) => this.request<Meeting>(`/meetings/meetings/${id}/`),
-    create: (data: Partial<Meeting>) =>
-      this.request<Meeting>('/meetings/meetings/', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: number, data: Partial<Meeting>) =>
-      this.request<Meeting>(`/meetings/meetings/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
-    delete: (id: number) => this.request<void>(`/meetings/meetings/${id}/`, { method: 'DELETE' }),
-    start: (id: number) =>
-      this.request<Meeting>(`/meetings/meetings/${id}/start/`, { method: 'POST' }),
-    close: (id: number) =>
-      this.request<Meeting>(`/meetings/meetings/${id}/close/`, { method: 'POST' }),
-    vote: (id: number, agendaItemId: number, voteChoice: 'yes' | 'no' | 'abstain') =>
+    ...this.crud<Meeting>('/meetings/meetings'),
+    start: (id: number) => this.request<Meeting>(`/meetings/meetings/${id}/start/`, { method: 'POST' }),
+    close: (id: number) => this.request<Meeting>(`/meetings/meetings/${id}/close/`,  { method: 'POST' }),
+    vote:  (id: number, agendaItemId: number, voteChoice: 'yes' | 'no' | 'abstain') =>
       this.request<Meeting>(`/meetings/meetings/${id}/vote/`, {
         method: 'POST',
         body: JSON.stringify({ agenda_item: agendaItemId, vote_choice: voteChoice }),
