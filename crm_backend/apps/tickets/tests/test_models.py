@@ -120,6 +120,46 @@ class TestTicket:
         ticket.refresh_from_db()
         assert ticket.title == "Updated"
 
+    def test_invalid_status_transition_raises_validation_error(self, user, apartment):
+        from django.core.exceptions import ValidationError
+
+        ticket = Ticket.objects.create(
+            apartment=apartment,
+            title="Status Test",
+            description="Test",
+            created_by=user,
+            status=Ticket.Status.CLOSED,
+        )
+        ticket.status = Ticket.Status.NEW
+        with pytest.raises(ValidationError) as exc_info:
+            ticket.full_clean()
+        assert "Invalid status transition" in str(exc_info.value)
+
+    def test_clean_on_new_instance_does_not_raise(self, user, apartment):
+        """clean() on unsaved instance with no pk should not perform DB query."""
+        ticket = Ticket(
+            apartment=apartment,
+            title="New unsaved",
+            description="Test",
+            created_by=user,
+            status=Ticket.Status.NEW,
+        )
+        ticket.full_clean()  # Should not raise
+
+    def test_clean_handles_missing_db_record(self, user, apartment):
+        """clean() handles case where ticket pk is set but DB record is gone."""
+        ticket = Ticket.objects.create(
+            apartment=apartment,
+            title="Ghost",
+            description="Test",
+            created_by=user,
+            status=Ticket.Status.NEW,
+        )
+        Ticket.objects.filter(pk=ticket.pk).delete()
+        ticket.status = Ticket.Status.ASSIGNED
+        # old_status becomes None, so transition is considered valid
+        ticket.full_clean()
+
 
 class TestTicketComment:
     def test_create_comment(self, user, apartment):

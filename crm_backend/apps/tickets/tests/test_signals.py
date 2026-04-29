@@ -143,6 +143,19 @@ class TestCaptureOldTicketStatus:
         _capture_old_ticket_status(Ticket, new_ticket)
         assert getattr(new_ticket, "_old_status", "missing") is None
 
+    def test_old_status_none_when_db_record_missing(self, admin_user, apartment):
+        """If ticket pk is set but DB record is gone, _old_status becomes None."""
+        from apps.tickets.signals import _capture_old_ticket_status
+        from apps.tickets.models import Ticket
+
+        ticket = Ticket.objects.create(
+            title="Ghost", description="desc", apartment=apartment,
+            created_by=admin_user, status=Ticket.Status.NEW,
+        )
+        Ticket.objects.filter(pk=ticket.pk).delete()
+        _capture_old_ticket_status(Ticket, ticket)
+        assert getattr(ticket, "_old_status", "missing") is None
+
 
 class TestTicketEmailNotifications:
     """Email notifications on ticket create/update."""

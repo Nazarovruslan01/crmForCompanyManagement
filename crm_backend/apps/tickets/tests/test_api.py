@@ -1,7 +1,7 @@
 """Tests for tickets endpoints."""
 
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from rest_framework import status
@@ -536,3 +536,33 @@ class TestPresignedUploadView:
         }
         response = admin_client.post("/api/v2/tickets/upload/presigned/", payload, format="json")
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
+
+    @patch("apps.tickets.views.boto3.client")
+    def test_presigned_upload_s3_exception(self, mock_boto_client, admin_client):
+        """S3 generate_presigned_url raises → 500."""
+        mock_s3 = MagicMock()
+        mock_s3.generate_presigned_url.side_effect = Exception("S3 Error")
+        mock_boto_client.return_value = mock_s3
+
+        payload = {
+            "file_name": "file.png",
+            "content_type": "image/png",
+            "file_size": 1024,
+        }
+        response = admin_client.post("/api/v2/tickets/upload/presigned/", payload, format="json")
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert "Failed to generate presigned URL" in response.data["detail"]
+
+    def test_presigned_upload_without_endpoint_url(self, admin_client, settings):
+        """No endpoint_url → standard AWS URL format."""
+        settings.AWS_S3_ENDPOINT_URL = None
+        settings.AWS_S3_REGION_NAME = "eu-west-1"
+
+        payload = {
+            "file_name": "file.png",
+            "content_type": "image/png",
+            "file_size": 1024,
+        }
+        response = admin_client.post("/api/v2/tickets/upload/presigned/", payload, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        assert "s3.eu-west-1.amazonaws.com" in response.data["file_url"]

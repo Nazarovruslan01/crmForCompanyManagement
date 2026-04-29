@@ -288,3 +288,41 @@ class TestOwnershipViewSetResidentAccess:
     def test_worker_denied_ownership_list(self, staff_client):
         response = staff_client.get("/api/v2/residents/ownerships/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
+class TestResidentSerializerValidation:
+    """Tests for ResidentSerializer field validation."""
+
+    def test_create_resident_without_optional_fields(self, admin_client):
+        """Resident can be created without email, phone, tc_kimlik_no."""
+        payload = {
+            "name": "Minimal",
+            "surname": "Resident",
+            "owner_type": "owner",
+        }
+        response = admin_client.post("/api/v2/residents/residents/", payload, format="json")
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["name"] == "Minimal"
+        assert response.data["email"] is None
+        assert response.data["phone"] is None
+        assert response.data["tc_kimlik_no"] is None
+
+    def test_update_resident_clear_optional_fields(self, admin_client, resident):
+        """Optional fields can be cleared (set to null)."""
+        payload = {
+            "email": None,
+            "phone": None,
+            "tc_kimlik_no": None,
+        }
+        response = admin_client.patch(f"/api/v2/residents/residents/{resident.id}/", payload, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        resident.refresh_from_db()
+        assert resident.email is None
+        assert resident.phone is None
+        assert resident.tc_kimlik_no is None
+
+    def test_resident_str_method(self, resident):
+        assert str(resident) == "Test Resident"
+
+    def test_resident_full_name_property(self, resident):
+        assert resident.full_name == "Test Resident"

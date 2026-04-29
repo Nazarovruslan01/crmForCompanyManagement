@@ -2,6 +2,8 @@
 
 import uuid
 
+import boto3
+from botocore.config import Config
 from django.conf import settings
 from django.db import models
 from rest_framework import permissions, serializers, status, viewsets
@@ -141,9 +143,6 @@ class PresignedUploadView(APIView):
             )
 
         key = f"uploads/tickets/{uuid.uuid4().hex}/{file_name}"
-
-        import boto3
-        from botocore.config import Config
 
         s3_config = Config(signature_version="s3v4")
         s3 = boto3.client(

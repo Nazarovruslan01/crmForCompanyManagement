@@ -315,3 +315,24 @@ class TestChessboardViewSet:
         """Unauthenticated request returns 401."""
         response = api_client.get(f"/api/v2/properties/buildings/{building.id}/chessboard/")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_chessboard_sorts_alphanumeric_apartment_numbers(self, admin_client, building):
+        """Apartments with alphanumeric numbers sort correctly (numbers first, then strings)."""
+        from apps.properties.models import Apartment
+
+        Apartment.objects.create(building=building, apartment_number="B1", floor=1, status=Apartment.Status.ACTIVE)
+        Apartment.objects.create(building=building, apartment_number="2", floor=1, status=Apartment.Status.ACTIVE)
+        Apartment.objects.create(building=building, apartment_number="10", floor=1, status=Apartment.Status.ACTIVE)
+        Apartment.objects.create(building=building, apartment_number="A2", floor=1, status=Apartment.Status.ACTIVE)
+
+        response = admin_client.get(f"/api/v2/properties/buildings/{building.id}/chessboard/")
+        assert response.status_code == status.HTTP_200_OK
+        numbers = []
+        for block in response.data["blocks"]:
+            for floor in block["floors"]:
+                for apt in floor["apartments"]:
+                    numbers.append(apt["apartment_number"])
+        # Numeric sorted ascending, then alphanumeric sorted alphabetically
+        assert numbers.index("2") < numbers.index("10")
+        assert numbers.index("10") < numbers.index("A2")
+        assert numbers.index("A2") < numbers.index("B1")
