@@ -64,6 +64,19 @@ class AidatCharge(models.Model):
         daily_rate = self.base_amount * self.late_fee_rate
         return daily_rate * days_overdue
 
+    @property
+    def late_fee_amount(self) -> Decimal:
+        """Current late fee based on days overdue from due_date."""
+        if self.status in (self.Status.PAID, self.Status.CANCELLED):
+            return Decimal("0")
+        days_overdue = (timezone.now().date() - self.due_date).days
+        return self.calculate_late_fee(days_overdue)
+
+    @property
+    def total_due(self) -> Decimal:
+        """Total amount due: base_amount + late_fee."""
+        return self.base_amount + self.late_fee_amount
+
 
 class ExtraordinaryCharge(models.Model):
     """Экстраординарный сбор (Olağanüstü Aidat) - e.g. for elevator repair"""
