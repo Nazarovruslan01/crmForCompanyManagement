@@ -1,7 +1,8 @@
 """Tests for meetings app models."""
 
-import pytest
 from datetime import timedelta
+
+import pytest
 from django.db import IntegrityError
 from django.utils import timezone
 

@@ -1,8 +1,6 @@
 """Document app views for REST API."""
 
 from rest_framework import permissions, viewsets
-from rest_framework.request import Request
-from rest_framework.response import Response
 
 from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManagerOrResidentReadOwn

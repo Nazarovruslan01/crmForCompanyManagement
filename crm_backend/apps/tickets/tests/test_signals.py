@@ -136,8 +136,8 @@ class TestCaptureOldTicketStatus:
         assert getattr(ticket, "_old_status", None) == Ticket.Status.NEW
 
     def test_old_status_none_on_new_ticket(self):
-        from apps.tickets.signals import _capture_old_ticket_status
         from apps.tickets.models import Ticket
+        from apps.tickets.signals import _capture_old_ticket_status
 
         new_ticket = Ticket(title="New", description="desc", status=Ticket.Status.NEW)
         _capture_old_ticket_status(Ticket, new_ticket)
@@ -145,8 +145,8 @@ class TestCaptureOldTicketStatus:
 
     def test_old_status_none_when_db_record_missing(self, admin_user, apartment):
         """If ticket pk is set but DB record is gone, _old_status becomes None."""
-        from apps.tickets.signals import _capture_old_ticket_status
         from apps.tickets.models import Ticket
+        from apps.tickets.signals import _capture_old_ticket_status
 
         ticket = Ticket.objects.create(
             title="Ghost", description="desc", apartment=apartment,

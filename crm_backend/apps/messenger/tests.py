@@ -1207,6 +1207,7 @@ class TestMessengerConsumer:
     async def test_connect_ticket_not_found(self, manager_user, manager_token):
         """Connection with non-existent ticket_id is rejected."""
         from channels.testing import WebsocketCommunicator
+
         from config.asgi import application
 
         communicator = WebsocketCommunicator(
@@ -1221,6 +1222,7 @@ class TestMessengerConsumer:
     async def test_send_empty_text(self, manager_user, manager_token, ticket_with_resident):
         """Empty text message returns error."""
         from channels.testing import WebsocketCommunicator
+
         from config.asgi import application
 
         communicator = WebsocketCommunicator(
@@ -1241,6 +1243,7 @@ class TestMessengerConsumer:
     async def test_send_text_too_long(self, manager_user, manager_token, ticket_with_resident):
         """Text over 4000 chars returns error."""
         from channels.testing import WebsocketCommunicator
+
         from config.asgi import application
 
         communicator = WebsocketCommunicator(
@@ -1262,6 +1265,7 @@ class TestMessengerConsumer:
         """Ticket creator can connect without staff role."""
         from channels.testing import WebsocketCommunicator
         from rest_framework_simplejwt.tokens import RefreshToken
+
         from config.asgi import application
 
         refresh = RefreshToken.for_user(user)
@@ -1280,6 +1284,7 @@ class TestMessengerConsumer:
         """Assigned worker can connect to their ticket."""
         from channels.testing import WebsocketCommunicator
         from rest_framework_simplejwt.tokens import RefreshToken
+
         from config.asgi import application
 
         ticket_with_resident.assigned_worker = employee

@@ -33,8 +33,8 @@ describe('ApiClient', () => {
 
   beforeEach(() => {
     localStorage.clear();
-    (api as any).accessToken = null;
-    (api as any).refreshToken = null;
+    (api as unknown as { accessToken: string | null }).accessToken = null;
+    (api as unknown as { refreshToken: string | null }).refreshToken = null;
     global.fetch = vi.fn();
   });
 

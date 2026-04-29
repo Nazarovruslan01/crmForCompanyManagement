@@ -5,7 +5,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from apps.accounts.models import User
-from apps.meetings.models import AgendaItem, Meeting, Vote
+from apps.meetings.models import AgendaItem, Meeting
 from apps.properties.models import Apartment, Building
 from apps.residents.models import Ownership, Resident
 

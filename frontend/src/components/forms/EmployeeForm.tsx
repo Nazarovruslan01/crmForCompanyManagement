@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
-import type { Employee, Department, User } from '../../types';
+import type { Employee, Department } from '../../types';
 import { Modal } from '../ui/Modal';
 import { Field, SelectField, CheckboxField, FormRow, FormActions } from '../ui/FormField';
 
@@ -25,7 +25,6 @@ export function EmployeeForm({ open, onClose, onSaved, initial }: Props) {
   const isEdit = !!initial;
   const [saving, setSaving] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
 
   const [form, setForm] = useState({
     user: String(initial?.user ?? ''),

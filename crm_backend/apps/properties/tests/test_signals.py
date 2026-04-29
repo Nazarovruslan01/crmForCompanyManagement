@@ -8,15 +8,15 @@ from apps.billing.models import AidatCharge
 from apps.properties.models import Apartment, Building
 from apps.properties.signals import (
     _bump_cache_version,
-    invalidate_apartment_cache,
     invalidate_aidat_chessboard_on_delete,
     invalidate_aidat_chessboard_on_save,
+    invalidate_apartment_cache,
     invalidate_building_cache,
     invalidate_building_chessboard,
     invalidate_ownership_chessboard_on_delete,
     invalidate_ownership_chessboard_on_save,
 )
-from apps.residents.models import Ownership, Resident
+from apps.residents.models import Ownership
 
 pytestmark = pytest.mark.django_db(transaction=True)
 

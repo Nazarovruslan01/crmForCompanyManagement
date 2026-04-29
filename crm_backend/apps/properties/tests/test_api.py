@@ -221,9 +221,8 @@ class TestChessboardViewSet:
 
     def test_chessboard_includes_aidat_status_and_debt(self, admin_client, building, apartment):
         """Chessboard reflects latest aidat status and total debt including late fee."""
-        from decimal import Decimal
-
         from datetime import timedelta
+        from decimal import Decimal
 
         from django.utils import timezone
 
