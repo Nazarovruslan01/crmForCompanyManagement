@@ -9,7 +9,7 @@ class AidatChargeSerializer(serializers.ModelSerializer):
     apartment_display = serializers.CharField(source="apartment.__str__", read_only=True)
     status_display = serializers.CharField(source="get_status_display", read_only=True)
 
-    class Meta:  # type : ignore[no-untyped-def]
+    class Meta:  # type: ignore
         model = AidatCharge
         fields = [
             "id",
@@ -33,7 +33,7 @@ class AidatChargeSerializer(serializers.ModelSerializer):
 class ExtraordinaryChargeSerializer(serializers.ModelSerializer):
     building_display = serializers.CharField(source="building.__str__", read_only=True)
 
-    class Meta:  # type : ignore[no-untyped-def]
+    class Meta:  # type: ignore
         model = ExtraordinaryCharge
         fields = [
             "id",
@@ -56,7 +56,7 @@ class PaymentSerializer(serializers.ModelSerializer):
     charge_type_display = serializers.CharField(source="get_charge_type_display", read_only=True)
     payment_method_display = serializers.CharField(source="get_payment_method_display", read_only=True)
 
-    class Meta:  # type : ignore[no-untyped-def]
+    class Meta:  # type: ignore
         model = Payment
         fields = [
             "id",
@@ -79,7 +79,7 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 
 class ReceiptSerializer(serializers.ModelSerializer):
-    class Meta:  # type : ignore[no-untyped-def]
+    class Meta:  # type: ignore
         model = Receipt
         fields = ["id", "payment", "pdf_url", "generated_at"]
         read_only_fields = ["generated_at"]

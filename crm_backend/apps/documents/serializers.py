@@ -12,7 +12,7 @@ class DocumentSerializer(serializers.ModelSerializer):
     resident_display = serializers.CharField(source="resident.__str__", read_only=True)
     uploaded_by_display = serializers.CharField(source="uploaded_by.__str__", read_only=True)
 
-    class Meta:  # type : ignore[no-untyped-def]
+    class Meta:  # type: ignore
         model = Document
         fields = [
             "id",
