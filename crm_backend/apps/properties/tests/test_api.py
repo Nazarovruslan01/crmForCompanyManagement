@@ -190,6 +190,13 @@ class TestApartmentMinimalViewSet:
 class TestChessboardViewSet:
     """Tests for /api/v2/properties/buildings/{id}/chessboard/ endpoint."""
 
+    @pytest.fixture(autouse=True)
+    def _clear_cache(self):
+        from django.core.cache import cache
+        cache.clear()
+        yield
+        cache.clear()
+
     def test_chessboard_returns_grouped_data(self, admin_client, building, apartment):
         """Chessboard endpoint returns apartments grouped by block and floor."""
         response = admin_client.get(f"/api/v2/properties/buildings/{building.id}/chessboard/")
@@ -213,19 +220,26 @@ class TestChessboardViewSet:
         assert found
 
     def test_chessboard_includes_aidat_status_and_debt(self, admin_client, building, apartment):
-        """Chessboard reflects latest aidat status and total debt."""
+        """Chessboard reflects latest aidat status and total debt including late fee."""
         from decimal import Decimal
+
+        from datetime import timedelta
+
+        from django.utils import timezone
 
         from apps.billing.models import AidatCharge
 
+        today = timezone.now().date()
         AidatCharge.objects.create(
             apartment=apartment,
-            billing_period_start="2024-01-01",
-            billing_period_end="2024-01-31",
-            base_amount=500,
-            due_date="2024-02-15",
+            billing_period_start=today.replace(day=1),
+            billing_period_end=today,
+            base_amount=Decimal("500"),
+            due_date=today - timedelta(days=10),
             status=AidatCharge.Status.PENDING,
         )
+        # late_fee = 500 * 0.001 * 10 = 5.00
+        # total_due = 505.00
         response = admin_client.get(f"/api/v2/properties/buildings/{building.id}/chessboard/")
         assert response.status_code == status.HTTP_200_OK
         for block in response.data["blocks"]:
@@ -233,7 +247,48 @@ class TestChessboardViewSet:
                 for apt in floor["apartments"]:
                     if apt["id"] == apartment.id:
                         assert apt["latest_aidat_status"] == "pending"
-                        assert apt["total_debt"] == Decimal("500.00")
+                        assert apt["total_debt"] == Decimal("505.00")
+                        assert "status" in apt
+                        assert "status_display" in apt
+
+    def test_chessboard_cache_invalidated_on_aidat_save(self, admin_client, building, apartment):
+        """Creating an AidatCharge invalidates the chessboard cache."""
+        from decimal import Decimal
+
+        from django.utils import timezone
+
+        from apps.billing.models import AidatCharge
+
+        url = f"/api/v2/properties/buildings/{building.id}/chessboard/"
+
+        # First request — populates cache
+        r1 = admin_client.get(url)
+        assert r1.status_code == status.HTTP_200_OK
+        for block in r1.data["blocks"]:
+            for floor in block["floors"]:
+                for apt in floor["apartments"]:
+                    if apt["id"] == apartment.id:
+                        assert apt["latest_aidat_status"] is None
+
+        # Create aidat charge — should invalidate cache via signal
+        AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=timezone.now().date().replace(day=1),
+            billing_period_end=timezone.now().date(),
+            base_amount=Decimal("300"),
+            due_date=timezone.now().date(),
+            status=AidatCharge.Status.PENDING,
+        )
+
+        # Second request — should reflect new charge (cache invalidated)
+        r2 = admin_client.get(url)
+        assert r2.status_code == status.HTTP_200_OK
+        for block in r2.data["blocks"]:
+            for floor in block["floors"]:
+                for apt in floor["apartments"]:
+                    if apt["id"] == apartment.id:
+                        assert apt["latest_aidat_status"] == "pending"
+                        assert apt["total_debt"] == Decimal("300.00")
 
     def test_chessboard_shows_residents(self, admin_client, building, apartment, ownership):
         """Chessboard includes resident info linked via ownership."""
@@ -246,6 +301,15 @@ class TestChessboardViewSet:
                         assert apt["primary_resident"] is not None
                         assert apt["primary_resident"]["name"] == ownership.resident.name
                         assert len(apt["residents"]) == 1
+
+    def test_chessboard_cached(self, admin_client, building, apartment):
+        """Chessboard response is cached and returned on subsequent requests."""
+        url = f"/api/v2/properties/buildings/{building.id}/chessboard/"
+        r1 = admin_client.get(url)
+        assert r1.status_code == status.HTTP_200_OK
+        r2 = admin_client.get(url)
+        assert r2.status_code == status.HTTP_200_OK
+        assert r2.data == r1.data
 
     def test_chessboard_unauthenticated(self, api_client, building):
         """Unauthenticated request returns 401."""

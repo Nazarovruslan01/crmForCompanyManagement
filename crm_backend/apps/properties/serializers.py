@@ -5,7 +5,6 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from apps.billing.models import AidatCharge
-from apps.residents.models import Resident
 
 from .models import Apartment, Building
 
@@ -72,16 +71,6 @@ class ApartmentMinimalSerializer(serializers.ModelSerializer):
         fields = ["id", "building", "building_name", "apartment_number", "block"]
 
 
-class ResidentChessboardSerializer(serializers.ModelSerializer):
-    """Minimal resident info for the chessboard."""
-
-    role = serializers.CharField(source="ownerships__role", read_only=True)
-
-    class Meta:
-        model = Resident
-        fields = ["id", "name", "surname", "full_name", "phone", "owner_type"]
-
-
 class ApartmentChessboardSerializer(serializers.ModelSerializer):
     """Serializer for chessboard (shakhmatka) grid view."""
 
@@ -90,6 +79,8 @@ class ApartmentChessboardSerializer(serializers.ModelSerializer):
     primary_resident = serializers.SerializerMethodField()
     residents = serializers.SerializerMethodField()
 
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
     class Meta:
         model = Apartment
         fields = [
@@ -97,6 +88,8 @@ class ApartmentChessboardSerializer(serializers.ModelSerializer):
             "apartment_number",
             "floor",
             "block",
+            "status",
+            "status_display",
             "latest_aidat_status",
             "total_debt",
             "primary_resident",
@@ -112,11 +105,11 @@ class ApartmentChessboardSerializer(serializers.ModelSerializer):
         return None
 
     def get_total_debt(self, obj: Apartment) -> Decimal:
-        """Sum of base_amount for all pending/overdue aidat charges."""
+        """Sum of total_due (base + late fee) for all pending/overdue aidat charges."""
         total = Decimal("0")
         for charge in obj.aidat_charges.all():  # type: ignore[attr-defined]
             if charge.status in (AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE):
-                total += charge.base_amount
+                total += charge.total_due
         return total
 
     def get_primary_resident(self, obj: Apartment) -> dict | None:
@@ -128,8 +121,8 @@ class ApartmentChessboardSerializer(serializers.ModelSerializer):
                     "name": ownership.resident.name,
                     "surname": ownership.resident.surname,
                     "full_name": ownership.resident.full_name,
-                    "role": ownership.role,
                     "phone": ownership.resident.phone,
+                    "owner_type": ownership.resident.owner_type,
                 }
         return None
 
@@ -141,8 +134,8 @@ class ApartmentChessboardSerializer(serializers.ModelSerializer):
                 "name": ownership.resident.name,
                 "surname": ownership.resident.surname,
                 "full_name": ownership.resident.full_name,
-                "role": ownership.role,
                 "phone": ownership.resident.phone,
+                "owner_type": ownership.resident.owner_type,
             }
             for ownership in obj.ownerships.all()  # type: ignore[attr-defined]
         ]

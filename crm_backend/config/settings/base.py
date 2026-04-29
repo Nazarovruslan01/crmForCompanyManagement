@@ -129,7 +129,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Logging
 _logging_formatters: dict[str, dict[str, str]] = {
     "simple": {
-        "format": "{asctime} {levelname} {name} {message} {request_id}",
+        "format": "{asctime} {levelname} {name} {message}",
         "style": "{",
     },
 }
@@ -140,7 +140,7 @@ try:
 
     _logging_formatters["json"] = {
         "()": "pythonjsonlogger.jsonlogger.JsonFormatter",
-        "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s %(request_id)s",
+        "fmt": "%(asctime)s %(levelname)s %(name)s %(message)s",
     }
     _default_formatter = "json"
 except ImportError:

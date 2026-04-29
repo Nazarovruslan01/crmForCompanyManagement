@@ -1,5 +1,6 @@
 """Properties app views for REST API."""
 
+from django.core.cache import cache
 from django.db.models import Prefetch
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -35,6 +36,11 @@ class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewS
     def chessboard(self, request: Request, pk: int | None = None) -> Response:  # noqa: ARG002
         """Return apartment grid grouped by block and floor for chessboard UI."""
         building = self.get_object()
+        cache_key = f"chessboard:building:{building.id}"  # type: ignore[attr-defined]
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached, status=status.HTTP_200_OK)
+
         apartments = building.apartments.prefetch_related(  # type: ignore[attr-defined]
             Prefetch(
                 "ownerships",  # type: ignore[attr-defined]
@@ -62,20 +68,26 @@ class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewS
         for block_name in sorted(blocks.keys()):
             floors_list = []
             for floor_num in sorted(blocks[block_name].keys(), reverse=True):
+                def _apt_sort_key(x: dict) -> tuple:
+                    num = x["apartment_number"]
+                    try:
+                        return (0, int(num))
+                    except ValueError:
+                        return (1, str(num))
+
                 apts = sorted(
                     blocks[block_name][floor_num],
-                    key=lambda x: x["apartment_number"],
+                    key=_apt_sort_key,
                 )
                 floors_list.append({"floor": floor_num, "apartments": apts})
             result_blocks.append({"block": block_name, "floors": floors_list})
 
-        return Response(
-            {
-                "building": {"id": building.id, "name": building.name},  # type: ignore[attr-defined]
-                "blocks": result_blocks,
-            },
-            status=status.HTTP_200_OK,
-        )
+        result = {
+            "building": {"id": building.id, "name": building.name},  # type: ignore[attr-defined]
+            "blocks": result_blocks,
+        }
+        cache.set(cache_key, result, timeout=60 * 3)  # 3 minutes
+        return Response(result, status=status.HTTP_200_OK)
 
 
 class ApartmentViewSet(AuditLogMixin, CacheListRetrieveMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Apartment]):

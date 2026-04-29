@@ -520,6 +520,12 @@ def generate_monthly_invoices(self: Any) -> InvoiceGenerationResult:
                     batch_size=500,
                     ignore_conflicts=True,
                 )
+                # Bulk create does not fire signals — invalidate chessboard cache manually.
+                from apps.properties.signals import invalidate_building_chessboard
+
+                building_ids = {c.apartment.building_id for c in charges_to_create}
+                for bid in building_ids:
+                    invalidate_building_chessboard(bid)
 
             after_count = AidatCharge.objects.filter(
                 billing_period_start=period_start,
