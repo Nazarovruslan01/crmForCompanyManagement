@@ -11,6 +11,139 @@ from apps.tickets.models import Ticket
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
+class TestTicketTelegramNotifications:
+    """Telegram notifications on status change."""
+
+    def test_telegram_sent_on_status_change(self, admin_user):
+        building = Building.objects.create(name="Signal Test", address="Istanbul")
+        apartment = Apartment.objects.create(
+            building=building, apartment_number="301", floor=3, status=Apartment.Status.ACTIVE,
+        )
+        resident = Resident.objects.create(
+            name="Test", surname="Resident", phone="+905551234570", tc_kimlik_no="11111111130",
+        )
+        Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
+
+        from apps.messenger.models import MessengerUser
+        MessengerUser.objects.create(resident=resident, telegram_chat_id=123456)
+
+        ticket = Ticket.objects.create(
+            title="Telegram Test", description="desc", apartment=apartment,
+            created_by=admin_user, status=Ticket.Status.NEW,
+        )
+
+        with patch("apps.messenger.telegram_client.send_telegram_message") as mock_tg:
+            ticket.status = Ticket.Status.IN_PROGRESS
+            ticket.save()
+
+        mock_tg.assert_called_once()
+        args = mock_tg.call_args.kwargs
+        assert args["chat_id"] == 123456
+        assert "status updated" in args["text"]
+
+    def test_no_telegram_without_messenger_user(self, admin_user):
+        building = Building.objects.create(name="Signal Test", address="Istanbul")
+        apartment = Apartment.objects.create(
+            building=building, apartment_number="302", floor=3, status=Apartment.Status.ACTIVE,
+        )
+        resident = Resident.objects.create(
+            name="Test", surname="Resident", phone="+905551234571", tc_kimlik_no="11111111131",
+        )
+        Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
+
+        ticket = Ticket.objects.create(
+            title="No Telegram", description="desc", apartment=apartment,
+            created_by=admin_user, status=Ticket.Status.NEW,
+        )
+
+        with patch("apps.messenger.telegram_client.send_telegram_message") as mock_tg:
+            ticket.status = Ticket.Status.IN_PROGRESS
+            ticket.save()
+
+        mock_tg.assert_not_called()
+
+
+class TestTicketCommentTelegramNotifications:
+    """Telegram notifications on ticket comments."""
+
+    def test_telegram_sent_on_new_comment(self, admin_user):
+        building = Building.objects.create(name="Signal Test", address="Istanbul")
+        apartment = Apartment.objects.create(
+            building=building, apartment_number="401", floor=4, status=Apartment.Status.ACTIVE,
+        )
+        resident = Resident.objects.create(
+            name="Test", surname="Resident", phone="+905551234580", tc_kimlik_no="11111111140",
+        )
+        Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
+
+        from apps.messenger.models import MessengerUser
+        MessengerUser.objects.create(resident=resident, telegram_chat_id=654321)
+
+        from apps.tickets.models import TicketComment
+
+        ticket = Ticket.objects.create(
+            title="Comment Telegram", description="desc", apartment=apartment,
+            created_by=admin_user, status=Ticket.Status.NEW,
+        )
+
+        with patch("apps.messenger.telegram_client.send_telegram_message") as mock_tg:
+            TicketComment.objects.create(ticket=ticket, author=admin_user, content="We are working on it")
+
+        mock_tg.assert_called_once()
+        args = mock_tg.call_args.args
+        assert args[0] == 654321
+        assert "New comment" in args[1]
+        assert "We are working on it" in args[1]
+
+    def test_no_telegram_on_comment_update(self, admin_user):
+        building = Building.objects.create(name="Signal Test", address="Istanbul")
+        apartment = Apartment.objects.create(
+            building=building, apartment_number="402", floor=4, status=Apartment.Status.ACTIVE,
+        )
+        resident = Resident.objects.create(
+            name="Test", surname="Resident", phone="+905551234581", tc_kimlik_no="11111111141",
+        )
+        Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
+
+        from apps.messenger.models import MessengerUser
+        MessengerUser.objects.create(resident=resident, telegram_chat_id=111222)
+
+        from apps.tickets.models import TicketComment
+
+        ticket = Ticket.objects.create(
+            title="Comment Update", description="desc", apartment=apartment,
+            created_by=admin_user, status=Ticket.Status.NEW,
+        )
+        comment = TicketComment.objects.create(ticket=ticket, author=admin_user, content="Initial")
+
+        with patch("apps.messenger.telegram_client.send_telegram_message") as mock_tg:
+            comment.content = "Updated"
+            comment.save()
+
+        mock_tg.assert_not_called()
+
+
+class TestCaptureOldTicketStatus:
+    """Tests for _capture_old_ticket_status signal."""
+
+    def test_old_status_captured_on_existing_ticket(self, admin_user, apartment):
+        ticket = Ticket.objects.create(
+            title="Old Status", description="desc", apartment=apartment,
+            created_by=admin_user, status=Ticket.Status.NEW,
+        )
+        ticket.status = Ticket.Status.IN_PROGRESS
+        ticket.save()
+        assert getattr(ticket, "_old_status", None) == Ticket.Status.NEW
+
+    def test_old_status_none_on_new_ticket(self):
+        from apps.tickets.signals import _capture_old_ticket_status
+        from apps.tickets.models import Ticket
+
+        new_ticket = Ticket(title="New", description="desc", status=Ticket.Status.NEW)
+        _capture_old_ticket_status(Ticket, new_ticket)
+        assert getattr(new_ticket, "_old_status", "missing") is None
+
+
 class TestTicketEmailNotifications:
     """Email notifications on ticket create/update."""
 
