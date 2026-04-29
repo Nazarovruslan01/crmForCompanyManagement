@@ -7,6 +7,7 @@ import { DataTable, type Column } from '../components/ui/DataTable';
 import { TicketStatusBadge, TicketPriorityBadge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
 import { SearchInput } from '../components/ui/SearchInput';
+import { TicketForm } from '../components/forms/TicketForm';
 import type { Ticket, TicketStatus } from '../types';
 
 const STATUS_TABS: { value: TicketStatus | ''; label: string }[] = [
@@ -75,6 +76,7 @@ export function TicketsPage() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('');
   const [search, setSearch] = useState('');
+  const [formOpen, setFormOpen] = useState(false);
 
   const params = useMemo(() => {
     const p: Record<string, string> = {};
@@ -83,11 +85,22 @@ export function TicketsPage() {
     return Object.keys(p).length ? p : undefined;
   }, [statusFilter, search]);
 
-  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
+  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious, refetch } =
     useList<Ticket>(p => api.tickets.list(p), params);
 
   return (
-    <PageLayout title="Заявки">
+    <PageLayout
+      title="Заявки"
+      actions={
+        <button
+          className="btn-primary"
+          onClick={() => setFormOpen(true)}
+          style={{ padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
+        >
+          + Новая заявка
+        </button>
+      }
+    >
       <SearchInput placeholder="Поиск по заявке или квартире" onSearch={setSearch} />
       {/* Status tabs */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, flexWrap: 'wrap' }}>
@@ -112,6 +125,12 @@ export function TicketsPage() {
         onRowClick={t => navigate(`/tickets/${t.id}`)}
       />
       <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
+
+      <TicketForm
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onSaved={refetch}
+      />
     </PageLayout>
   );
 }

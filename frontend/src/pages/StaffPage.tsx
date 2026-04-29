@@ -6,6 +6,7 @@ import { DataTable, type Column } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
 import { SearchInput } from '../components/ui/SearchInput';
+import { EmployeeForm } from '../components/forms/EmployeeForm';
 import type { Employee } from '../types';
 
 const columns: Column<Employee>[] = [
@@ -45,11 +46,25 @@ const columns: Column<Employee>[] = [
 
 export function StaffPage() {
   const [search, setSearch] = useState('');
-  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Employee | undefined>();
+
+  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious, refetch } =
     useList<Employee>(p => api.employees.list(p), search ? { search } : undefined);
 
   return (
-    <PageLayout title="Сотрудники">
+    <PageLayout
+      title="Сотрудники"
+      actions={
+        <button
+          className="btn-primary"
+          onClick={() => { setEditing(undefined); setFormOpen(true); }}
+          style={{ padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
+        >
+          + Добавить сотрудника
+        </button>
+      }
+    >
       <SearchInput placeholder="Поиск по имени или должности" onSearch={setSearch} />
       <DataTable
         columns={columns}
@@ -58,8 +73,16 @@ export function StaffPage() {
         error={error}
         keyExtractor={e => e.id}
         emptyText="Нет сотрудников"
+        onRowClick={e => { setEditing(e); setFormOpen(true); }}
       />
       <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
+
+      <EmployeeForm
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onSaved={refetch}
+        initial={editing}
+      />
     </PageLayout>
   );
 }

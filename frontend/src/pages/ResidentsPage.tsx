@@ -7,6 +7,7 @@ import { DataTable, type Column } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
 import { SearchInput } from '../components/ui/SearchInput';
+import { ResidentForm } from '../components/forms/ResidentForm';
 import type { Resident } from '../types';
 
 const columns: Column<Resident>[] = [
@@ -50,11 +51,24 @@ const columns: Column<Resident>[] = [
 export function ResidentsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
+  const [formOpen, setFormOpen] = useState(false);
+
+  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious, refetch } =
     useList<Resident>(p => api.residents.list(p), search ? { search } : undefined);
 
   return (
-    <PageLayout title="Жильцы">
+    <PageLayout
+      title="Жильцы"
+      actions={
+        <button
+          className="btn-primary"
+          onClick={() => setFormOpen(true)}
+          style={{ padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
+        >
+          + Добавить жильца
+        </button>
+      }
+    >
       <SearchInput placeholder="Поиск по ФИО, ТС или паспорту" onSearch={setSearch} />
       <DataTable
         columns={columns}
@@ -66,6 +80,12 @@ export function ResidentsPage() {
         onRowClick={r => navigate(`/residents/${r.id}`)}
       />
       <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
+
+      <ResidentForm
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onSaved={refetch}
+      />
     </PageLayout>
   );
 }

@@ -7,6 +7,7 @@ import { DataTable, type Column } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
 import { SearchInput } from '../components/ui/SearchInput';
+import { BuildingForm } from '../components/forms/BuildingForm';
 import type { Building } from '../types';
 
 const mgmtColor = (t: Building['management_type']) =>
@@ -48,11 +49,24 @@ const columns: Column<Building>[] = [
 export function BuildingsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
+  const [formOpen, setFormOpen] = useState(false);
+
+  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious, refetch } =
     useList<Building>(params => api.buildings.list(params), search ? { search } : undefined);
 
   return (
-    <PageLayout title="Здания">
+    <PageLayout
+      title="Здания"
+      actions={
+        <button
+          className="btn-primary"
+          onClick={() => setFormOpen(true)}
+          style={{ padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
+        >
+          + Добавить здание
+        </button>
+      }
+    >
       <SearchInput placeholder="Поиск по названию или адресу" onSearch={setSearch} />
       <DataTable
         columns={columns}
@@ -64,6 +78,12 @@ export function BuildingsPage() {
         onRowClick={b => navigate(`/buildings/${b.id}`)}
       />
       <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
+
+      <BuildingForm
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onSaved={refetch}
+      />
     </PageLayout>
   );
 }
