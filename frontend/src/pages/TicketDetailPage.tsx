@@ -23,7 +23,8 @@ export function TicketDetailPage() {
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
 
-  // Используем localTicket если он есть (после добавления комментария), иначе fetched ticket
+  // После добавления комментария используем localTicket с обновлёнными данными,
+  // иначе данные из useDetail
   const currentTicket = localTicket ?? ticket;
 
   const handleAddComment = async (e: React.FormEvent) => {

@@ -1,7 +1,7 @@
 /**
  * E2E tests for Tickets page flows.
  * Verifies list, tabs, search, and detail navigation.
- * Assumes authenticated context (storageState).
+ * Assumes authenticated context (storageState) with seeded test data.
  */
 import { test, expect } from '@playwright/test';
 
@@ -22,54 +22,42 @@ test.describe('Tickets Page', () => {
 
   test('search input is visible', async ({ page }) => {
     const search = page.locator('input[placeholder*="Поиск"]').or(
-      page.locator('input[placeholder*="поиск"]')
+      page.locator('input[placeholder*="поиск"]'),
     );
     await expect(search).toBeVisible();
   });
 
-  test('clicking a ticket row navigates to detail', async ({ page }) => {
+  test('table has at least one ticket row', async ({ page }) => {
     const table = page.locator('table');
     await expect(table).toBeVisible();
-
-    const firstRow = table.locator('tbody tr').first();
-    if (await firstRow.isVisible().catch(() => false)) {
-      await firstRow.click();
-      await expect(page).toHaveURL(/\/tickets\/\d+/);
-
-      // Ticket detail page should show back button and ticket info
-      // Use first h1 since detail page has title in first h1
-      await expect(page.locator('h1').first()).toContainText('Заявка');
-    }
+    await expect(table.locator('tbody tr').first()).toBeVisible();
   });
 
-  test('ticket detail shows status badge and description', async ({ page }) => {
-    const table = page.locator('table');
-    await expect(table).toBeVisible();
+  test('clicking a ticket row navigates to detail', async ({ page }) => {
+    const firstRow = page.locator('table tbody tr').first();
+    await expect(firstRow).toBeVisible();
+    await firstRow.click();
+    await expect(page).toHaveURL(/\/tickets\/\d+/);
+    await expect(page.locator('h1').first()).toContainText('Заявка');
+  });
 
-    const firstRow = table.locator('tbody tr').first();
-    if (await firstRow.isVisible().catch(() => false)) {
-      await firstRow.click();
-      await expect(page).toHaveURL(/\/tickets\/\d+/);
-
-      // Description or metadata should be visible
-      await expect(page.getByText(/Исполнитель/)).toBeVisible();
-    }
+  test('ticket detail shows executor metadata', async ({ page }) => {
+    const firstRow = page.locator('table tbody tr').first();
+    await expect(firstRow).toBeVisible();
+    await firstRow.click();
+    await expect(page).toHaveURL(/\/tickets\/\d+/);
+    await expect(page.getByText(/Исполнитель/)).toBeVisible();
   });
 });
 
 test.describe('Ticket Detail', () => {
-  test('renders ticket detail page with back link', async ({ page }) => {
-    // Go to tickets list and click first row to get a valid ticket
+  test('renders back link on ticket detail page', async ({ page }) => {
     await page.goto('/tickets');
-    const table = page.locator('table');
-    await expect(table).toBeVisible();
-
-    const firstRow = table.locator('tbody tr').first();
-    if (await firstRow.isVisible().catch(() => false)) {
-      await firstRow.click();
-      await expect(page).toHaveURL(/\/tickets\/\d+/);
-      await expect(page.locator('h1').first()).toContainText('Заявка');
-      await expect(page.getByRole('button', { name: 'Назад к списку' })).toBeVisible();
-    }
+    const firstRow = page.locator('table tbody tr').first();
+    await expect(firstRow).toBeVisible();
+    await firstRow.click();
+    await expect(page).toHaveURL(/\/tickets\/\d+/);
+    await expect(page.locator('h1').first()).toContainText('Заявка');
+    await expect(page.getByRole('button', { name: 'Назад к списку' })).toBeVisible();
   });
 });

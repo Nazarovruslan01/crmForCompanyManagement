@@ -101,6 +101,17 @@ export function ChessboardPage() {
   }
 
   const blocks = chessboard.blocks;
+
+  if (!blocks.length) {
+    return (
+      <PageLayout title={`${chessboard.building.name} — Шахматная доска`}>
+        <p style={{ padding: 40, textAlign: 'center', color: 'var(--color-gray-7)', fontSize: 14 }}>
+          Нет данных по блокам
+        </p>
+      </PageLayout>
+    );
+  }
+
   const currentBlock = blocks[selectedBlock] ?? blocks[0];
 
   // Collect all unique apartment numbers across all floors to form columns
