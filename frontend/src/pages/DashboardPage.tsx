@@ -95,7 +95,6 @@ export function DashboardPage() {
   const [ticketsError, setTicketsError] = useState<string | null>(null);
 
   useEffect(() => {
-    setStatsLoading(true);
     Promise.all([
       api.buildings.list(),
       api.tickets.list({ status: 'new' }),
@@ -115,7 +114,6 @@ export function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    setTicketsLoading(true);
     api.tickets.list({ ordering: '-created_at' })
       .then(res => setRecentTickets(res.results.slice(0, 10)))
       .catch(err => setTicketsError((err as Error).message))

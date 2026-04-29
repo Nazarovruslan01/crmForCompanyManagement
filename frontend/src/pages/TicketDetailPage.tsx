@@ -1,124 +1,91 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { api } from '../lib/api';
-import { PageLayout } from '../components/ui/PageLayout';
+import { useDetail } from '../hooks/useDetail';
+import { DetailPageLayout } from '../components/ui/DetailPageLayout';
 import { TicketStatusBadge, TicketPriorityBadge } from '../components/ui/Badge';
 import type { Ticket, TicketComment } from '../types';
-import { ArrowLeft, MessageSquare, Paperclip, User, Calendar, MapPin } from 'lucide-react';
+import { MessageSquare, Paperclip, User, Calendar, MapPin } from 'lucide-react';
 
 export function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const [ticket, setTicket] = useState<Ticket | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const ticketId = id ? Number(id) : undefined;
+
+  const {
+    data: ticket,
+    loading,
+    error,
+    // refetch нет в useDetail, обновляем вручную через setTicket
+  } = useDetail<Ticket>(api.tickets.get, ticketId);
+
+  const [localTicket, setLocalTicket] = useState<Ticket | null>(null);
   const [newComment, setNewComment] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
+  const [commentError, setCommentError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    api.tickets.get(Number(id))
-      .then(data => {
-        if (!cancelled) setTicket(data);
-      })
-      .catch(err => {
-        if (!cancelled) setError((err as Error).message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [id]);
+  // Используем localTicket если он есть (после добавления комментария), иначе fetched ticket
+  const currentTicket = localTicket ?? ticket;
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ticket || !newComment.trim()) return;
+    if (!currentTicket || !newComment.trim() || !ticketId) return;
     setCommentLoading(true);
+    setCommentError(null);
     try {
-      await api.comments.create({ ticket: ticket.id, content: newComment.trim() });
-      const updated = await api.tickets.get(ticket.id);
-      setTicket(updated);
+      await api.comments.create({ ticket: currentTicket.id, content: newComment.trim() });
+      const updated = await api.tickets.get(ticketId);
+      setLocalTicket(updated);
       setNewComment('');
     } catch (err) {
-      setError((err as Error).message);
+      setCommentError((err as Error).message);
     } finally {
       setCommentLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <PageLayout title="Заявка">
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-gray-7)' }}>Загрузка...</div>
-      </PageLayout>
-    );
-  }
-
-  if (error || !ticket) {
-    return (
-      <PageLayout title="Ошибка">
-        <div style={{ padding: 40, textAlign: 'center', color: '#ff4d4f' }}>
-          {error ?? 'Заявка не найдена'}
-        </div>
-      </PageLayout>
-    );
-  }
-
   return (
-    <PageLayout title={`Заявка #${ticket.id}`}>
-      <div style={{ marginBottom: 16 }}>
-        <button
-          onClick={() => navigate('/tickets')}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: 'var(--color-gray-7)', fontSize: 14,
-          }}
-        >
-          <ArrowLeft size={16} /> Назад к списку
-        </button>
-      </div>
-
-      <div style={{ display: 'grid', gap: 16 }}>
-        {/* Main info card */}
-        <div style={{
-          background: '#fff', borderRadius: 12, border: '1px solid var(--color-gray-3)',
-          padding: 24,
-        }}>
+    <DetailPageLayout
+      fallbackTitle={`Заявка #${ticketId ?? ''}`}
+      data={currentTicket}
+      loading={loading}
+      error={error}
+      backPath="/tickets"
+      getTitle={(t: Ticket) => `Заявка #${t.id}`}
+      headerRenderer={(t: Ticket) => (
+        <>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
-            <TicketStatusBadge status={ticket.status} label={ticket.status_display} />
-            <TicketPriorityBadge priority={ticket.priority} label={ticket.priority_display} />
-            <span style={{ fontSize: 13, color: 'var(--color-gray-7)' }}>{ticket.category_display}</span>
+            <TicketStatusBadge status={t.status} label={t.status_display} />
+            <TicketPriorityBadge priority={t.priority} label={t.priority_display} />
+            <span style={{ fontSize: 13, color: 'var(--color-gray-7)' }}>{t.category_display}</span>
           </div>
-
-          <h1 style={{ margin: '0 0 12px', fontSize: 20, fontWeight: 600 }}>{ticket.title}</h1>
+          <h1 style={{ margin: '0 0 12px', fontSize: 20, fontWeight: 600 }}>{t.title}</h1>
+        </>
+      )}
+      infoRenderer={(t: Ticket) => (
+        <>
           <p style={{ margin: '0 0 16px', fontSize: 14, lineHeight: 1.6, color: '#1f1f1f', whiteSpace: 'pre-wrap' }}>
-            {ticket.description}
+            {t.description}
           </p>
-
           <div style={{ display: 'grid', gap: 8, fontSize: 13, color: 'var(--color-gray-7)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <MapPin size={14} />
-              {ticket.apartment_detail.building_name} · кв. {ticket.apartment_detail.apartment_number}
+              {t.apartment_detail.building_name} · кв. {t.apartment_detail.apartment_number}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <User size={14} />
-              Исполнитель: {ticket.assigned_worker_display ?? 'Не назначен'}
+              Исполнитель: {t.assigned_worker_display ?? 'Не назначен'}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <Calendar size={14} />
-              Создана: {new Date(ticket.created_at).toLocaleString('ru-RU')}
+              Создана: {new Date(t.created_at).toLocaleString('ru-RU')}
             </div>
           </div>
-        </div>
-
+        </>
+      )}
+    >
+      <>
         {/* Attachments */}
-        {ticket.attachments && ticket.attachments.length > 0 && (
+        {currentTicket?.attachments && currentTicket.attachments.length > 0 && (
           <div style={{
             background: '#fff', borderRadius: 12, border: '1px solid var(--color-gray-3)',
             padding: 24,
@@ -127,7 +94,7 @@ export function TicketDetailPage() {
               <Paperclip size={18} /> Вложения
             </h2>
             <div style={{ display: 'grid', gap: 8 }}>
-              {ticket.attachments.map(att => (
+              {currentTicket.attachments.map(att => (
                 <a
                   key={att.id}
                   href={att.file_url}
@@ -160,8 +127,8 @@ export function TicketDetailPage() {
           </h2>
 
           <div style={{ display: 'grid', gap: 12, marginBottom: 20 }}>
-            {ticket.comments && ticket.comments.length > 0 ? (
-              ticket.comments.map((comment: TicketComment) => (
+            {currentTicket?.comments && currentTicket.comments.length > 0 ? (
+              currentTicket.comments.map((comment: TicketComment) => (
                 <div key={comment.id} style={{
                   padding: 12, borderRadius: 8, background: 'var(--color-gray-1)',
                 }}>
@@ -178,6 +145,10 @@ export function TicketDetailPage() {
               <p style={{ margin: 0, fontSize: 13, color: 'var(--color-gray-7)' }}>Пока нет комментариев</p>
             )}
           </div>
+
+          {commentError && (
+            <div style={{ marginBottom: 12, color: '#ff4d4f', fontSize: 13 }}>{commentError}</div>
+          )}
 
           <form onSubmit={handleAddComment} style={{ display: 'flex', gap: 8 }}>
             <input
@@ -212,7 +183,7 @@ export function TicketDetailPage() {
             </button>
           </form>
         </div>
-      </div>
-    </PageLayout>
+      </>
+    </DetailPageLayout>
   );
 }

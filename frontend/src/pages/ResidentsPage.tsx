@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
@@ -47,6 +48,7 @@ const columns: Column<Resident>[] = [
 ];
 
 export function ResidentsPage() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious } =
     useList<Resident>(p => api.residents.list(p), search ? { search } : undefined);
@@ -61,6 +63,7 @@ export function ResidentsPage() {
         error={error}
         keyExtractor={r => r.id}
         emptyText="Нет жильцов"
+        onRowClick={r => navigate(`/residents/${r.id}`)}
       />
       <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
     </PageLayout>

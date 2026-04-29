@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useReducer, useState, useEffect, useCallback } from 'react';
 import type { PaginatedResponse } from '../types';
 
 function extractCursor(url: string | null): string | null {
@@ -22,76 +22,77 @@ interface UseListResult<T> {
   refetch: () => void;
 }
 
+type AsyncState<T> = { data: T[]; loading: boolean; error: string | null };
+type AsyncAction<T> =
+  | { type: 'fetch' }
+  | { type: 'success'; results: T[] }
+  | { type: 'failure'; error: string };
+
 export function useList<T>(
   fetcher: (params?: Record<string, string>) => Promise<PaginatedResponse<T>>,
   initialParams?: Record<string, string>,
 ): UseListResult<T> {
-  const [params, setParams] = useState<Record<string, string> | undefined>(initialParams);
-  const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [asyncState, dispatch] = useReducer(
+    (prev: AsyncState<T>, action: AsyncAction<T>): AsyncState<T> => {
+      if (action.type === 'fetch')   return { ...prev, loading: true, error: null };
+      if (action.type === 'success') return { data: action.results, loading: false, error: null };
+      return { ...prev, loading: false, error: action.error };
+    },
+    { data: [], loading: true, error: null },
+  );
+
+  // Cursor is keyed by initialParamsKey so it resets automatically when filters change.
+  const [cursorMap, setCursorMap] = useState<Record<string, string | null>>({});
   const [nextUrl, setNextUrl] = useState<string | null>(null);
   const [prevUrl, setPrevUrl] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
+  const [refetchKey, setRefetchKey] = useState(0);
 
-  const refetch = useCallback((newParams?: Record<string, string>) => {
-    setParams(newParams !== undefined ? newParams : initialParams);
-    setTick(t => t + 1);
-  }, [initialParams]);
+  const initialParamsKey = JSON.stringify(initialParams);
+  const cursor = cursorMap[initialParamsKey] ?? null;
 
-  // refetch when initialParams change from outside
-  useEffect(() => {
-    setParams(initialParams);
-    setTick(t => t + 1);
-  }, [JSON.stringify(initialParams)]);
+  const params: Record<string, string> | undefined = cursor
+    ? { ...initialParams, cursor }
+    : initialParams;
+
+  const refetch = useCallback(() => {
+    setCursorMap(m => ({ ...m, [initialParamsKey]: null }));
+    setRefetchKey(k => k + 1);
+  }, [initialParamsKey]);
 
   const goNext = useCallback(() => {
-    const cursor = extractCursor(nextUrl);
-    if (!cursor) return;
-    setParams(prev => ({ ...prev, cursor }));
-  }, [nextUrl]);
+    const c = extractCursor(nextUrl);
+    if (c) setCursorMap(m => ({ ...m, [initialParamsKey]: c }));
+  }, [nextUrl, initialParamsKey]);
 
   const goPrevious = useCallback(() => {
-    const cursor = extractCursor(prevUrl);
-    if (!cursor) {
-      setParams(prev => {
-        if (!prev) return undefined;
-        const { cursor: _, ...rest } = prev;
-        return Object.keys(rest).length ? rest : undefined;
-      });
-      return;
-    }
-    setParams(prev => ({ ...prev, cursor }));
-  }, [prevUrl]);
+    const c = extractCursor(prevUrl);
+    setCursorMap(m => ({ ...m, [initialParamsKey]: c }));
+  }, [prevUrl, initialParamsKey]);
 
   useEffect(() => {
+    dispatch({ type: 'fetch' });
     let cancelled = false;
-    setLoading(true);
-    setError(null);
 
     fetcher(params)
       .then(res => {
         if (cancelled) return;
-        setData(res.results);
+        dispatch({ type: 'success', results: res.results });
         setNextUrl(res.next);
         setPrevUrl(res.previous);
       })
       .catch(err => {
         if (cancelled) return;
-        setError((err as Error).message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        dispatch({ type: 'failure', error: (err as Error).message });
       });
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tick, JSON.stringify(params)]);
+  }, [initialParamsKey, cursor, refetchKey]);
 
   return {
-    data,
-    loading,
-    error,
+    data: asyncState.data,
+    loading: asyncState.loading,
+    error: asyncState.error,
     hasNext: !!nextUrl,
     hasPrevious: !!prevUrl,
     goNext,
