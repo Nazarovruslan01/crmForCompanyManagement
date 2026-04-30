@@ -38,23 +38,35 @@ def validate_password_strength(value: str) -> str:
 
 
 def validate_tc_kimlik_no(value: str) -> str:
-    """Validate Turkish ID number (TC Kimlik No) format."""
+    """Validate Turkish ID number (TC Kimlik No) using the official algorithm.
+
+    Official checksum rules (1-based positions):
+    1. Must be 11 digits, first digit != 0.
+    2. T  = sum of digits at odd positions  (1, 3, 5, 7, 9)
+    3. T2 = sum of digits at even positions (2, 4, 6, 8)
+    4. 10th digit = (T * 7 - T2) % 10
+    5. 11th digit = (sum of first 10 digits) % 10
+    """
     if value is None:
         return value
     tc_regex = re.compile(r"^\d{11}$")
     if not tc_regex.match(value):
         raise serializers.ValidationError("Enter a valid 11-digit TC Kimlik No.")
-    # Basic checksum validation
-    if len(value) == 11:
-        digits = [int(d) for d in value]
-        # First digit cannot be 0
-        if digits[0] == 0:
-            raise serializers.ValidationError("Enter a valid TC Kimlik No.")
-        # Check digits 1-9
-        total = sum(digits[:9])
-        if (total % 10) != digits[9]:
-            raise serializers.ValidationError("Enter a valid TC Kimlik No.")
-        # Check digit 10
-        if ((total // 10) % 10) != digits[10]:
-            raise serializers.ValidationError("Enter a valid TC Kimlik No.")
+
+    digits = [int(d) for d in value]
+    if digits[0] == 0:
+        raise serializers.ValidationError("Enter a valid TC Kimlik No.")
+
+    # Official algorithm
+    odd_sum = digits[0] + digits[2] + digits[4] + digits[6] + digits[8]
+    even_sum = digits[1] + digits[3] + digits[5] + digits[7]
+
+    expected_10th = (odd_sum * 7 - even_sum) % 10
+    if expected_10th != digits[9]:
+        raise serializers.ValidationError("Enter a valid TC Kimlik No.")
+
+    expected_11th = sum(digits[:10]) % 10
+    if expected_11th != digits[10]:
+        raise serializers.ValidationError("Enter a valid TC Kimlik No.")
+
     return value

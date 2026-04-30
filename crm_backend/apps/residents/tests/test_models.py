@@ -12,7 +12,7 @@ class TestResident:
     def test_create_resident(self, resident):
         assert resident.name == "Test"
         assert resident.surname == "Resident"
-        assert resident.tc_kimlik_no == "12345678901"
+        assert resident.tc_kimlik_no == "12345678950"
         assert resident.owner_type == Resident.OwnerType.OWNER
         assert not resident.is_foreign_owner
 
@@ -38,8 +38,8 @@ class TestResident:
         r.clean()  # Should not raise
 
     def test_resident_ordering(self, db):
-        Resident.objects.create(name="Alice", surname="Smith", tc_kimlik_no="11111111111")
-        Resident.objects.create(name="Bob", surname="Jones", tc_kimlik_no="22222222222")
+        Resident.objects.create(name="Alice", surname="Smith", tc_kimlik_no="11111111110")
+        Resident.objects.create(name="Bob", surname="Jones", tc_kimlik_no="22222222220")
         residents = list(Resident.objects.all())
         assert residents[0].surname == "Jones"
         assert residents[1].surname == "Smith"

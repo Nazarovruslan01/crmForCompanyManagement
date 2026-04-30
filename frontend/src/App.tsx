@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
+import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardLayout } from './components/DashboardLayout';
 import { DashboardPage } from './pages/DashboardPage';
@@ -22,18 +23,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'var(--color-gray-7)',
-        fontSize: 14,
-      }}>
-        Загрузка...
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
@@ -44,18 +34,7 @@ function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: 'var(--color-gray-7)',
-        fontSize: 14,
-      }}>
-        Загрузка...
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   return (

@@ -156,6 +156,32 @@ class AuditLog(models.Model):
         )
 
 
+class PasswordResetToken(models.Model):
+    """Single-purpose token for password reset flow.
+
+    Stores a cryptographically random token hashed with SHA256.
+    The raw token is emailed to the user and discarded immediately after hashing.
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="password_reset_tokens",
+    )
+    token_hash = models.CharField(max_length=64, help_text="SHA256 hash of the raw token")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "password_reset_token"
+        verbose_name = "Password Reset Token"
+        verbose_name_plural = "Password Reset Tokens"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"Reset token for {self.user.username}"
+
+
 class TOTPDevice(models.Model):
     """TOTP device for MFA (admin/manager accounts only)."""
 

@@ -27,7 +27,7 @@ class TestResidentViewSet:
             "surname": "Resident",
             "phone": "+905551119999",
             "email": "newresident@example.com",
-            "tc_kimlik_no": "11111111190",
+            "tc_kimlik_no": "11111111110",
             "owner_type": "owner",
         }
         response = admin_client.post("/api/v2/residents/residents/", payload, format="json")
@@ -211,7 +211,7 @@ class TestResidentViewSetResidentAccess:
             "surname": "Resident",
             "phone": "+905551119999",
             "email": "new@example.com",
-            "tc_kimlik_no": "11111111190",
+            "tc_kimlik_no": "11111111110",
             "owner_type": "owner",
         }
         response = resident_client.post("/api/v2/residents/residents/", payload, format="json")

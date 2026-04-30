@@ -409,7 +409,7 @@ class TestSendTelegramDebtReminders:
             name="Test",
             surname="Resident",
             phone="+905551234567",
-            tc_kimlik_no="12345678901",
+            tc_kimlik_no="12345678950",
         )
         Ownership.objects.create(
             resident=resident,
@@ -458,7 +458,7 @@ class TestSendTelegramDebtReminders:
             name="Test",
             surname="Resident",
             phone="+905551234567",
-            tc_kimlik_no="12345678901",
+            tc_kimlik_no="12345678950",
         )
         Ownership.objects.create(
             resident=resident,
@@ -503,7 +503,7 @@ class TestSendTelegramDebtReminders:
             name="Test",
             surname="Resident",
             phone="+905551234567",
-            tc_kimlik_no="12345678901",
+            tc_kimlik_no="12345678950",
         )
         Ownership.objects.create(
             resident=resident,
@@ -570,7 +570,7 @@ class TestSendTelegramDebtReminders:
             name="Test",
             surname="Resident",
             phone="+905551234567",
-            tc_kimlik_no="12345678901",
+            tc_kimlik_no="12345678950",
         )
         Ownership.objects.create(
             resident=resident,
@@ -615,7 +615,7 @@ class TestSendTelegramDebtReminders:
             name="Test",
             surname="Resident",
             phone="+905551234567",
-            tc_kimlik_no="12345678901",
+            tc_kimlik_no="12345678950",
         )
         Ownership.objects.create(
             resident=resident,

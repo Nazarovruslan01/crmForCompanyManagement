@@ -60,10 +60,10 @@ class TestUser:
             username="tcuser",
             email="tc@example.com",
             password="pass123",
-            tc_kimlik_no="12345678901",
+            tc_kimlik_no="12345678950",
             role=User.Role.RESIDENT,
         )
-        assert u.tc_kimlik_no == "12345678901"
+        assert u.tc_kimlik_no == "12345678950"
 
     def test_user_default_role_is_resident(self, db):
         u = User.objects.create_user(username="defaultrole", email="default@example.com", password="pass123")

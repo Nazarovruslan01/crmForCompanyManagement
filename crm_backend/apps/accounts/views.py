@@ -31,21 +31,6 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet[User]):
         return UserSerializer
 
 
-class LogoutView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
-    throttle_classes = [UserWriteThrottle]
-
-    def post(self, request: Request) -> Response:
-        try:
-            refresh_token = request.data.get("refresh")
-            if refresh_token:
-                token = RefreshToken(refresh_token)
-                token.blacklist()
-            return Response({"detail": "Successfully logged out"}, status=status.HTTP_200_OK)
-        except Exception:
-            return Response({"detail": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
-
-
 class UserMeView(generics.RetrieveUpdateAPIView[User]):
     """Get or update current user profile."""
 

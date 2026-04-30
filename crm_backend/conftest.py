@@ -155,7 +155,7 @@ def resident(db):
         surname="Resident",
         phone="+905551234567",
         email="resident@example.com",
-        tc_kimlik_no="12345678901",
+        tc_kimlik_no="12345678950",
         owner_type=Resident.OwnerType.OWNER,
     )
 
@@ -168,7 +168,7 @@ def tenant_resident(db):
         surname="Tenant",
         phone="+905551234568",
         email="tenant@example.com",
-        tc_kimlik_no="12345678902",
+        tc_kimlik_no="10000000146",
         owner_type=Resident.OwnerType.TENANT,
     )
 
@@ -279,7 +279,7 @@ def resident_with_profile(db, apartment):
         surname="Profile",
         phone="+905551234567",
         email="residentprofile@example.com",
-        tc_kimlik_no="99999999999",
+        tc_kimlik_no="99999999990",
         owner_type=Resident.OwnerType.OWNER,
     )
     Ownership.objects.create(
@@ -331,7 +331,7 @@ def other_resident(db, other_apartment):
         surname="Resident",
         phone="+905551234568",
         email="other@example.com",
-        tc_kimlik_no="88888888888",
+        tc_kimlik_no="88888888880",
         owner_type=Resident.OwnerType.OWNER,
     )
     Ownership.objects.create(

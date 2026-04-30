@@ -99,43 +99,50 @@ class ApartmentChessboardSerializer(serializers.ModelSerializer):
     def get_latest_aidat_status(self, obj: Apartment) -> str | None:
         """Return status of the most recent aidat charge."""
         # Prefetched aidat_charges are ordered by -billing_period_start
-        charges = list(obj.aidat_charges.all())  # type: ignore[attr-defined]
-        if charges:
-            return str(charges[0].status)
-        return None
+        first_charge = next(
+            (c for c in obj.aidat_charges.all()),  # type: ignore[attr-defined]
+            None,
+        )
+        return str(first_charge.status) if first_charge else None
 
     def get_total_debt(self, obj: Apartment) -> Decimal:
         """Sum of total_due (base + late fee) for all pending/overdue aidat charges."""
-        total = Decimal("0")
-        for charge in obj.aidat_charges.all():  # type: ignore[attr-defined]
-            if charge.status in (AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE):
-                total += charge.total_due
-        return total
+        return sum(
+            (
+                charge.total_due
+                for charge in obj.aidat_charges.all()  # type: ignore[attr-defined]
+                if charge.status in (AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE)
+            ),
+            Decimal("0"),
+        )
+
+    def _resident_dict(self, ownership) -> dict:
+        """Build resident dict from an ownership (avoids duplication)."""
+        resident = ownership.resident
+        return {
+            "id": resident.id,
+            "name": resident.name,
+            "surname": resident.surname,
+            "full_name": resident.full_name,
+            "phone": resident.phone,
+            "owner_type": resident.owner_type,
+        }
 
     def get_primary_resident(self, obj: Apartment) -> dict | None:
         """Primary resident (is_primary=True) with role from ownership."""
-        for ownership in obj.ownerships.all():  # type: ignore[attr-defined]
-            if ownership.is_primary:
-                return {
-                    "id": ownership.resident.id,
-                    "name": ownership.resident.name,
-                    "surname": ownership.resident.surname,
-                    "full_name": ownership.resident.full_name,
-                    "phone": ownership.resident.phone,
-                    "owner_type": ownership.resident.owner_type,
-                }
-        return None
+        primary = next(
+            (
+                ownership
+                for ownership in obj.ownerships.all()  # type: ignore[attr-defined]
+                if ownership.is_primary
+            ),
+            None,
+        )
+        return self._resident_dict(primary) if primary else None
 
     def get_residents(self, obj: Apartment) -> list[dict]:
         """All residents linked to this apartment via ownership."""
         return [
-            {
-                "id": ownership.resident.id,
-                "name": ownership.resident.name,
-                "surname": ownership.resident.surname,
-                "full_name": ownership.resident.full_name,
-                "phone": ownership.resident.phone,
-                "owner_type": ownership.resident.owner_type,
-            }
+            self._resident_dict(ownership)
             for ownership in obj.ownerships.all()  # type: ignore[attr-defined]
         ]

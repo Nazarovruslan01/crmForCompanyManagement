@@ -131,9 +131,18 @@ class TestValidatePasswordStrength:
 
 class TestValidateTcKimlikNo:
     def test_valid_tc_kimlik(self):
-        # Valid TC: 10000000010 (first digit not 0, checksum passes)
-        result = validate_tc_kimlik_no("10000000010")
-        assert result == "10000000010"
+        # Valid TC: 10000000146 (official algorithm)
+        # odd_sum = 1+0+0+0+1 = 2, even_sum = 0+0+0+0 = 0
+        # d10 = (2*7 - 0) % 10 = 4, d11 = (1+0+0+0+0+0+0+0+1+4) % 10 = 6
+        result = validate_tc_kimlik_no("10000000146")
+        assert result == "10000000146"
+
+    def test_valid_tc_kimlik_another(self):
+        # Another valid TC: 12345678950
+        # odd_sum = 1+3+5+7+9 = 25, even_sum = 2+4+6+8 = 20
+        # d10 = (25*7 - 20) % 10 = 5, d11 = (1+2+3+4+5+6+7+8+9+5) % 10 = 0
+        result = validate_tc_kimlik_no("12345678950")
+        assert result == "12345678950"
 
     def test_none_value(self):
         result = validate_tc_kimlik_no(None)
@@ -154,14 +163,14 @@ class TestValidateTcKimlikNo:
             validate_tc_kimlik_no("02345678901")
         assert "valid TC Kimlik" in str(exc.value)
 
-    def test_invalid_tc_bad_checksum_digit10(self):
-        # First 9 digits sum = 2, so d10 must be 2. Using 3 will fail.
+    def test_invalid_tc_bad_10th_digit(self):
+        # 10000000156: correct d10 is 4, using 5 instead
         with pytest.raises(serializers.ValidationError) as exc:
-            validate_tc_kimlik_no("10000000013")
+            validate_tc_kimlik_no("10000000156")
         assert "valid TC Kimlik" in str(exc.value)
 
-    def test_invalid_tc_bad_checksum_digit11(self):
-        # Using 10000000011 - valid d10=1 but wrong d11
+    def test_invalid_tc_bad_11th_digit(self):
+        # 10000000147: correct d11 is 6, using 7 instead
         with pytest.raises(serializers.ValidationError) as exc:
-            validate_tc_kimlik_no("10000000011")
+            validate_tc_kimlik_no("10000000147")
         assert "valid TC Kimlik" in str(exc.value)

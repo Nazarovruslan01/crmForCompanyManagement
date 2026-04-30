@@ -73,15 +73,17 @@ class Ticket(models.Model):
             models.Index(fields=["status", "updated_at"]),
         ]
 
-    def clean(self, *, update_fields: set[str] | None = None) -> None:
+    def _validate_status_transition(self, *, update_fields: set[str] | None = None) -> None:
+        """Validate status state-machine transition.
+
+        Skips validation for new instances or when update_fields is provided
+        and does not include 'status'. Called from save() and clean().
+        """
         if self._state.adding:
-            super().clean()
             return
         if update_fields is not None and "status" not in update_fields:
-            super().clean()
             return
 
-        # Status transitions: only allow valid state machine moves.
         # Fetch old status from DB to validate the transition.
         try:
             old_status = Ticket.objects.values_list("status", flat=True).get(pk=self.pk)
@@ -94,8 +96,6 @@ class Ticket(models.Model):
                 raise ValidationError(
                     f"Invalid status transition: {old_status} → {self.status}. Allowed: {', '.join(allowed)}"
                 )
-
-        super().clean()
 
     def _allowed_transitions(self, old_status: str) -> list[str]:
         """Return list of statuses we can transition to from old_status."""
@@ -120,9 +120,15 @@ class Ticket(models.Model):
         }
         return transitions.get(old_status, [])
 
+    def clean(self) -> None:
+        self._validate_status_transition()
+        super().clean()
+
     def save(self, *args: Any, **kwargs: Any) -> None:
         update_fields = kwargs.get("update_fields")
-        self.clean(update_fields=set(update_fields) if update_fields else None)
+        self._validate_status_transition(
+            update_fields=set(update_fields) if update_fields else None
+        )
         if self.status == self.Status.RESOLVED and not self.resolved_at:
             self.resolved_at = timezone.now()
         super().save(*args, **kwargs)

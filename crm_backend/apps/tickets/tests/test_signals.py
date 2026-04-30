@@ -20,7 +20,7 @@ class TestTicketTelegramNotifications:
             building=building, apartment_number="301", floor=3, status=Apartment.Status.ACTIVE,
         )
         resident = Resident.objects.create(
-            name="Test", surname="Resident", phone="+905551234570", tc_kimlik_no="11111111130",
+            name="Test", surname="Resident", phone="+905551234570", tc_kimlik_no="11111111110",
         )
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
 
@@ -47,7 +47,7 @@ class TestTicketTelegramNotifications:
             building=building, apartment_number="302", floor=3, status=Apartment.Status.ACTIVE,
         )
         resident = Resident.objects.create(
-            name="Test", surname="Resident", phone="+905551234571", tc_kimlik_no="11111111131",
+            name="Test", surname="Resident", phone="+905551234571", tc_kimlik_no="11111111110",
         )
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
 
@@ -72,7 +72,7 @@ class TestTicketCommentTelegramNotifications:
             building=building, apartment_number="401", floor=4, status=Apartment.Status.ACTIVE,
         )
         resident = Resident.objects.create(
-            name="Test", surname="Resident", phone="+905551234580", tc_kimlik_no="11111111140",
+            name="Test", surname="Resident", phone="+905551234580", tc_kimlik_no="11111111110",
         )
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
 
@@ -101,7 +101,7 @@ class TestTicketCommentTelegramNotifications:
             building=building, apartment_number="402", floor=4, status=Apartment.Status.ACTIVE,
         )
         resident = Resident.objects.create(
-            name="Test", surname="Resident", phone="+905551234581", tc_kimlik_no="11111111141",
+            name="Test", surname="Resident", phone="+905551234581", tc_kimlik_no="11111111110",
         )
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
 
@@ -210,7 +210,7 @@ class TestTicketEmailNotifications:
             name="Test",
             surname="Resident",
             email="resident2@example.com",
-            tc_kimlik_no="11111111111",
+            tc_kimlik_no="11111111110",
         )
         Ownership.objects.create(
             resident=resident,
@@ -271,7 +271,7 @@ class TestTicketEmailNotifications:
             name="Test",
             surname="Resident",
             email="",
-            tc_kimlik_no="11111111112",
+            tc_kimlik_no="11111111110",
         )
         Ownership.objects.create(
             resident=resident,
@@ -308,7 +308,7 @@ class TestTicketSmsNotifications:
             name="Test",
             surname="Resident",
             phone="+905551234567",
-            tc_kimlik_no="11111111120",
+            tc_kimlik_no="11111111110",
         )
         Ownership.objects.create(
             resident=resident,
@@ -347,7 +347,7 @@ class TestTicketSmsNotifications:
             name="Test",
             surname="Resident",
             phone="+905551234568",
-            tc_kimlik_no="11111111121",
+            tc_kimlik_no="11111111110",
         )
         Ownership.objects.create(
             resident=resident,
@@ -380,7 +380,7 @@ class TestTicketSmsNotifications:
             name="Test",
             surname="Resident",
             phone="",
-            tc_kimlik_no="11111111122",
+            tc_kimlik_no="11111111110",
         )
         Ownership.objects.create(
             resident=resident,
@@ -416,7 +416,7 @@ class TestTicketSmsNotifications:
             name="Test",
             surname="Resident",
             phone="+905551234569",
-            tc_kimlik_no="11111111123",
+            tc_kimlik_no="11111111110",
         )
         Ownership.objects.create(
             resident=resident,

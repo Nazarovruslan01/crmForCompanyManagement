@@ -111,9 +111,21 @@ class TestPasswordResetRequest:
     """Tests for POST /api/v2/accounts/password/reset/"""
 
     def test_password_reset_request_existing_user(self, admin_client, admin_user):
-        """Request reset for existing email returns 200."""
+        """Request reset for existing email returns 200 and creates a token."""
+        from apps.accounts.models import PasswordResetToken
+
         response = admin_client.post("/api/v2/accounts/password/reset/", {"email": admin_user.email}, format="json")
         assert response.status_code == status.HTTP_200_OK
+        assert PasswordResetToken.objects.filter(user=admin_user, used_at__isnull=True).count() == 1
+
+    def test_password_reset_request_cleans_old_tokens(self, admin_client, admin_user):
+        """Requesting a new reset cleans up previous unused tokens."""
+        from apps.accounts.models import PasswordResetToken
+
+        PasswordResetToken.objects.create(user=admin_user, token_hash="oldhash")
+        response = admin_client.post("/api/v2/accounts/password/reset/", {"email": admin_user.email}, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        assert PasswordResetToken.objects.filter(user=admin_user).count() == 1
 
     def test_password_reset_request_nonexistent_user(self, api_client):
         """Request reset for non-existent email still returns 200 (security)."""
@@ -125,6 +137,95 @@ class TestPasswordResetRequest:
     def test_password_reset_request_missing_email(self, api_client):
         """Request reset without email returns 400."""
         response = api_client.post("/api/v2/accounts/password/reset/", {}, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+class TestPasswordResetConfirm:
+    """Tests for POST /api/v2/accounts/password/reset/<token>/"""
+
+    def test_password_reset_confirm_success(self, api_client, user):
+        """Valid token resets password and marks token used."""
+        from apps.accounts.models import PasswordResetToken
+        import hashlib
+
+        raw_token = "test-token-123"
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        PasswordResetToken.objects.create(user=user, token_hash=token_hash)
+
+        response = api_client.post(
+            f"/api/v2/accounts/password/reset/{raw_token}/",
+            {"new_password": "NewSecurePass123!"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+        user.refresh_from_db()
+        assert user.check_password("NewSecurePass123!")
+
+        token = PasswordResetToken.objects.get(token_hash=token_hash)
+        assert token.used_at is not None
+
+    def test_password_reset_confirm_invalid_token(self, api_client):
+        """Invalid token returns 400."""
+        response = api_client.post(
+            "/api/v2/accounts/password/reset/invalid-token/",
+            {"new_password": "NewSecurePass123!"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_password_reset_confirm_replay_used_token(self, api_client, user):
+        """Reusing a used token returns 400."""
+        from apps.accounts.models import PasswordResetToken
+        from django.utils import timezone
+        import hashlib
+
+        raw_token = "used-token-456"
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        PasswordResetToken.objects.create(user=user, token_hash=token_hash, used_at=timezone.now())
+
+        response = api_client.post(
+            f"/api/v2/accounts/password/reset/{raw_token}/",
+            {"new_password": "AnotherPass123!"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_password_reset_confirm_expired_token(self, api_client, user):
+        """Expired token returns 400."""
+        from apps.accounts.models import PasswordResetToken
+        from django.utils import timezone
+        from datetime import timedelta
+        import hashlib
+
+        raw_token = "expired-token-789"
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        created_at = timezone.now() - timedelta(hours=2)
+        token = PasswordResetToken.objects.create(user=user, token_hash=token_hash)
+        # Override created_at after creation
+        PasswordResetToken.objects.filter(pk=token.pk).update(created_at=created_at)
+
+        response = api_client.post(
+            f"/api/v2/accounts/password/reset/{raw_token}/",
+            {"new_password": "NewPass123!"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_password_reset_confirm_missing_password(self, api_client, user):
+        """Missing new_password returns 400."""
+        from apps.accounts.models import PasswordResetToken
+        import hashlib
+
+        raw_token = "missing-pass-token"
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+        PasswordResetToken.objects.create(user=user, token_hash=token_hash)
+
+        response = api_client.post(
+            f"/api/v2/accounts/password/reset/{raw_token}/",
+            {},
+            format="json",
+        )
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
 

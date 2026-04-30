@@ -1,8 +1,11 @@
+import hashlib
+import secrets
 from datetime import timedelta
 from typing import TYPE_CHECKING, cast
 
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.request import Request
@@ -134,10 +137,18 @@ class LogoutView(APIView):
 
 
 class PasswordResetRequestView(APIView):
-    """Request password reset email."""
+    """Request password reset email.
+
+    Generates a single-purpose cryptographically random token, stores its
+    SHA256 hash in the database, and emails the raw token to the user.
+    Old unused tokens for the user are cleaned up to prevent accumulation.
+    """
 
     permission_classes = [permissions.AllowAny]
     throttle_classes = [PasswordResetRateThrottle]
+
+    # Token lifetime in minutes
+    TOKEN_LIFETIME_MINUTES = 60
 
     @extend_schema(
         request={
@@ -164,14 +175,21 @@ class PasswordResetRequestView(APIView):
             # Don't reveal that user doesn't exist (security)
             return Response({"detail": "If the email exists, a reset link has been sent"}, status=status.HTTP_200_OK)
 
-        refresh = RefreshToken.for_user(user)
-        reset_token = str(refresh.access_token)
+        from apps.accounts.models import PasswordResetToken
+
+        # Clean up old unused tokens for this user before creating a new one
+        PasswordResetToken.objects.filter(user=user, used_at__isnull=True).delete()
+
+        raw_token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+
+        PasswordResetToken.objects.create(user=user, token_hash=token_hash)
 
         frontend_url = getattr(settings, "FRONTEND_URL", "")
         if frontend_url:
-            reset_link = f"{frontend_url.rstrip('/')}/reset-password?token={reset_token}"
+            reset_link = f"{frontend_url.rstrip('/')}/reset-password?token={raw_token}"
         else:
-            reset_link = request.build_absolute_uri(f"/reset-password?token={reset_token}")
+            reset_link = request.build_absolute_uri(f"/reset-password?token={raw_token}")
 
         send_email_async.delay(
             subject="Şifre Sıfırlama - CRM",
@@ -180,7 +198,7 @@ class PasswordResetRequestView(APIView):
                 f"Şifre sıfırlama talebinde bulundunuz. "
                 f"Aşağıdaki bağlantıyı kullanarak şifrenizi sıfırlayabilirsiniz:\n\n"
                 f"{reset_link}\n\n"
-                f"Bu bağlantı 60 dakika geçerlidir. "
+                f"Bu bağlantı {self.TOKEN_LIFETIME_MINUTES} dakika geçerlidir. "
                 f"Eğer bu talebi siz yapmadıysanız, bu e-postayı dikkate almayın."
             ),
             recipient_list=[email],
@@ -190,9 +208,17 @@ class PasswordResetRequestView(APIView):
 
 
 class PasswordResetConfirmView(APIView):
-    """Confirm password reset with token."""
+    """Confirm password reset with single-purpose token.
+
+    Expects the raw token in the URL path. The token is hashed and looked up
+    in the PasswordResetToken table. After a successful reset the token is
+    marked as used so it cannot be reused.
+    """
 
     permission_classes = [permissions.AllowAny]
+
+    # Same lifetime as the request view
+    TOKEN_LIFETIME_MINUTES = 60
 
     @extend_schema(
         request={
@@ -204,7 +230,7 @@ class PasswordResetConfirmView(APIView):
         },
         responses={
             200: {"description": "Password has been reset successfully"},
-            400: {"description": "Invalid or expired token"},
+            400: {"description": "Invalid, expired, or already used token"},
         },
     )
     def post(self, request: Request, token: str) -> Response:
@@ -213,19 +239,29 @@ class PasswordResetConfirmView(APIView):
         if not new_password:
             return Response({"error": "New password is required"}, status=status.HTTP_400_BAD_REQUEST)
 
+        from apps.accounts.models import PasswordResetToken
+
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+
         try:
-            access_token = AccessToken(token)  # type: ignore[arg-type]
-            user_id = access_token.payload.get("user_id")
-            if not user_id:
-                raise ValueError("No user_id in token")
-
-            user = User.objects.get(id=user_id)
-            user.set_password(new_password)
-            user.save()
-
-            return Response({"detail": "Password has been reset successfully"}, status=status.HTTP_200_OK)
-        except Exception:
+            reset_token = PasswordResetToken.objects.get(token_hash=token_hash, used_at__isnull=True)
+        except PasswordResetToken.DoesNotExist:
             return Response({"error": "Invalid or expired token"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check expiry
+        expiry = reset_token.created_at + timedelta(minutes=self.TOKEN_LIFETIME_MINUTES)
+        if timezone.now() > expiry:
+            return Response({"error": "Invalid or expired token"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = reset_token.user
+        user.set_password(new_password)
+        user.save()
+
+        # Mark token as used immediately to prevent replay attacks
+        reset_token.used_at = timezone.now()
+        reset_token.save(update_fields=["used_at"])
+
+        return Response({"detail": "Password has been reset successfully"}, status=status.HTTP_200_OK)
 
 
 class PasswordChangeView(APIView):
