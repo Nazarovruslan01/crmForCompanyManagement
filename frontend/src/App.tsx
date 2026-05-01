@@ -13,6 +13,7 @@ import { TicketDetailPage } from './pages/TicketDetailPage';
 import { ResidentsPage } from './pages/ResidentsPage';
 import { ResidentDetailPage } from './pages/ResidentDetailPage';
 import { ApartmentDetailPage } from './pages/ApartmentDetailPage';
+import { BuildingSetupPage } from './pages/BuildingSetupPage';
 import { StaffPage } from './pages/StaffPage';
 import { BillingPage } from './pages/BillingPage';
 import { NotificationsPage } from './pages/NotificationsPage';
@@ -56,6 +57,7 @@ function AppRoutes() {
         <Route path="buildings"     element={<BuildingsPage />} />
         <Route path="buildings/:id" element={<BuildingDetailPage />} />
         <Route path="buildings/:id/chessboard" element={<ChessboardPage />} />
+        <Route path="buildings/:id/setup" element={<BuildingSetupPage />} />
         <Route path="apartments/:id" element={<ApartmentDetailPage />} />
         <Route path="tickets"       element={<TicketsPage />} />
         <Route path="tickets/:id"    element={<TicketDetailPage />} />

@@ -7,7 +7,7 @@ import { DataTable, type Column } from '../components/ui/DataTable';
 import { Pagination } from '../components/ui/Pagination';
 import { Badge } from '../components/ui/Badge';
 import type { Building, Apartment } from '../types';
-import { Building2, MapPin, Wallet, Calendar, Home, Grid3X3, Settings2 } from 'lucide-react';
+import { Building2, MapPin, Wallet, Calendar, Home, Grid3X3, Settings2, Wand2 } from 'lucide-react';
 
 const aptColumns: Column<Apartment>[] = [
   {
@@ -164,6 +164,41 @@ export function BuildingDetailPage() {
             <Grid3X3 size={15} /> Шахматная доска
           </button>
         </div>
+
+        {/* Setup banner — shown when no apartments yet */}
+        {!aptsLoading && !aptsError && apartments.length === 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 16,
+            padding: '20px 24px', borderRadius: 12,
+            background: 'var(--color-brand-light)',
+            border: '1px solid var(--color-brand-border)',
+            marginBottom: 16,
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12,
+              background: 'var(--color-brand)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <Wand2 size={22} color="#fff" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: '0 0 2px', fontSize: 14, fontWeight: 700, color: 'var(--color-black)' }}>
+                Здание ещё не настроено
+              </p>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-gray-7)' }}>
+                Добавьте блоки, этажи и квартиры с помощью мастера настройки
+              </p>
+            </div>
+            <button
+              onClick={() => navigate(`/buildings/${id}/setup`)}
+              className="btn-primary"
+              style={{ flexShrink: 0 }}
+            >
+              <Wand2 size={14} /> Настроить шахматку
+            </button>
+          </div>
+        )}
 
         <DataTable
           columns={aptColumns}

@@ -164,6 +164,13 @@ class ApiClient {
   buildings = {
     ...this.crud<Building>('/properties/buildings'),
     chessboard: (id: number) => this.request<ChessboardResponse>(`/properties/buildings/${id}/chessboard/`),
+    generateApartments: (id: number, data: {
+      blocks: { name: string; floors: number; apartments_per_floor: number; numbering: 'floor_based' | 'sequential' }[];
+      clear_existing?: boolean;
+    }) => this.request<{ created: number; building_id: number }>(
+      `/properties/buildings/${id}/generate_apartments/`,
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
   };
   apartments   = this.crud<Apartment>  ('/properties/apartments');
 

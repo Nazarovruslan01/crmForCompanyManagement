@@ -32,6 +32,71 @@ class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewS
     ordering_fields = ["name", "created_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
+    @action(detail=True, methods=["post"], url_path="generate_apartments",
+            permission_classes=[permissions.IsAuthenticated, IsAdminOrManager])
+    def generate_apartments(self, request: Request, pk: int | None = None) -> Response:
+        """Bulk-create apartments from a block/floor configuration.
+
+        Request body:
+            {
+                "blocks": [
+                    {
+                        "name": "A",
+                        "floors": 5,
+                        "apartments_per_floor": 4,
+                        "numbering": "floor_based" | "sequential",
+                        "start_number": 1          // for sequential only
+                    }
+                ],
+                "clear_existing": false
+            }
+        """
+        building = self.get_object()
+        blocks_cfg = request.data.get("blocks", [])
+        clear_existing = bool(request.data.get("clear_existing", False))
+
+        if not blocks_cfg:
+            return Response({"detail": "blocks is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if clear_existing:
+            building.apartments.all().delete()  # type: ignore[attr-defined]
+
+        created: list[Apartment] = []
+        seq_counter = int(request.data.get("start_number", 1))
+
+        for block_cfg in blocks_cfg:
+            block_name = str(block_cfg.get("name", "")).strip()
+            floors = int(block_cfg.get("floors", 1))
+            per_floor = int(block_cfg.get("apartments_per_floor", 1))
+            numbering = str(block_cfg.get("numbering", "floor_based"))
+
+            for floor in range(1, floors + 1):
+                for apt_idx in range(1, per_floor + 1):
+                    if numbering == "sequential":
+                        apt_number = str(seq_counter)
+                        seq_counter += 1
+                    else:  # floor_based: 101, 102, 201…
+                        apt_number = str(floor * 100 + apt_idx)
+
+                    apt = Apartment(
+                        building=building,
+                        block=block_name,
+                        floor=floor,
+                        apartment_number=apt_number,
+                        status=Apartment.Status.ACTIVE,
+                    )
+                    created.append(apt)
+
+        Apartment.objects.bulk_create(created, ignore_conflicts=True)
+
+        # Invalidate chessboard cache
+        cache.delete(f"chessboard:building:{building.id}")  # type: ignore[attr-defined]
+
+        return Response(
+            {"created": len(created), "building_id": building.id},  # type: ignore[attr-defined]
+            status=status.HTTP_201_CREATED,
+        )
+
     @action(detail=True, methods=["get"], url_path="chessboard")
     def chessboard(self, request: Request, pk: int | None = None) -> Response:  # noqa: ARG002
         """Return apartment grid grouped by block and floor for chessboard UI."""
