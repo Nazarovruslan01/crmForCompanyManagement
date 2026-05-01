@@ -5,26 +5,48 @@ import { useDetail } from '../hooks/useDetail';
 import { DetailPageLayout } from '../components/ui/DetailPageLayout';
 import { TicketStatusBadge, TicketPriorityBadge } from '../components/ui/Badge';
 import type { Ticket, TicketComment } from '../types';
-import { MessageSquare, Paperclip, User, Calendar, MapPin } from 'lucide-react';
+import { MessageSquare, Paperclip, User, Calendar, MapPin, Send, Inbox } from 'lucide-react';
+
+function SectionCard({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      background: '#fff',
+      borderRadius: 14,
+      border: '1px solid var(--color-gray-3)',
+      padding: 24,
+      boxShadow: 'var(--shadow-card)',
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function SectionTitle({ icon: Icon, children }: { icon: React.ElementType; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 8,
+        background: 'var(--color-brand-light)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Icon size={15} color="var(--color-brand)" />
+      </div>
+      <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{children}</h2>
+    </div>
+  );
+}
 
 export function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const ticketId = id ? Number(id) : undefined;
 
-  const {
-    data: ticket,
-    loading,
-    error,
-    // refetch нет в useDetail, обновляем вручную через setTicket
-  } = useDetail<Ticket>(api.tickets.get, ticketId);
+  const { data: ticket, loading, error } = useDetail<Ticket>(api.tickets.get, ticketId);
 
   const [localTicket, setLocalTicket] = useState<Ticket | null>(null);
   const [newComment, setNewComment] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
   const [commentError, setCommentError] = useState<string | null>(null);
 
-  // После добавления комментария используем localTicket с обновлёнными данными,
-  // иначе данные из useDetail
   const currentTicket = localTicket ?? ticket;
 
   const handleAddComment = async (e: React.FormEvent) => {
@@ -51,34 +73,41 @@ export function TicketDetailPage() {
       loading={loading}
       error={error}
       backPath="/tickets"
+      backLabel="Назад к заявкам"
       getTitle={(t: Ticket) => `Заявка #${t.id}`}
       headerRenderer={(t: Ticket) => (
         <>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
             <TicketStatusBadge status={t.status} label={t.status_display} />
             <TicketPriorityBadge priority={t.priority} label={t.priority_display} />
-            <span style={{ fontSize: 13, color: 'var(--color-gray-7)' }}>{t.category_display}</span>
+            <span style={{
+              display: 'inline-block', padding: '2px 10px', borderRadius: 20,
+              fontSize: 12, fontWeight: 500,
+              background: 'var(--color-gray-1)', color: 'var(--color-gray-7)',
+            }}>{t.category_display}</span>
           </div>
-          <h1 style={{ margin: '0 0 12px', fontSize: 20, fontWeight: 600 }}>{t.title}</h1>
+          <h1 style={{ margin: '0 0 4px', fontSize: 20, fontWeight: 700, letterSpacing: '-0.2px' }}>{t.title}</h1>
         </>
       )}
       infoRenderer={(t: Ticket) => (
         <>
-          <p style={{ margin: '0 0 16px', fontSize: 14, lineHeight: 1.6, color: '#1f1f1f', whiteSpace: 'pre-wrap' }}>
-            {t.description}
-          </p>
-          <div style={{ display: 'grid', gap: 8, fontSize: 13, color: 'var(--color-gray-7)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {t.description && (
+            <p style={{ margin: '0 0 16px', fontSize: 14, lineHeight: 1.65, color: 'var(--color-gray-8)', whiteSpace: 'pre-wrap' }}>
+              {t.description}
+            </p>
+          )}
+          <div style={{ display: 'grid', gap: 8, fontSize: 13 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-gray-7)' }}>
               <MapPin size={14} />
-              {t.apartment_detail.building_name} · кв. {t.apartment_detail.apartment_number}
+              <span>{t.apartment_detail.building_name} · кв. {t.apartment_detail.apartment_number}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-gray-7)' }}>
               <User size={14} />
-              Исполнитель: {t.assigned_worker_display ?? 'Не назначен'}
+              <span>Исполнитель: <strong style={{ color: 'var(--color-black)' }}>{t.assigned_worker_display ?? 'Не назначен'}</strong></span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-gray-7)' }}>
               <Calendar size={14} />
-              Создана: {new Date(t.created_at).toLocaleString('ru-RU')}
+              <span>Создана: {new Date(t.created_at).toLocaleString('ru-RU')}</span>
             </div>
           </div>
         </>
@@ -87,13 +116,8 @@ export function TicketDetailPage() {
       <>
         {/* Attachments */}
         {currentTicket?.attachments && currentTicket.attachments.length > 0 && (
-          <div style={{
-            background: '#fff', borderRadius: 12, border: '1px solid var(--color-gray-3)',
-            padding: 24,
-          }}>
-            <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Paperclip size={18} /> Вложения
-            </h2>
+          <SectionCard>
+            <SectionTitle icon={Paperclip}>Вложения</SectionTitle>
             <div style={{ display: 'grid', gap: 8 }}>
               {currentTicket.attachments.map(att => (
                 <a
@@ -102,88 +126,100 @@ export function TicketDetailPage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: 10, borderRadius: 8, border: '1px solid var(--color-gray-3)',
-                    color: '#F26522', textDecoration: 'none', fontSize: 13,
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '10px 14px', borderRadius: 10,
+                    border: '1px solid var(--color-gray-3)',
+                    background: 'var(--color-gray-1)',
+                    color: 'var(--color-brand)', textDecoration: 'none', fontSize: 13,
+                    transition: 'background 150ms ease',
                   }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-brand-light)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-gray-1)')}
                 >
                   <Paperclip size={14} />
-                  {att.file_name}
-                  <span style={{ marginLeft: 'auto', color: 'var(--color-gray-7)', fontSize: 12 }}>
-                    {att.uploaded_by_display}
-                  </span>
+                  <span style={{ flex: 1, fontWeight: 500 }}>{att.file_name}</span>
+                  <span style={{ color: 'var(--color-gray-6)', fontSize: 12 }}>{att.uploaded_by_display}</span>
                 </a>
               ))}
             </div>
-          </div>
+          </SectionCard>
         )}
 
         {/* Comments */}
-        <div style={{
-          background: '#fff', borderRadius: 12, border: '1px solid var(--color-gray-3)',
-          padding: 24,
-        }}>
-          <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <MessageSquare size={18} /> Комментарии
-          </h2>
+        <SectionCard>
+          <SectionTitle icon={MessageSquare}>Комментарии</SectionTitle>
 
-          <div style={{ display: 'grid', gap: 12, marginBottom: 20 }}>
+          {/* Comment list */}
+          <div style={{ display: 'grid', gap: 10, marginBottom: 20 }}>
             {currentTicket?.comments && currentTicket.comments.length > 0 ? (
               currentTicket.comments.map((comment: TicketComment) => (
                 <div key={comment.id} style={{
-                  padding: 12, borderRadius: 8, background: 'var(--color-gray-1)',
+                  padding: '12px 16px',
+                  borderRadius: 10,
+                  background: 'var(--color-gray-1)',
+                  border: '1px solid var(--color-gray-2)',
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 500 }}>{comment.author_display}</span>
-                    <span style={{ fontSize: 12, color: 'var(--color-gray-7)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{
+                        width: 26, height: 26, borderRadius: '50%',
+                        background: 'var(--color-brand)', color: '#fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 11, fontWeight: 700, flexShrink: 0,
+                      }}>
+                        {comment.author_display.charAt(0).toUpperCase()}
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-black)' }}>
+                        {comment.author_display}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: 11.5, color: 'var(--color-gray-6)' }}>
                       {new Date(comment.created_at).toLocaleString('ru-RU')}
                     </span>
                   </div>
-                  <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5 }}>{comment.content}</p>
+                  <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.55, color: 'var(--color-gray-8)', paddingLeft: 34 }}>
+                    {comment.content}
+                  </p>
                 </div>
               ))
             ) : (
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--color-gray-7)' }}>Пока нет комментариев</p>
+              <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--color-gray-6)' }}>
+                <Inbox size={28} strokeWidth={1.5} style={{ marginBottom: 8 }} />
+                <p style={{ margin: 0, fontSize: 13 }}>Пока нет комментариев</p>
+              </div>
             )}
           </div>
 
+          {/* Error */}
           {commentError && (
-            <div style={{ marginBottom: 12, color: '#ff4d4f', fontSize: 13 }}>{commentError}</div>
+            <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: '#fff2f0', border: '1px solid #ffccc7', color: '#ff4d4f', fontSize: 13 }}>
+              {commentError}
+            </div>
           )}
 
-          <form onSubmit={handleAddComment} style={{ display: 'flex', gap: 8 }}>
+          {/* Input */}
+          <form onSubmit={handleAddComment} style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
             <input
               type="text"
               value={newComment}
               onChange={e => setNewComment(e.target.value)}
               placeholder="Написать комментарий..."
-              style={{
-                flex: 1,
-                padding: '10px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--color-gray-3)',
-                fontSize: 14,
-                outline: 'none',
-              }}
+              className="form-input"
+              style={{ flex: 1 }}
             />
             <button
               type="submit"
               disabled={commentLoading || !newComment.trim()}
-              style={{
-                padding: '10px 16px',
-                borderRadius: 8,
-                border: 'none',
-                background: commentLoading ? 'var(--color-gray-5)' : '#F26522',
-                color: '#fff',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: commentLoading ? 'not-allowed' : 'pointer',
-              }}
+              className="btn-primary"
+              style={{ padding: '10px 16px', flexShrink: 0 }}
             >
-              {commentLoading ? '...' : 'Отправить'}
+              {commentLoading
+                ? '...'
+                : <><Send size={14} /> Отправить</>
+              }
             </button>
           </form>
-        </div>
+        </SectionCard>
       </>
     </DetailPageLayout>
   );

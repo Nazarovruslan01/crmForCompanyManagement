@@ -178,7 +178,7 @@ body {
   flex-direction: column;
   transition: margin-left 200ms ease;
   width: calc(100% - var(--side-menu-width));
-  background: var(--color-gray-1);
+  background: var(--color-white);
 }
 
 .sub-layout.collapsed {
@@ -207,7 +207,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 28px 32px 0;
+  padding: 20px 40px 0;
   max-width: 1600px;
   width: 100%;
 }
@@ -216,7 +216,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 24px;
+  padding-bottom: 40px;
 }
 
 .page-header h1 {

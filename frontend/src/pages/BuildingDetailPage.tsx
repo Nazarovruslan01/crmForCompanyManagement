@@ -7,7 +7,7 @@ import { DataTable, type Column } from '../components/ui/DataTable';
 import { Pagination } from '../components/ui/Pagination';
 import { Badge } from '../components/ui/Badge';
 import type { Building, Apartment } from '../types';
-import { Building2, MapPin, Wallet, Calendar, Home, Grid3X3 } from 'lucide-react';
+import { Building2, MapPin, Wallet, Calendar, Home, Grid3X3, Settings2 } from 'lucide-react';
 
 const aptColumns: Column<Apartment>[] = [
   {
@@ -116,31 +116,52 @@ export function BuildingDetailPage() {
             Добавлено: {new Date(b.created_at).toLocaleDateString('ru-RU')}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Home size={16} style={{ color: 'var(--color-gray-7)' }} />
+            <Settings2 size={16} style={{ color: 'var(--color-gray-7)' }} />
             Управление: {b.management_type_display ?? '—'}
           </div>
         </>
       )}
     >
       <div style={{
-        background: '#fff', borderRadius: 12, border: '1px solid var(--color-gray-3)',
+        background: '#fff',
+        borderRadius: 14,
+        border: '1px solid var(--color-gray-3)',
         padding: 24,
+        boxShadow: 'var(--shadow-card)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Home size={18} /> Квартиры
-          </h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 8,
+              background: 'var(--color-brand-light)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Home size={15} color="var(--color-brand)" />
+            </div>
+            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Квартиры</h2>
+          </div>
           <button
             onClick={() => navigate(`/buildings/${id}/chessboard`)}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 14px', borderRadius: 8,
+              padding: '8px 14px', borderRadius: 9,
               border: '1px solid var(--color-gray-3)',
-              background: '#fff', color: '#1f1f1f',
+              background: '#fff', color: 'var(--color-gray-8)',
               fontSize: 13, fontWeight: 500, cursor: 'pointer',
+              transition: 'all 150ms ease',
+            }}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-brand)';
+              (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-brand)';
+              (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-brand-light)';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-gray-3)';
+              (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-gray-8)';
+              (e.currentTarget as HTMLButtonElement).style.background = '#fff';
             }}
           >
-            <Grid3X3 size={16} style={{ color: '#F26522' }} /> Шахматная доска
+            <Grid3X3 size={15} /> Шахматная доска
           </button>
         </div>
 
