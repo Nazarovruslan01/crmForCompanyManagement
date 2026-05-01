@@ -137,12 +137,17 @@ export function ChessboardPage() {
   const blockTabs = blocks.map((b, idx) => ({ value: String(idx), label: b.block }));
   const currentBlock = blocks[selectedBlock] ?? blocks[0];
 
-  const allNumbers = new Set<string>();
-  currentBlock?.floors.forEach(f => f.apartments.forEach(a => allNumbers.add(a.apartment_number)));
-  const sortedNumbers = Array.from(allNumbers).sort((a, b) => {
-    const na = parseInt(a, 10), nb = parseInt(b, 10);
-    return isNaN(na) || isNaN(nb) ? a.localeCompare(b) : na - nb;
-  });
+  // Max apartments per floor → column count
+  const maxApts = currentBlock
+    ? Math.max(...currentBlock.floors.map(f => f.apartments.length), 1)
+    : 1;
+  // Bottom floor apt numbers used as column headers (empty string if that floor has fewer apts)
+  const bottomFloor = currentBlock
+    ? [...currentBlock.floors].sort((a, b) => a.floor - b.floor)[0]
+    : null;
+  const colHeaders: string[] = Array.from({ length: maxApts }, (_, i) =>
+    bottomFloor?.apartments[i]?.apartment_number ?? '',
+  );
 
   return (
     <PageLayout title={`${chessboard.building.name} — Шахматная доска`}>
@@ -224,13 +229,13 @@ export function ChessboardPage() {
         </div>
 
         {/* Empty state */}
-        {!blocks.length || !sortedNumbers.length ? (
+        {!blocks.length || !maxApts ? (
           <p style={{ textAlign: 'center', padding: '40px 0', color: 'var(--color-gray-6)', fontSize: 14 }}>
             Нет данных по квартирам
           </p>
         ) : (
           <div style={{ display: 'grid', gap: 6, minWidth: 'fit-content' }}>
-            {/* Column headers */}
+            {/* Column headers — apartment numbers from ground floor */}
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6 }}>
               <div style={{
                 width: 44, flexShrink: 0,
@@ -240,10 +245,10 @@ export function ChessboardPage() {
               }}>
                 Эт.
               </div>
-              {sortedNumbers.map(num => (
-                <div key={num} style={{
+              {colHeaders.map((num, i) => (
+                <div key={i} style={{
                   minWidth: 76, textAlign: 'center',
-                  fontSize: 11, fontWeight: 600, color: 'var(--color-gray-6)',
+                  fontSize: 11, fontWeight: 600, color: 'var(--color-gray-5)',
                   paddingBottom: 4, letterSpacing: '0.02em',
                 }}>
                   {num}
@@ -254,42 +259,41 @@ export function ChessboardPage() {
             {/* Floor rows — highest floor first */}
             {[...currentBlock.floors]
               .sort((a, b) => b.floor - a.floor)
-              .map(floorObj => {
-                const aptMap = new Map(floorObj.apartments.map(a => [a.apartment_number, a]));
-                return (
-                  <div key={floorObj.floor} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{
-                      width: 44, flexShrink: 0,
-                      textAlign: 'right',
-                      fontSize: 12, fontWeight: 700,
-                      color: 'var(--color-gray-8)',
-                      paddingRight: 4,
-                    }}>
-                      {floorObj.floor}
-                    </div>
-                    {sortedNumbers.map(num => {
-                      const apt = aptMap.get(num);
-                      if (!apt) {
-                        return (
-                          <div key={num} style={{
-                            minWidth: 76, minHeight: 76,
-                            borderRadius: 10,
-                            border: '1px dashed var(--color-gray-3)',
-                            background: '#fafafa',
-                          }} />
-                        );
-                      }
-                      return (
-                        <ApartmentCell
-                          key={apt.id}
-                          apt={apt}
-                          onClick={() => navigate(`/apartments/${apt.id}`)}
-                        />
-                      );
-                    })}
+              .map(floorObj => (
+                <div key={floorObj.floor} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {/* Floor number label */}
+                  <div style={{
+                    width: 44, flexShrink: 0,
+                    textAlign: 'right',
+                    fontSize: 12, fontWeight: 700,
+                    color: 'var(--color-gray-8)',
+                    paddingRight: 4,
+                  }}>
+                    {floorObj.floor}
                   </div>
-                );
-              })}
+                  {/* Apartments by position index */}
+                  {Array.from({ length: maxApts }, (_, i) => {
+                    const apt = floorObj.apartments[i];
+                    if (!apt) {
+                      return (
+                        <div key={i} style={{
+                          minWidth: 76, minHeight: 76,
+                          borderRadius: 10,
+                          border: '1px dashed var(--color-gray-3)',
+                          background: '#fafafa',
+                        }} />
+                      );
+                    }
+                    return (
+                      <ApartmentCell
+                        key={apt.id}
+                        apt={apt}
+                        onClick={() => navigate(`/apartments/${apt.id}`)}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
           </div>
         )}
       </div>
