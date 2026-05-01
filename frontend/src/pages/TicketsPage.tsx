@@ -7,6 +7,7 @@ import { DataTable, type Column } from '../components/ui/DataTable';
 import { TicketStatusBadge, TicketPriorityBadge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
 import { SearchInput } from '../components/ui/SearchInput';
+import { TabBar } from '../components/ui/TabBar';
 import { TicketForm } from '../components/forms/TicketForm';
 import type { Ticket, TicketStatus } from '../types';
 
@@ -18,18 +19,6 @@ const STATUS_TABS: { value: TicketStatus | ''; label: string }[] = [
   { value: 'resolved', label: 'Решены' },
   { value: 'closed', label: 'Закрыты' },
 ];
-
-const tabStyle = (active: boolean): React.CSSProperties => ({
-  padding: '6px 14px',
-  borderRadius: 8,
-  fontSize: 13,
-  fontWeight: 500,
-  cursor: 'pointer',
-  border: 'none',
-  background: active ? '#F26522' : 'transparent',
-  color: active ? '#fff' : 'var(--color-gray-7)',
-  transition: 'all 150ms ease',
-});
 
 const columns: Column<Ticket>[] = [
   { key: 'id', label: '#', width: 60, render: t => `#${t.id}` },
@@ -102,18 +91,7 @@ export function TicketsPage() {
       }
     >
       <SearchInput placeholder="Поиск по заявке или квартире" onSearch={setSearch} />
-      {/* Status tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, flexWrap: 'wrap' }}>
-        {STATUS_TABS.map(tab => (
-          <button
-            key={tab.value}
-            style={tabStyle(statusFilter === tab.value)}
-            onClick={() => setStatusFilter(tab.value)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <TabBar tabs={STATUS_TABS} value={statusFilter} onChange={setStatusFilter} />
 
       <DataTable
         columns={columns}

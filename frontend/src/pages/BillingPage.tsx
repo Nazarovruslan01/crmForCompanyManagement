@@ -6,21 +6,15 @@ import { DataTable, type Column } from '../components/ui/DataTable';
 import { AidatStatusBadge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
 import { SearchInput } from '../components/ui/SearchInput';
+import { TabBar } from '../components/ui/TabBar';
 import type { AidatCharge, Payment } from '../types';
 
 type Tab = 'aidat' | 'payments';
 
-const tabStyle = (active: boolean): React.CSSProperties => ({
-  padding: '8px 18px',
-  borderRadius: 8,
-  fontSize: 13,
-  fontWeight: 500,
-  cursor: 'pointer',
-  border: 'none',
-  background: active ? '#F26522' : 'var(--color-gray-1)',
-  color: active ? '#fff' : 'var(--color-gray-7)',
-  transition: 'all 150ms ease',
-});
+const TABS: { value: Tab; label: string }[] = [
+  { value: 'aidat', label: 'Айдат (квартплата)' },
+  { value: 'payments', label: 'История платежей' },
+];
 
 const aidatColumns: Column<AidatCharge>[] = [
   {
@@ -100,14 +94,7 @@ export function BillingPage() {
   return (
     <PageLayout title="Платежи">
       <SearchInput placeholder="Поиск по квартире или квитанции" onSearch={setSearch} />
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        <button style={tabStyle(tab === 'aidat')} onClick={() => setTab('aidat')}>
-          Айдат (квартплата)
-        </button>
-        <button style={tabStyle(tab === 'payments')} onClick={() => setTab('payments')}>
-          История платежей
-        </button>
-      </div>
+      <TabBar tabs={TABS} value={tab} onChange={setTab} />
 
       {tab === 'aidat' ? (
         <>
