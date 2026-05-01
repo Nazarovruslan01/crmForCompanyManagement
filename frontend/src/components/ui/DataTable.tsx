@@ -1,3 +1,4 @@
+import { Inbox, AlertCircle, Loader2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 export interface Column<T> {
@@ -18,21 +19,24 @@ interface DataTableProps<T> {
 }
 
 const th: React.CSSProperties = {
-  padding: '10px 20px',
+  padding: '11px 18px',
   textAlign: 'left',
-  fontSize: 12,
+  fontSize: 11.5,
   fontWeight: 600,
   color: 'var(--color-gray-7)',
   borderBottom: '1px solid var(--color-gray-3)',
   background: 'var(--color-gray-1)',
   whiteSpace: 'nowrap',
+  letterSpacing: '0.04em',
+  textTransform: 'uppercase',
 };
 
 const td: React.CSSProperties = {
-  padding: '13px 20px',
-  fontSize: 14,
-  color: 'var(--color-black)',
+  padding: '13px 18px',
+  fontSize: 13.5,
+  color: 'var(--color-gray-8)',
   verticalAlign: 'middle',
+  borderBottom: '1px solid var(--color-gray-3)',
 };
 
 export function DataTable<T>({
@@ -48,8 +52,9 @@ export function DataTable<T>({
     <div style={{
       background: '#fff',
       border: '1px solid var(--color-gray-3)',
-      borderRadius: 12,
+      borderRadius: 14,
       overflow: 'hidden',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
     }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
@@ -64,20 +69,29 @@ export function DataTable<T>({
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={columns.length} style={{ ...td, textAlign: 'center', color: 'var(--color-gray-7)', padding: 40 }}>
-                Загрузка...
+              <td colSpan={columns.length} style={{ padding: '48px 20px', textAlign: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, color: 'var(--color-gray-6)' }}>
+                  <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
+                  <span style={{ fontSize: 13 }}>Загрузка...</span>
+                </div>
               </td>
             </tr>
           ) : error ? (
             <tr>
-              <td colSpan={columns.length} style={{ ...td, textAlign: 'center', color: '#ff4d4f', padding: 40 }}>
-                Ошибка: {error}
+              <td colSpan={columns.length} style={{ padding: '48px 20px', textAlign: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, color: '#ff4d4f' }}>
+                  <AlertCircle size={24} />
+                  <span style={{ fontSize: 13 }}>{error}</span>
+                </div>
               </td>
             </tr>
           ) : rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} style={{ ...td, textAlign: 'center', color: 'var(--color-gray-7)', padding: 40 }}>
-                {emptyText}
+              <td colSpan={columns.length} style={{ padding: '56px 20px', textAlign: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, color: 'var(--color-gray-6)' }}>
+                  <Inbox size={28} strokeWidth={1.5} />
+                  <span style={{ fontSize: 13 }}>{emptyText}</span>
+                </div>
               </td>
             </tr>
           ) : (
@@ -87,20 +101,21 @@ export function DataTable<T>({
                 onClick={() => onRowClick?.(row)}
                 style={{
                   borderBottom: idx < rows.length - 1 ? '1px solid var(--color-gray-3)' : 'none',
-                  transition: 'background 120ms ease',
+                  transition: 'background 100ms ease',
                   cursor: onRowClick ? 'pointer' : 'default',
                 }}
                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-gray-1)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
               >
                 {columns.map(col => (
-                  <td key={col.key} style={td}>{col.render(row)}</td>
+                  <td key={col.key} style={{ ...td, borderBottom: 'none' }}>{col.render(row)}</td>
                 ))}
               </tr>
             ))
           )}
         </tbody>
       </table>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

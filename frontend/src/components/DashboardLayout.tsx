@@ -144,20 +144,28 @@ export function DashboardLayout() {
 
         {/* Header */}
         <header className="main-header">
+          {/* left: date */}
+          <div style={{ fontSize: 13, color: 'var(--color-gray-6)', fontWeight: 500 }}>
+            {new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </div>
+
+          {/* right: user */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ textAlign: 'right' }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 500, color: '#1f1f1f' }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--color-gray-9)' }}>
                 {user?.full_name ?? user?.username}
               </p>
-              <p style={{ margin: 0, fontSize: 11, color: '#8c8c8c' }}>
+              <p style={{ margin: 0, fontSize: 11, color: 'var(--color-gray-6)' }}>
                 {user?.role_display}
               </p>
             </div>
             <div style={{
-              width: 34, height: 34, borderRadius: '50%',
-              background: '#F26522', color: '#fff',
+              width: 36, height: 36, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #F26522, #D9561A)',
+              color: '#fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, fontWeight: 600, flexShrink: 0,
+              fontSize: 14, fontWeight: 700, flexShrink: 0,
+              boxShadow: '0 2px 8px rgba(242,101,34,0.3)',
             }}>
               {initial}
             </div>

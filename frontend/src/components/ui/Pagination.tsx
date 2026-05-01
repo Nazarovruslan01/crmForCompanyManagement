@@ -8,35 +8,57 @@ interface PaginationProps {
 }
 
 export function Pagination({ hasPrevious, hasNext, onPrevious, onNext }: PaginationProps) {
-  const btn = (disabled: boolean, onClick: () => void, icon: React.ReactNode, label: string) => (
+  if (!hasPrevious && !hasNext) return null;
+
+  const btn = (
+    disabled: boolean,
+    onClick: () => void,
+    icon: React.ReactNode,
+    label: string,
+    side: 'left' | 'right',
+  ) => (
     <button
       onClick={onClick}
       disabled={disabled}
-      title={label}
       style={{
-        display: 'flex',
+        display: 'inline-flex',
         alignItems: 'center',
-        gap: 4,
-        padding: '6px 12px',
-        borderRadius: 8,
-        border: '1px solid var(--color-gray-3)',
-        background: '#fff',
-        color: disabled ? 'var(--color-gray-5)' : 'var(--color-black)',
+        gap: 6,
+        padding: '8px 16px',
+        borderRadius: 10,
+        border: '1.5px solid',
+        borderColor: disabled ? 'var(--color-gray-3)' : 'var(--color-gray-3)',
+        background: disabled ? 'var(--color-gray-1)' : '#fff',
+        color: disabled ? 'var(--color-gray-5)' : 'var(--color-gray-8)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         fontSize: 13,
         fontWeight: 500,
         transition: 'all 150ms ease',
+        boxShadow: disabled ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
+      }}
+      onMouseEnter={e => {
+        if (!disabled) {
+          e.currentTarget.style.borderColor = 'var(--color-brand)';
+          e.currentTarget.style.color = 'var(--color-brand)';
+        }
+      }}
+      onMouseLeave={e => {
+        if (!disabled) {
+          e.currentTarget.style.borderColor = 'var(--color-gray-3)';
+          e.currentTarget.style.color = 'var(--color-gray-8)';
+        }
       }}
     >
-      {icon}
+      {side === 'left' && icon}
       {label}
+      {side === 'right' && icon}
     </button>
   );
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16 }}>
-      {btn(hasPrevious, onPrevious, <ChevronLeft size={16} />, 'Назад')}
-      {btn(hasNext, onNext, <ChevronRight size={16} />, 'Далее')}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 16, paddingBottom: 24 }}>
+      {btn(!hasPrevious, onPrevious, <ChevronLeft size={15} />, 'Назад', 'left')}
+      {btn(!hasNext, onNext, <ChevronRight size={15} />, 'Далее', 'right')}
     </div>
   );
 }

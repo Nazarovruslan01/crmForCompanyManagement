@@ -33,15 +33,16 @@ export function LoginPage() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: '#f5f5f5',
+      background: 'linear-gradient(135deg, #FFF4ED 0%, #f0f4ff 50%, #f7f8fa 100%)',
     }}>
       <div style={{
         width: '100%',
         maxWidth: 420,
         background: '#fff',
-        borderRadius: 16,
-        padding: '40px 40px 48px',
-        boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+        borderRadius: 20,
+        padding: '44px 44px 52px',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.06), 0 16px 48px rgba(0,0,0,0.06)',
+        border: '1px solid rgba(226,228,233,0.8)',
       }}>
         {/* Logo */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32 }}>
@@ -120,7 +121,7 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="btn-primary"
+            className="btn-primary btn-block"
             style={{ marginTop: 6 }}
           >
             {isLoading ? 'Вход...' : 'Войти'}

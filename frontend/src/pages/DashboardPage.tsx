@@ -18,38 +18,54 @@ function StatCard({
   value,
   icon: Icon,
   loading,
+  accent = '#F26522',
 }: {
   label: string;
   value: string | number;
   icon: React.ElementType;
   loading: boolean;
+  accent?: string;
 }) {
+  const bg = accent === '#F26522' ? '#FFF4ED'
+    : accent === '#3b82f6' ? '#EFF6FF'
+    : accent === '#10b981' ? '#ECFDF5'
+    : accent === '#ef4444' ? '#FEF2F2'
+    : '#FFF4ED';
+
   return (
     <div style={{
       background: '#fff',
       border: '1px solid var(--color-gray-3)',
-      borderRadius: 12,
-      padding: '20px 24px',
+      borderRadius: 14,
+      padding: '20px 22px',
       display: 'flex',
       alignItems: 'center',
       gap: 16,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04)',
+      transition: 'box-shadow 150ms ease',
     }}>
       <div style={{
-        width: 44,
-        height: 44,
-        borderRadius: 10,
-        background: '#FFF0E6',
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        background: bg,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
       }}>
-        <Icon size={22} color="#F26522" />
+        <Icon size={22} color={accent} strokeWidth={1.75} />
       </div>
       <div>
-        <p style={{ margin: 0, fontSize: 13, color: 'var(--color-gray-7)' }}>{label}</p>
-        <p style={{ margin: '4px 0 0', fontSize: 22, fontWeight: 700, color: 'var(--color-black)' }}>
-          {loading ? <span style={{ color: 'var(--color-gray-5)', fontSize: 16 }}>...</span> : value}
+        <p style={{ margin: 0, fontSize: 12.5, color: 'var(--color-gray-6)', fontWeight: 500, letterSpacing: '0.01em' }}>{label}</p>
+        <p style={{ margin: '5px 0 0', fontSize: 26, fontWeight: 700, color: 'var(--color-black)', lineHeight: 1 }}>
+          {loading ? (
+            <span style={{
+              display: 'inline-block', width: 48, height: 20,
+              background: 'var(--color-gray-2)', borderRadius: 6,
+              animation: 'pulse 1.4s ease-in-out infinite',
+            }} />
+          ) : value}
         </p>
       </div>
     </div>
@@ -128,14 +144,14 @@ export function DashboardPage() {
         gap: 20,
         marginBottom: 32,
       }}>
-        <StatCard label="Зданий" value={stats.buildings} icon={Building2} loading={statsLoading} />
-        <StatCard label="Новых заявок" value={stats.activeTickets} icon={ClipboardList} loading={statsLoading} />
-        <StatCard label="Жильцов" value={stats.residents} icon={Users} loading={statsLoading} />
-        <StatCard label="Просрочено оплат" value={stats.overdueCharges} icon={Wallet} loading={statsLoading} />
+        <StatCard label="Зданий" value={stats.buildings} icon={Building2} loading={statsLoading} accent="#F26522" />
+        <StatCard label="Новых заявок" value={stats.activeTickets} icon={ClipboardList} loading={statsLoading} accent="#3b82f6" />
+        <StatCard label="Жильцов" value={stats.residents} icon={Users} loading={statsLoading} accent="#10b981" />
+        <StatCard label="Просрочено оплат" value={stats.overdueCharges} icon={Wallet} loading={statsLoading} accent="#ef4444" />
       </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Последние заявки</h2>
+      <div style={{ marginBottom: 14 }}>
+        <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--color-gray-8)', letterSpacing: '-0.1px' }}>Последние заявки</h2>
       </div>
       <DataTable
         columns={ticketColumns}

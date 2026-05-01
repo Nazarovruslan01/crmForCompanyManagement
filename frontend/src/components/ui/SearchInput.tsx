@@ -1,74 +1,69 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Search, X } from 'lucide-react';
 
 interface SearchInputProps {
   placeholder?: string;
   onSearch: (value: string) => void;
+  debounceMs?: number;
 }
 
-export function SearchInput({ placeholder = 'Поиск...', onSearch }: SearchInputProps) {
+export function SearchInput({ placeholder = 'Поиск...', onSearch, debounceMs = 350 }: SearchInputProps) {
   const [value, setValue] = useState('');
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSearch(value.trim());
-  };
-
-  const handleClear = () => {
-    setValue('');
-    onSearch('');
-  };
+  useEffect(() => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => onSearch(value.trim()), debounceMs);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [value]);
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+    <div style={{ position: 'relative', marginBottom: 16 }}>
+      <Search
+        size={16}
+        style={{
+          position: 'absolute', left: 12, top: '50%',
+          transform: 'translateY(-50%)',
+          color: 'var(--color-gray-6)', pointerEvents: 'none',
+        }}
+      />
       <input
         type="text"
         value={value}
         onChange={e => setValue(e.target.value)}
         placeholder={placeholder}
         style={{
-          flex: 1,
-          padding: '8px 12px',
-          borderRadius: 8,
-          border: '1px solid var(--color-gray-3)',
-          fontSize: 14,
-          background: '#fff',
-          color: 'var(--color-gray-9)',
-          outline: 'none',
+          width: '100%', boxSizing: 'border-box',
+          padding: '9px 36px 9px 36px',
+          borderRadius: 10, fontSize: 14,
+          border: '1.5px solid var(--color-gray-3)',
+          background: '#fff', color: 'var(--color-gray-9)',
+          outline: 'none', transition: 'border-color 150ms, box-shadow 150ms',
+        }}
+        onFocus={e => {
+          e.currentTarget.style.borderColor = 'var(--color-brand)';
+          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(242,101,34,0.12)';
+        }}
+        onBlur={e => {
+          e.currentTarget.style.borderColor = 'var(--color-gray-3)';
+          e.currentTarget.style.boxShadow = 'none';
         }}
       />
-      <button
-        type="submit"
-        style={{
-          padding: '8px 16px',
-          borderRadius: 8,
-          border: 'none',
-          background: '#F26522',
-          color: '#fff',
-          fontSize: 13,
-          fontWeight: 500,
-          cursor: 'pointer',
-        }}
-      >
-        Найти
-      </button>
       {value && (
         <button
           type="button"
-          onClick={handleClear}
+          onClick={() => setValue('')}
           style={{
-            padding: '8px 16px',
-            borderRadius: 8,
-            border: '1px solid var(--color-gray-3)',
-            background: 'transparent',
-            color: 'var(--color-gray-7)',
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: 'pointer',
+            position: 'absolute', right: 10, top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--color-gray-6)', padding: 2, display: 'flex',
+            borderRadius: 4,
           }}
         >
-          Сбросить
+          <X size={14} />
         </button>
       )}
-    </form>
+    </div>
   );
 }

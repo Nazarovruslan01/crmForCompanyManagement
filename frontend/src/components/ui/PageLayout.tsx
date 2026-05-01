@@ -9,11 +9,11 @@ interface PageLayoutProps {
 export function PageLayout({ title, actions, children }: PageLayoutProps) {
   return (
     <div className="page-wrapper">
-      <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="page-header">
         <h1>{title}</h1>
-        {actions && <div style={{ display: 'flex', gap: 8 }}>{actions}</div>}
+        {actions && <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{actions}</div>}
       </div>
-      <div className="page-content">{children}</div>
+      <div className="page-content" style={{ paddingBottom: 40 }}>{children}</div>
     </div>
   );
 }
