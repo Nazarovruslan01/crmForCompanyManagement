@@ -6,7 +6,7 @@ import { PageLayout } from '../components/ui/PageLayout';
 import type { Building } from '../types';
 import {
   ArrowLeft, ArrowRight, Plus, Trash2, Building2,
-  Layers, Home, CheckCircle2, Loader2,
+  Layers, Home, CheckCircle2, Loader2, Grid3X3,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -39,7 +39,7 @@ function genApartments(blocks: BlockConfig[]): { block: string; floor: number; n
   return result;
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Step Indicator ───────────────────────────────────────────────────────────
 
 function StepIndicator({ current }: { current: Step }) {
   const steps: { key: Step; label: string; icon: React.ElementType }[] = [
@@ -50,7 +50,7 @@ function StepIndicator({ current }: { current: Step }) {
   const idx = steps.findIndex(s => s.key === current);
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 36 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 0, marginBottom: 32 }}>
       {steps.map((step, i) => {
         const done = i < idx;
         const active = i === idx;
@@ -60,7 +60,7 @@ function StepIndicator({ current }: { current: Step }) {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
               <div style={{
                 width: 36, height: 36, borderRadius: '50%',
-                background: done ? 'var(--color-green-5)' : active ? 'var(--color-brand)' : 'var(--color-gray-2)',
+                background: done ? '#52c41a' : active ? 'var(--color-brand)' : 'var(--color-gray-2)',
                 color: done || active ? '#fff' : 'var(--color-gray-6)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'all 200ms ease',
@@ -69,7 +69,7 @@ function StepIndicator({ current }: { current: Step }) {
               </div>
               <span style={{
                 fontSize: 12, fontWeight: active ? 600 : 500,
-                color: active ? 'var(--color-brand)' : done ? 'var(--color-green-7)' : 'var(--color-gray-6)',
+                color: active ? 'var(--color-brand)' : done ? '#52c41a' : 'var(--color-gray-6)',
                 whiteSpace: 'nowrap',
               }}>
                 {step.label}
@@ -78,7 +78,7 @@ function StepIndicator({ current }: { current: Step }) {
             {i < steps.length - 1 && (
               <div style={{
                 flex: 1, height: 2, marginBottom: 22, marginLeft: 8, marginRight: 8,
-                background: done ? 'var(--color-green-5)' : 'var(--color-gray-3)',
+                background: done ? '#52c41a' : 'var(--color-gray-3)',
                 transition: 'background 200ms ease',
               }} />
             )}
@@ -89,19 +89,23 @@ function StepIndicator({ current }: { current: Step }) {
   );
 }
 
+// ─── NumberInput ──────────────────────────────────────────────────────────────
+
 function NumberInput({
   label, value, onChange, min = 1, max = 99,
 }: { label: string; value: number; onChange: (v: number) => void; min?: number; max?: number }) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--color-gray-7)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+      <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-gray-6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
         {label}
       </label>
       <div style={{ display: 'flex', alignItems: 'center', gap: 0, border: '1px solid var(--color-gray-3)', borderRadius: 9, overflow: 'hidden', width: 120 }}>
         <button
           type="button"
           onClick={() => onChange(Math.max(min, value - 1))}
-          style={{ width: 36, height: 38, background: 'var(--color-gray-1)', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--color-gray-7)', flexShrink: 0 }}
+          style={{ width: 36, height: 38, background: 'var(--color-gray-1)', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--color-gray-7)', flexShrink: 0, transition: 'background 150ms' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-gray-2)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-gray-1)')}
         >−</button>
         <span style={{ flex: 1, textAlign: 'center', fontSize: 15, fontWeight: 700, color: 'var(--color-black)' }}>
           {value}
@@ -109,14 +113,16 @@ function NumberInput({
         <button
           type="button"
           onClick={() => onChange(Math.min(max, value + 1))}
-          style={{ width: 36, height: 38, background: 'var(--color-gray-1)', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--color-gray-7)', flexShrink: 0 }}
+          style={{ width: 36, height: 38, background: 'var(--color-gray-1)', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--color-gray-7)', flexShrink: 0, transition: 'background 150ms' }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-gray-2)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'var(--color-gray-1)')}
         >+</button>
       </div>
     </div>
   );
 }
 
-// ─── Steps ────────────────────────────────────────────────────────────────────
+// ─── Blocks Step ──────────────────────────────────────────────────────────────
 
 function BlocksStep({
   blocks, onChange, onNext,
@@ -130,30 +136,31 @@ function BlocksStep({
 
   return (
     <div>
-      <p style={{ margin: '0 0 24px', fontSize: 14, color: 'var(--color-gray-7)', lineHeight: 1.6 }}>
+      <p style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--color-gray-7)', lineHeight: 1.6 }}>
         Добавьте блоки/секции здания. Для каждого укажите количество этажей и квартир на этаже.
       </p>
 
-      <div style={{ display: 'grid', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gap: 12, marginBottom: 20 }}>
         {blocks.map((block, i) => (
           <div key={i} style={{
             background: '#fff',
             border: '1px solid var(--color-gray-3)',
             borderRadius: 12,
-            padding: '20px 20px 20px',
+            padding: '20px 20px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
               <div style={{
                 width: 32, height: 32, borderRadius: 8,
-                background: 'var(--color-brand-light)',
+                background: 'var(--color-brand)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 700, fontSize: 14, color: 'var(--color-brand)',
+                fontWeight: 700, fontSize: 14, color: '#fff',
+                flexShrink: 0,
               }}>
-                {block.name}
+                {block.name || '?'}
               </div>
               <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--color-gray-7)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-gray-6)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Название блока
                 </label>
                 <input
@@ -169,20 +176,20 @@ function BlocksStep({
                 <button
                   type="button"
                   onClick={() => removeBlock(i)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-gray-6)', padding: 4, borderRadius: 6 }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-gray-5)', padding: 6, borderRadius: 6, transition: 'color 150ms' }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#ff4d4f')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-gray-6)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--color-gray-5)')}
                 >
                   <Trash2 size={16} />
                 </button>
               )}
             </div>
 
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <NumberInput label="Этажей" value={block.floors} onChange={v => updateBlock(i, { floors: v })} min={1} max={50} />
               <NumberInput label="Кв. на этаже" value={block.apartments_per_floor} onChange={v => updateBlock(i, { apartments_per_floor: v })} min={1} max={20} />
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--color-gray-7)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--color-gray-6)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Нумерация
                 </label>
                 <div style={{ display: 'flex', gap: 6 }}>
@@ -197,6 +204,7 @@ function BlocksStep({
                         background: block.numbering === val ? 'var(--color-brand-light)' : '#fff',
                         color: block.numbering === val ? 'var(--color-brand)' : 'var(--color-gray-7)',
                         fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                        transition: 'all 150ms',
                       }}
                     >
                       {lbl}
@@ -222,13 +230,13 @@ function BlocksStep({
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '9px 16px', borderRadius: 9,
-            border: '1px dashed var(--color-gray-5)',
+            border: '1px dashed var(--color-gray-4)',
             background: '#fff', color: 'var(--color-gray-7)',
             fontSize: 13.5, fontWeight: 500, cursor: 'pointer',
             transition: 'all 150ms ease',
           }}
           onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-brand)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-brand)'; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-gray-5)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-gray-7)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-gray-4)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-gray-7)'; }}
         >
           <Plus size={15} /> Добавить блок
         </button>
@@ -253,25 +261,76 @@ function BlocksStep({
   );
 }
 
+// ─── Apartment Cell ───────────────────────────────────────────────────────────
+
+function AptCell({ number }: { number: string }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        width: 44, height: 44,
+        borderRadius: 8,
+        border: `1px solid ${hover ? 'var(--color-brand)' : 'var(--color-gray-3)'}`,
+        background: hover ? 'var(--color-brand-light)' : '#fff',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 12, fontWeight: 600,
+        color: hover ? 'var(--color-brand)' : 'var(--color-gray-8)',
+        flexShrink: 0,
+        cursor: 'default',
+        transition: 'all 150ms ease',
+        userSelect: 'none',
+      }}
+    >
+      {number}
+    </div>
+  );
+}
+
+// ─── Preview Step ─────────────────────────────────────────────────────────────
+
 function PreviewStep({
   blocks, building, onBack, onConfirm, loading,
 }: { blocks: BlockConfig[]; building: Building; onBack: () => void; onConfirm: () => void; loading: boolean }) {
   const apartments = genApartments(blocks);
-  const byBlock = blocks.map(b => ({
-    ...b,
-    apts: apartments.filter(a => a.block === b.name),
-  }));
+  const totalCount = apartments.length;
+
+  // Build per-block, per-floor grid data (floors descending)
+  const byBlock = blocks.map(b => {
+    const blockApts = apartments.filter(a => a.block === b.name);
+    const floorsData: { floor: number; apts: typeof blockApts }[] = [];
+    for (let f = b.floors; f >= 1; f--) {
+      floorsData.push({ floor: f, apts: blockApts.filter(a => a.floor === f) });
+    }
+    return { ...b, floorsData, total: blockApts.length };
+  });
 
   return (
     <div>
-      <p style={{ margin: '0 0 24px', fontSize: 14, color: 'var(--color-gray-7)' }}>
-        Будет создано <strong style={{ color: 'var(--color-black)' }}>{apartments.length} квартир</strong> в здании «{building.name}».
-        Проверьте и нажмите «Создать».
+      <p style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--color-gray-7)', lineHeight: 1.5 }}>
+        Будет создано{' '}
+        <strong style={{ color: 'var(--color-black)', fontWeight: 700 }}>{totalCount} квартир</strong>
+        {' '}в здании «{building.name}». Проверьте и нажмите «Создать».
       </p>
 
-      <div style={{ display: 'grid', gap: 12, marginBottom: 28, maxHeight: 420, overflowY: 'auto' }}>
+      {/* Blocks side by side, horizontally scrollable */}
+      <div style={{
+        display: 'flex',
+        gap: 16,
+        overflowX: 'auto',
+        marginBottom: 28,
+        paddingBottom: 4,
+      }}>
         {byBlock.map(block => (
-          <div key={block.name} style={{ background: '#fff', border: '1px solid var(--color-gray-3)', borderRadius: 12, overflow: 'hidden' }}>
+          <div key={block.name} style={{
+            background: '#fff',
+            border: '1px solid var(--color-gray-3)',
+            borderRadius: 12,
+            overflow: 'hidden',
+            flexShrink: 0,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+          }}>
             {/* Block header */}
             <div style={{
               padding: '12px 16px',
@@ -280,52 +339,74 @@ function PreviewStep({
               display: 'flex', alignItems: 'center', gap: 10,
             }}>
               <div style={{
-                width: 26, height: 26, borderRadius: 6,
-                background: 'var(--color-brand-light)',
+                width: 28, height: 28, borderRadius: 7,
+                background: 'var(--color-brand)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 12, fontWeight: 700, color: 'var(--color-brand)',
+                fontSize: 13, fontWeight: 700, color: '#fff',
+                flexShrink: 0,
               }}>{block.name}</div>
-              <span style={{ fontWeight: 600, fontSize: 13 }}>Блок {block.name}</span>
-              <span style={{ fontSize: 12, color: 'var(--color-gray-6)', marginLeft: 'auto' }}>
-                {block.floors} эт. × {block.apartments_per_floor} кв. = {block.apts.length} квартир
-              </span>
+              <div>
+                <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--color-black)' }}>
+                  Блок {block.name}
+                </p>
+                <p style={{ margin: 0, fontSize: 11, color: 'var(--color-gray-6)' }}>
+                  {block.floors} эт. × {block.apartments_per_floor} кв. = {block.total} квартир
+                </p>
+              </div>
             </div>
-            {/* Floor preview */}
-            <div style={{ padding: '12px 16px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {block.apts.slice(0, 40).map(apt => (
-                <div key={apt.number} style={{
-                  padding: '3px 8px', borderRadius: 6,
-                  background: 'var(--color-gray-1)',
-                  border: '1px solid var(--color-gray-3)',
-                  fontSize: 12, fontWeight: 600, color: 'var(--color-gray-8)',
+
+            {/* Chessboard grid */}
+            <div style={{ padding: '14px 16px' }}>
+              {block.floorsData.map(({ floor, apts }) => (
+                <div key={floor} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginBottom: 6,
                 }}>
-                  {apt.number}
-                  <span style={{ fontSize: 10, color: 'var(--color-gray-6)', marginLeft: 2 }}>({apt.floor}эт)</span>
+                  {/* Floor number label */}
+                  <div style={{
+                    width: 24,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: 'var(--color-gray-5)',
+                    textAlign: 'right',
+                    flexShrink: 0,
+                    userSelect: 'none',
+                  }}>
+                    {floor}
+                  </div>
+                  {/* Apartment cells */}
+                  {apts.map(apt => (
+                    <AptCell key={apt.number} number={apt.number} />
+                  ))}
                 </div>
               ))}
-              {block.apts.length > 40 && (
-                <div style={{ padding: '3px 8px', fontSize: 12, color: 'var(--color-gray-6)' }}>
-                  +{block.apts.length - 40} ещё…
-                </div>
-              )}
             </div>
           </div>
         ))}
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button type="button" onClick={onBack} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '9px 14px', borderRadius: 9,
-          border: '1px solid var(--color-gray-3)', background: '#fff',
-          color: 'var(--color-gray-7)', fontSize: 13.5, fontWeight: 500, cursor: 'pointer',
-        }}>
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '9px 14px', borderRadius: 9,
+            border: '1px solid var(--color-gray-3)', background: '#fff',
+            color: 'var(--color-gray-7)', fontSize: 13.5, fontWeight: 500, cursor: 'pointer',
+            transition: 'all 150ms',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-gray-5)'; }}
+          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-gray-3)'; }}
+        >
           <ArrowLeft size={15} /> Назад
         </button>
         <button type="button" onClick={onConfirm} disabled={loading} className="btn-primary">
           {loading
             ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Создаём…</>
-            : <><CheckCircle2 size={15} /> Создать {apartments.length} квартир</>}
+            : <><CheckCircle2 size={15} /> Создать {totalCount} квартир</>}
         </button>
       </div>
       <style>{`@keyframes spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }`}</style>
@@ -333,32 +414,28 @@ function PreviewStep({
   );
 }
 
-function DoneStep({ created, buildingId, onChessboard }: { created: number; buildingId: number; onChessboard: () => void }) {
+// ─── Done Step ────────────────────────────────────────────────────────────────
+
+function DoneStep({ created, onChessboard }: { created: number; buildingId: number; onChessboard: () => void }) {
   return (
-    <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+    <div style={{ textAlign: 'center', padding: '48px 20px' }}>
       <div style={{
-        width: 72, height: 72, borderRadius: '50%',
-        background: '#f6ffed', margin: '0 auto 20px',
+        width: 80, height: 80, borderRadius: '50%',
+        background: '#f6ffed', border: '2px solid #b7eb8f',
+        margin: '0 auto 20px',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <CheckCircle2 size={36} color="var(--color-green-5)" strokeWidth={1.5} />
+        <CheckCircle2 size={40} color="#52c41a" strokeWidth={1.5} />
       </div>
-      <h2 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700 }}>Готово!</h2>
-      <p style={{ margin: '0 0 32px', fontSize: 14, color: 'var(--color-gray-7)' }}>
-        Создано <strong>{created}</strong> квартир. Теперь вы можете видеть их на шахматной доске.
+      <h2 style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700, color: 'var(--color-black)' }}>Готово!</h2>
+      <p style={{ margin: '0 0 32px', fontSize: 14, color: 'var(--color-gray-7)', lineHeight: 1.6 }}>
+        Создано <strong style={{ color: 'var(--color-black)' }}>{created}</strong> квартир.<br/>
+        Теперь вы можете видеть их на шахматной доске.
       </p>
-      <button type="button" onClick={onChessboard} className="btn-primary" style={{ fontSize: 15, padding: '12px 28px' }}>
-        <Grid3X3Icon /> Открыть шахматную доску
+      <button type="button" onClick={onChessboard} className="btn-primary" style={{ fontSize: 14, padding: '11px 24px', gap: 8 }}>
+        <Grid3X3 size={15} /> Открыть шахматную доску
       </button>
     </div>
-  );
-}
-
-function Grid3X3Icon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8 }}>
-      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-    </svg>
   );
 }
 
@@ -397,9 +474,10 @@ export function BuildingSetupPage() {
   if (bLoading) {
     return (
       <PageLayout title="Настройка здания">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 12, color: 'var(--color-gray-6)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 12 }}>
           <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--color-brand)' }} />
-          <span style={{ fontSize: 14 }}>Загрузка…</span>
+          <span style={{ fontSize: 14, color: 'var(--color-gray-6)' }}>Загрузка…</span>
+          <style>{`@keyframes spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }`}</style>
         </div>
       </PageLayout>
     );
@@ -407,9 +485,9 @@ export function BuildingSetupPage() {
 
   return (
     <PageLayout title={building ? `${building.name} — Настройка шахматки` : 'Настройка шахматки'}>
-      {/* Back */}
+      {/* Back button */}
       {step !== 'done' && (
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: 20 }}>
           <button
             onClick={() => navigate(`/buildings/${buildingId}`)}
             onMouseEnter={() => setBackHover(true)}
@@ -442,12 +520,15 @@ export function BuildingSetupPage() {
             width: 40, height: 40, borderRadius: 10,
             background: 'var(--color-brand)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
           }}>
             <Building2 size={20} color="#fff" />
           </div>
           <div>
             <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--color-black)' }}>{building.name}</p>
-            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-gray-7)' }}>{building.city}, {building.district}, {building.address}</p>
+            <p style={{ margin: 0, fontSize: 12, color: 'var(--color-gray-7)' }}>
+              {building.city}, {building.district}, {building.address}
+            </p>
           </div>
         </div>
       )}
@@ -455,12 +536,13 @@ export function BuildingSetupPage() {
       {/* Step indicator */}
       <StepIndicator current={step} />
 
-      {/* Step content */}
+      {/* Step content card */}
       <div style={{
-        background: 'var(--color-gray-1)',
+        background: '#fff',
         borderRadius: 14,
         border: '1px solid var(--color-gray-3)',
         padding: 28,
+        boxShadow: 'var(--shadow-card)',
       }}>
         {step === 'blocks' && (
           <BlocksStep
