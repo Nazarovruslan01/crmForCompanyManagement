@@ -64,7 +64,7 @@ AWS_S3_FILE_OVERWRITE = False
 
 # CORS
 CORS_ALLOW_ALL_ORIGINS = False
-CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "").split(",")
+CORS_ALLOWED_ORIGINS = [x for x in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if x]
 
 # Sentry — error tracking and performance monitoring
 _sentry_dsn = os.getenv("SENTRY_DSN", "")
