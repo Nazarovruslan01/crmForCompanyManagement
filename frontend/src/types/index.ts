@@ -307,6 +307,8 @@ export interface Meeting {
   created_by: number | null;
   created_by_display: string | null;
   agenda_items: AgendaItem[];
+  votes?: Vote[];
+  protocol?: MeetingProtocol | null;
   created_at: string;
   updated_at: string;
 }
@@ -370,4 +372,16 @@ export interface ChessboardResponse {
     name: string;
   };
   blocks: ChessboardBlock[];
+}
+
+// ─── Dashboard ───────────────────────────────────────────────────────────────
+
+export interface DashboardSummary {
+  buildings_count: number;
+  active_tickets_count: number;
+  residents_count: number;
+  overdue_charges_count: number;
+  total_debt: string;
+  occupancy_rate: number;
+  recent_tickets: Ticket[];
 }

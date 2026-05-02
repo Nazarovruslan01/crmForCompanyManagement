@@ -16,6 +16,9 @@ import { ApartmentDetailPage } from './pages/ApartmentDetailPage';
 import { BuildingSetupPage } from './pages/BuildingSetupPage';
 import { StaffPage } from './pages/StaffPage';
 import { BillingPage } from './pages/BillingPage';
+import { DocumentsPage } from './pages/DocumentsPage';
+import { MeetingsPage } from './pages/MeetingsPage';
+import { MeetingDetailPage } from './pages/MeetingDetailPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -65,6 +68,9 @@ function AppRoutes() {
         <Route path="residents/:id" element={<ResidentDetailPage />} />
         <Route path="staff"         element={<StaffPage />} />
         <Route path="billing"       element={<BillingPage />} />
+        <Route path="documents"     element={<DocumentsPage />} />
+        <Route path="meetings"      element={<MeetingsPage />} />
+        <Route path="meetings/:id"  element={<MeetingDetailPage />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="settings"      element={<SettingsPage />} />
       </Route>

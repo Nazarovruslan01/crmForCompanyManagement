@@ -18,6 +18,7 @@ import type {
   Meeting,
   User,
   ChessboardResponse,
+  DashboardSummary,
 } from '../types';
 
 const API_BASE = '/api/v2';
@@ -237,6 +238,12 @@ class ApiClient {
         method: 'POST',
         body: JSON.stringify({ agenda_item: agendaItemId, vote_choice: voteChoice }),
       }),
+  };
+
+  // ─── Dashboard ───────────────────────────────────────────────────────────────
+
+  dashboard = {
+    summary: () => this.request<DashboardSummary>('/dashboard/summary/'),
   };
 }
 

@@ -11,6 +11,8 @@ interface Stats {
   activeTickets: number;
   residents: number;
   overdueCharges: number;
+  totalDebt: string;
+  occupancyRate: number;
 }
 
 function StatCard({
@@ -104,36 +106,37 @@ const ticketColumns: Column<Ticket>[] = [
 ];
 
 export function DashboardPage() {
-  const [stats, setStats] = useState<Stats>({ buildings: 0, activeTickets: 0, residents: 0, overdueCharges: 0 });
+  const [stats, setStats] = useState<Stats>({
+    buildings: 0,
+    activeTickets: 0,
+    residents: 0,
+    overdueCharges: 0,
+    totalDebt: '0.00',
+    occupancyRate: 0,
+  });
   const [statsLoading, setStatsLoading] = useState(true);
   const [recentTickets, setRecentTickets] = useState<Ticket[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
   const [ticketsError, setTicketsError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      api.buildings.list(),
-      api.tickets.list({ status: 'new' }),
-      api.residents.list(),
-      api.aidatCharges.overdue(),
-    ])
-      .then(([buildings, activeTickets, residents, overdue]) => {
+    api.dashboard.summary()
+      .then(data => {
         setStats({
-          buildings: buildings.results.length,
-          activeTickets: activeTickets.results.length,
-          residents: residents.results.length,
-          overdueCharges: overdue.results.length,
+          buildings: data.buildings_count,
+          activeTickets: data.active_tickets_count,
+          residents: data.residents_count,
+          overdueCharges: data.overdue_charges_count,
+          totalDebt: data.total_debt,
+          occupancyRate: data.occupancy_rate,
         });
+        setRecentTickets(data.recent_tickets);
       })
-      .catch(() => { /* stats stay at 0 */ })
-      .finally(() => setStatsLoading(false));
-  }, []);
-
-  useEffect(() => {
-    api.tickets.list({ ordering: '-created_at' })
-      .then(res => setRecentTickets(res.results.slice(0, 10)))
       .catch(err => setTicketsError((err as Error).message))
-      .finally(() => setTicketsLoading(false));
+      .finally(() => {
+        setStatsLoading(false);
+        setTicketsLoading(false);
+      });
   }, []);
 
   return (
@@ -148,6 +151,16 @@ export function DashboardPage() {
         <StatCard label="Новых заявок" value={stats.activeTickets} icon={ClipboardList} loading={statsLoading} accent="#3b82f6" />
         <StatCard label="Жильцов" value={stats.residents} icon={Users} loading={statsLoading} accent="#10b981" />
         <StatCard label="Просрочено оплат" value={stats.overdueCharges} icon={Wallet} loading={statsLoading} accent="#ef4444" />
+      </div>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: 20,
+        marginBottom: 32,
+      }}>
+        <StatCard label="Общий долг (TRY)" value={stats.totalDebt} icon={Wallet} loading={statsLoading} />
+        <StatCard label="Заполненность (%)" value={`${stats.occupancyRate}%`} icon={Building2} loading={statsLoading} />
       </div>
 
       <div style={{ marginBottom: 14 }}>

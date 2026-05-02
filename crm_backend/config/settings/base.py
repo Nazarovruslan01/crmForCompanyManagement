@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "apps.messenger",
     "apps.documents",
     "apps.meetings",
+    "apps.dashboard",
 ]
 
 # Custom user model — must be set before first migration

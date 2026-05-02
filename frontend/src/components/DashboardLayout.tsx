@@ -14,6 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  FileText,
+  CalendarDays,
 } from 'lucide-react';
 import { HouseraLogo } from './HouseraLogo';
 
@@ -33,6 +35,8 @@ const navItems: NavItem[] = [
   { to: '/residents',     icon: Users,         label: 'Жильцы',        roles: ['admin', 'manager'] },
   { to: '/staff',         icon: Briefcase,     label: 'Сотрудники',    roles: ['admin', 'manager'] },
   { to: '/billing',       icon: Wallet,        label: 'Платежи',       roles: ['admin', 'manager', 'resident'] },
+  { to: '/documents',     icon: FileText,      label: 'Документы',     roles: ['admin', 'manager', 'worker', 'resident'] },
+  { to: '/meetings',      icon: CalendarDays,  label: 'Собрания',      roles: ['admin', 'manager', 'worker', 'resident'] },
   { to: '/notifications', icon: Bell,          label: 'Уведомления',   roles: ['admin', 'manager', 'worker', 'resident'] },
   { to: '/settings',      icon: Settings,      label: 'Настройки',     roles: ['admin', 'manager', 'worker', 'resident'] },
 ];
