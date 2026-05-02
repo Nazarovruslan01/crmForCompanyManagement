@@ -36,7 +36,7 @@ test.describe('Buildings Page', () => {
   });
 
   test('clicking a building row navigates to detail', async ({ page }) => {
-    const firstRow = page.locator('table tbody tr').first();
+    const firstRow = page.locator('table tbody tr').filter({ hasText: /\d/ }).first();
     await expect(firstRow).toBeVisible();
     await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/buildings\/\d+/);
@@ -49,7 +49,7 @@ test.describe('Building Detail', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/buildings');
-    const firstRow = page.locator('table tbody tr').first();
+    const firstRow = page.locator('table tbody tr').filter({ hasText: /\d/ }).first();
     await expect(firstRow).toBeVisible();
     await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/buildings\/\d+/);

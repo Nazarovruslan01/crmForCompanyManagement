@@ -34,7 +34,7 @@ test.describe('Tickets Page', () => {
   });
 
   test('clicking a ticket row navigates to detail', async ({ page }) => {
-    const firstRow = page.locator('table tbody tr').first();
+    const firstRow = page.locator('table tbody tr').filter({ hasText: /\d/ }).first();
     await expect(firstRow).toBeVisible();
     await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
@@ -42,7 +42,7 @@ test.describe('Tickets Page', () => {
   });
 
   test('ticket detail shows executor metadata', async ({ page }) => {
-    const firstRow = page.locator('table tbody tr').first();
+    const firstRow = page.locator('table tbody tr').filter({ hasText: /\d/ }).first();
     await expect(firstRow).toBeVisible();
     await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
@@ -53,7 +53,7 @@ test.describe('Tickets Page', () => {
 test.describe('Ticket Detail', () => {
   test('renders back link on ticket detail page', async ({ page }) => {
     await page.goto('/tickets');
-    const firstRow = page.locator('table tbody tr').first();
+    const firstRow = page.locator('table tbody tr').filter({ hasText: /\d/ }).first();
     await expect(firstRow).toBeVisible();
     await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);

@@ -43,7 +43,7 @@ test.describe('Ticket Mutations — Worker', () => {
 
   test('worker can view ticket detail', async ({ page }) => {
     await page.goto('/tickets');
-    const firstRow = page.locator('table tbody tr').first();
+    const firstRow = page.locator('table tbody tr').filter({ hasText: /\d/ }).first();
     await expect(firstRow).toBeVisible();
     await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
@@ -78,7 +78,7 @@ test.describe('Ticket Mutations — Resident', () => {
 
   test('ticket detail shows comments section', async ({ page }) => {
     await page.goto('/tickets');
-    const firstRow = page.locator('table tbody tr').first();
+    const firstRow = page.locator('table tbody tr').filter({ hasText: /\d/ }).first();
     await expect(firstRow).toBeVisible();
     await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);

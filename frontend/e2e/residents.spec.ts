@@ -37,7 +37,7 @@ test.describe('Residents Page', () => {
   });
 
   test('clicking a resident row navigates to detail', async ({ page }) => {
-    const firstRow = page.locator('table tbody tr').first();
+    const firstRow = page.locator('table tbody tr').filter({ hasText: /\d/ }).first();
     await expect(firstRow).toBeVisible();
     await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/residents\/\d+/);
@@ -50,7 +50,7 @@ test.describe('Resident Detail', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/residents');
-    const firstRow = page.locator('table tbody tr').first();
+    const firstRow = page.locator('table tbody tr').filter({ hasText: /\d/ }).first();
     await expect(firstRow).toBeVisible();
     await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/residents\/\d+/);

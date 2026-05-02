@@ -37,7 +37,7 @@ test.describe('Staff Page', () => {
   });
 
   test('clicking a row opens edit form modal', async ({ page }) => {
-    const firstRow = page.locator('table tbody tr').first();
+    const firstRow = page.locator('table tbody tr').filter({ hasText: /\d/ }).first();
     await expect(firstRow).toBeVisible();
     await firstRow.locator("td").first().click();
 
