@@ -16,7 +16,7 @@ test('unauthenticated access to /dashboard redirects to /login', async ({ page }
 
 test('login page renders correctly', async ({ page }) => {
   await page.goto('/login');
-  await expect(page.locator('h1')).toContainText('CRM Dashboard');
+  await expect(page.locator('h1')).toContainText('Вход в систему');
   await expect(page.locator('#username')).toBeVisible();
   await expect(page.locator('#password')).toBeVisible();
   await expect(page.locator('button[type="submit"]')).toBeVisible();
@@ -27,7 +27,7 @@ test('invalid credentials show error message', async ({ page }) => {
   await page.fill('#username', 'nonexistent_xyz');
   await page.fill('#password', 'wrongpassword');
   await page.click('button[type="submit"]');
-  await expect(page.getByText('Invalid username or password')).toBeVisible();
+  await expect(page.getByText('Неверный логин или пароль')).toBeVisible();
   // Stays on login page
   await expect(page).toHaveURL(/\/login/);
 });
@@ -50,7 +50,7 @@ test('logout returns to login page and clears session', async ({ page }) => {
   await expect(page).toHaveURL(/\/dashboard/);
 
   // Logout
-  await page.click('button:has-text("Logout")');
+  await page.click('button[title="Выйти"]');
   await expect(page).toHaveURL(/\/login/);
 
   // After logout, /dashboard should redirect to /login again
