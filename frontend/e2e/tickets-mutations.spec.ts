@@ -45,7 +45,7 @@ test.describe('Ticket Mutations — Worker', () => {
     await page.goto('/tickets');
     const firstRow = page.locator('table tbody tr').first();
     await expect(firstRow).toBeVisible();
-    await firstRow.click();
+    await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
 
     // Worker detail page is read-only — verify content renders
@@ -80,7 +80,7 @@ test.describe('Ticket Mutations — Resident', () => {
     await page.goto('/tickets');
     const firstRow = page.locator('table tbody tr').first();
     await expect(firstRow).toBeVisible();
-    await firstRow.click();
+    await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
 
     await expect(page.getByText(/Комментарии/i)).toBeVisible();

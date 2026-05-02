@@ -39,7 +39,7 @@ test.describe('Staff Page', () => {
   test('clicking a row opens edit form modal', async ({ page }) => {
     const firstRow = page.locator('table tbody tr').first();
     await expect(firstRow).toBeVisible();
-    await firstRow.click();
+    await firstRow.locator("td").first().click();
 
     // Modal with form should appear
     await expect(page.getByRole('heading', { name: /Редактировать сотрудника/i })).toBeVisible();

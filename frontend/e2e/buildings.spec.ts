@@ -38,7 +38,7 @@ test.describe('Buildings Page', () => {
   test('clicking a building row navigates to detail', async ({ page }) => {
     const firstRow = page.locator('table tbody tr').first();
     await expect(firstRow).toBeVisible();
-    await firstRow.click();
+    await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/buildings\/\d+/);
     await expect(page.locator('h1')).toBeVisible();
   });
@@ -51,7 +51,7 @@ test.describe('Building Detail', () => {
     await page.goto('/buildings');
     const firstRow = page.locator('table tbody tr').first();
     await expect(firstRow).toBeVisible();
-    await firstRow.click();
+    await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/buildings\/\d+/);
   });
 

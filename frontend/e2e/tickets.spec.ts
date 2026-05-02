@@ -36,7 +36,7 @@ test.describe('Tickets Page', () => {
   test('clicking a ticket row navigates to detail', async ({ page }) => {
     const firstRow = page.locator('table tbody tr').first();
     await expect(firstRow).toBeVisible();
-    await firstRow.click();
+    await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
     await expect(page.locator('h1').first()).toContainText('Заявка');
   });
@@ -44,7 +44,7 @@ test.describe('Tickets Page', () => {
   test('ticket detail shows executor metadata', async ({ page }) => {
     const firstRow = page.locator('table tbody tr').first();
     await expect(firstRow).toBeVisible();
-    await firstRow.click();
+    await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
     await expect(page.getByText(/Исполнитель/)).toBeVisible();
   });
@@ -55,7 +55,7 @@ test.describe('Ticket Detail', () => {
     await page.goto('/tickets');
     const firstRow = page.locator('table tbody tr').first();
     await expect(firstRow).toBeVisible();
-    await firstRow.click();
+    await firstRow.locator("td").first().click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
     await expect(page.locator('h1').first()).toContainText('Заявка');
     await expect(page.getByRole('button', { name: 'Назад к заявкам' })).toBeVisible();
