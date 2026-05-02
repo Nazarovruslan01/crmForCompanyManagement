@@ -1289,6 +1289,7 @@ class TestMessengerConsumer:
 
         ticket_with_resident.assigned_worker = employee
         from asgiref.sync import sync_to_async
+
         await sync_to_async(ticket_with_resident.save)()
 
         refresh = RefreshToken.for_user(employee.user)

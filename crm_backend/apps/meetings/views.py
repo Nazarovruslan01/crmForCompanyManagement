@@ -26,9 +26,7 @@ class MeetingViewSet(
     ResidentQuerySetMixin,
     viewsets.ModelViewSet[Meeting],
 ):
-    queryset = Meeting.objects.select_related("building", "created_by").prefetch_related(
-        "agenda_items"
-    ).all()
+    queryset = Meeting.objects.select_related("building", "created_by").prefetch_related("agenda_items").all()
     serializer_class = MeetingSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     filterset_fields = ["status", "building"]

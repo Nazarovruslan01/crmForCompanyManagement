@@ -132,6 +132,7 @@ class TestDocumentPermissions:
 
         resident = Resident.objects.create(user=resident_user, name="Test", surname="User")
         from apps.residents.models import Ownership
+
         Ownership.objects.create(
             resident=resident,
             apartment=apartment,

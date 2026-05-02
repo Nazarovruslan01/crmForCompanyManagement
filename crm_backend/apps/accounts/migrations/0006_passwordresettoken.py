@@ -6,26 +6,32 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('accounts', '0005_add_totp_device'),
+        ("accounts", "0005_add_totp_device"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='PasswordResetToken',
+            name="PasswordResetToken",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('token_hash', models.CharField(help_text='SHA256 hash of the raw token', max_length=64)),
-                ('created_at', models.DateTimeField(auto_now_add=True, db_index=True)),
-                ('used_at', models.DateTimeField(blank=True, null=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='password_reset_tokens', to=settings.AUTH_USER_MODEL)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("token_hash", models.CharField(help_text="SHA256 hash of the raw token", max_length=64)),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("used_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="password_reset_tokens",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Password Reset Token',
-                'verbose_name_plural': 'Password Reset Tokens',
-                'db_table': 'password_reset_token',
-                'ordering': ['-created_at'],
+                "verbose_name": "Password Reset Token",
+                "verbose_name_plural": "Password Reset Tokens",
+                "db_table": "password_reset_token",
+                "ordering": ["-created_at"],
             },
         ),
     ]

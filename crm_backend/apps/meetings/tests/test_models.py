@@ -59,9 +59,7 @@ class TestMeeting:
 class TestAgendaItem:
     def test_create_agenda_item(self, building, user):
         scheduled = timezone.now() + timedelta(days=1)
-        meeting = Meeting.objects.create(
-            building=building, title="M1", scheduled_date=scheduled, created_by=user
-        )
+        meeting = Meeting.objects.create(building=building, title="M1", scheduled_date=scheduled, created_by=user)
         item = AgendaItem.objects.create(
             meeting=meeting,
             title="Budget Approval",
@@ -74,17 +72,13 @@ class TestAgendaItem:
 
     def test_agenda_item_str(self, building, user):
         scheduled = timezone.now() + timedelta(days=1)
-        meeting = Meeting.objects.create(
-            building=building, title="M2", scheduled_date=scheduled, created_by=user
-        )
+        meeting = Meeting.objects.create(building=building, title="M2", scheduled_date=scheduled, created_by=user)
         item = AgendaItem.objects.create(meeting=meeting, title="Repair Vote")
         assert str(item) == "Repair Vote"
 
     def test_ordering_by_order_and_created_at(self, building, user):
         scheduled = timezone.now() + timedelta(days=1)
-        meeting = Meeting.objects.create(
-            building=building, title="M3", scheduled_date=scheduled, created_by=user
-        )
+        meeting = Meeting.objects.create(building=building, title="M3", scheduled_date=scheduled, created_by=user)
         item1 = AgendaItem.objects.create(meeting=meeting, title="First", order=1)
         item2 = AgendaItem.objects.create(meeting=meeting, title="Second", order=2)
         items = list(AgendaItem.objects.all())
@@ -95,9 +89,7 @@ class TestAgendaItem:
 class TestVote:
     def test_create_vote(self, building, resident, user):
         scheduled = timezone.now() + timedelta(days=1)
-        meeting = Meeting.objects.create(
-            building=building, title="M4", scheduled_date=scheduled, created_by=user
-        )
+        meeting = Meeting.objects.create(building=building, title="M4", scheduled_date=scheduled, created_by=user)
         item = AgendaItem.objects.create(meeting=meeting, title="Vote Item")
         vote = Vote.objects.create(
             agenda_item=item,
@@ -110,9 +102,7 @@ class TestVote:
 
     def test_vote_str(self, building, resident, user):
         scheduled = timezone.now() + timedelta(days=1)
-        meeting = Meeting.objects.create(
-            building=building, title="M5", scheduled_date=scheduled, created_by=user
-        )
+        meeting = Meeting.objects.create(building=building, title="M5", scheduled_date=scheduled, created_by=user)
         item = AgendaItem.objects.create(meeting=meeting, title="Vote Item")
         vote = Vote.objects.create(
             agenda_item=item,
@@ -123,9 +113,7 @@ class TestVote:
 
     def test_unique_together_constraint(self, building, resident, tenant_resident, user):
         scheduled = timezone.now() + timedelta(days=1)
-        meeting = Meeting.objects.create(
-            building=building, title="M6", scheduled_date=scheduled, created_by=user
-        )
+        meeting = Meeting.objects.create(building=building, title="M6", scheduled_date=scheduled, created_by=user)
         item = AgendaItem.objects.create(meeting=meeting, title="Vote Item")
         Vote.objects.create(
             agenda_item=item,
@@ -141,9 +129,7 @@ class TestVote:
 
     def test_different_residents_can_vote_on_same_item(self, building, resident, tenant_resident, user):
         scheduled = timezone.now() + timedelta(days=1)
-        meeting = Meeting.objects.create(
-            building=building, title="M7", scheduled_date=scheduled, created_by=user
-        )
+        meeting = Meeting.objects.create(building=building, title="M7", scheduled_date=scheduled, created_by=user)
         item = AgendaItem.objects.create(meeting=meeting, title="Vote Item")
         v1 = Vote.objects.create(agenda_item=item, resident=resident, vote_choice=Vote.Choice.YES)
         v2 = Vote.objects.create(agenda_item=item, resident=tenant_resident, vote_choice=Vote.Choice.NO)
@@ -160,9 +146,7 @@ class TestVote:
 class TestMeetingProtocol:
     def test_create_protocol(self, building, user):
         scheduled = timezone.now() + timedelta(days=1)
-        meeting = Meeting.objects.create(
-            building=building, title="M8", scheduled_date=scheduled, created_by=user
-        )
+        meeting = Meeting.objects.create(building=building, title="M8", scheduled_date=scheduled, created_by=user)
         protocol = MeetingProtocol.objects.create(
             meeting=meeting,
             content="Meeting minutes",
@@ -180,9 +164,7 @@ class TestMeetingProtocol:
 
     def test_one_to_one_with_meeting(self, building, user):
         scheduled = timezone.now() + timedelta(days=1)
-        meeting = Meeting.objects.create(
-            building=building, title="M9", scheduled_date=scheduled, created_by=user
-        )
+        meeting = Meeting.objects.create(building=building, title="M9", scheduled_date=scheduled, created_by=user)
         MeetingProtocol.objects.create(meeting=meeting, content="First")
         with pytest.raises(IntegrityError):
             MeetingProtocol.objects.create(meeting=meeting, content="Second")

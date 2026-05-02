@@ -17,19 +17,29 @@ class TestTicketTelegramNotifications:
     def test_telegram_sent_on_status_change(self, admin_user):
         building = Building.objects.create(name="Signal Test", address="Istanbul")
         apartment = Apartment.objects.create(
-            building=building, apartment_number="301", floor=3, status=Apartment.Status.ACTIVE,
+            building=building,
+            apartment_number="301",
+            floor=3,
+            status=Apartment.Status.ACTIVE,
         )
         resident = Resident.objects.create(
-            name="Test", surname="Resident", phone="+905551234570", tc_kimlik_no="11111111110",
+            name="Test",
+            surname="Resident",
+            phone="+905551234570",
+            tc_kimlik_no="11111111110",
         )
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
 
         from apps.messenger.models import MessengerUser
+
         MessengerUser.objects.create(resident=resident, telegram_chat_id=123456)
 
         ticket = Ticket.objects.create(
-            title="Telegram Test", description="desc", apartment=apartment,
-            created_by=admin_user, status=Ticket.Status.NEW,
+            title="Telegram Test",
+            description="desc",
+            apartment=apartment,
+            created_by=admin_user,
+            status=Ticket.Status.NEW,
         )
 
         with patch("apps.messenger.telegram_client.send_telegram_message") as mock_tg:
@@ -44,16 +54,25 @@ class TestTicketTelegramNotifications:
     def test_no_telegram_without_messenger_user(self, admin_user):
         building = Building.objects.create(name="Signal Test", address="Istanbul")
         apartment = Apartment.objects.create(
-            building=building, apartment_number="302", floor=3, status=Apartment.Status.ACTIVE,
+            building=building,
+            apartment_number="302",
+            floor=3,
+            status=Apartment.Status.ACTIVE,
         )
         resident = Resident.objects.create(
-            name="Test", surname="Resident", phone="+905551234571", tc_kimlik_no="11111111110",
+            name="Test",
+            surname="Resident",
+            phone="+905551234571",
+            tc_kimlik_no="11111111110",
         )
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
 
         ticket = Ticket.objects.create(
-            title="No Telegram", description="desc", apartment=apartment,
-            created_by=admin_user, status=Ticket.Status.NEW,
+            title="No Telegram",
+            description="desc",
+            apartment=apartment,
+            created_by=admin_user,
+            status=Ticket.Status.NEW,
         )
 
         with patch("apps.messenger.telegram_client.send_telegram_message") as mock_tg:
@@ -69,21 +88,31 @@ class TestTicketCommentTelegramNotifications:
     def test_telegram_sent_on_new_comment(self, admin_user):
         building = Building.objects.create(name="Signal Test", address="Istanbul")
         apartment = Apartment.objects.create(
-            building=building, apartment_number="401", floor=4, status=Apartment.Status.ACTIVE,
+            building=building,
+            apartment_number="401",
+            floor=4,
+            status=Apartment.Status.ACTIVE,
         )
         resident = Resident.objects.create(
-            name="Test", surname="Resident", phone="+905551234580", tc_kimlik_no="11111111110",
+            name="Test",
+            surname="Resident",
+            phone="+905551234580",
+            tc_kimlik_no="11111111110",
         )
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
 
         from apps.messenger.models import MessengerUser
+
         MessengerUser.objects.create(resident=resident, telegram_chat_id=654321)
 
         from apps.tickets.models import TicketComment
 
         ticket = Ticket.objects.create(
-            title="Comment Telegram", description="desc", apartment=apartment,
-            created_by=admin_user, status=Ticket.Status.NEW,
+            title="Comment Telegram",
+            description="desc",
+            apartment=apartment,
+            created_by=admin_user,
+            status=Ticket.Status.NEW,
         )
 
         with patch("apps.messenger.telegram_client.send_telegram_message") as mock_tg:
@@ -98,21 +127,31 @@ class TestTicketCommentTelegramNotifications:
     def test_no_telegram_on_comment_update(self, admin_user):
         building = Building.objects.create(name="Signal Test", address="Istanbul")
         apartment = Apartment.objects.create(
-            building=building, apartment_number="402", floor=4, status=Apartment.Status.ACTIVE,
+            building=building,
+            apartment_number="402",
+            floor=4,
+            status=Apartment.Status.ACTIVE,
         )
         resident = Resident.objects.create(
-            name="Test", surname="Resident", phone="+905551234581", tc_kimlik_no="11111111110",
+            name="Test",
+            surname="Resident",
+            phone="+905551234581",
+            tc_kimlik_no="11111111110",
         )
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
 
         from apps.messenger.models import MessengerUser
+
         MessengerUser.objects.create(resident=resident, telegram_chat_id=111222)
 
         from apps.tickets.models import TicketComment
 
         ticket = Ticket.objects.create(
-            title="Comment Update", description="desc", apartment=apartment,
-            created_by=admin_user, status=Ticket.Status.NEW,
+            title="Comment Update",
+            description="desc",
+            apartment=apartment,
+            created_by=admin_user,
+            status=Ticket.Status.NEW,
         )
         comment = TicketComment.objects.create(ticket=ticket, author=admin_user, content="Initial")
 
@@ -128,8 +167,11 @@ class TestCaptureOldTicketStatus:
 
     def test_old_status_captured_on_existing_ticket(self, admin_user, apartment):
         ticket = Ticket.objects.create(
-            title="Old Status", description="desc", apartment=apartment,
-            created_by=admin_user, status=Ticket.Status.NEW,
+            title="Old Status",
+            description="desc",
+            apartment=apartment,
+            created_by=admin_user,
+            status=Ticket.Status.NEW,
         )
         ticket.status = Ticket.Status.IN_PROGRESS
         ticket.save()
@@ -149,8 +191,11 @@ class TestCaptureOldTicketStatus:
         from apps.tickets.signals import _capture_old_ticket_status
 
         ticket = Ticket.objects.create(
-            title="Ghost", description="desc", apartment=apartment,
-            created_by=admin_user, status=Ticket.Status.NEW,
+            title="Ghost",
+            description="desc",
+            apartment=apartment,
+            created_by=admin_user,
+            status=Ticket.Status.NEW,
         )
         Ticket.objects.filter(pk=ticket.pk).delete()
         _capture_old_ticket_status(Ticket, ticket)

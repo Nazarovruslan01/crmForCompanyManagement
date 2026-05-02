@@ -145,8 +145,9 @@ class TestPasswordResetConfirm:
 
     def test_password_reset_confirm_success(self, api_client, user):
         """Valid token resets password and marks token used."""
-        from apps.accounts.models import PasswordResetToken
         import hashlib
+
+        from apps.accounts.models import PasswordResetToken
 
         raw_token = "test-token-123"
         token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
@@ -176,9 +177,11 @@ class TestPasswordResetConfirm:
 
     def test_password_reset_confirm_replay_used_token(self, api_client, user):
         """Reusing a used token returns 400."""
-        from apps.accounts.models import PasswordResetToken
-        from django.utils import timezone
         import hashlib
+
+        from django.utils import timezone
+
+        from apps.accounts.models import PasswordResetToken
 
         raw_token = "used-token-456"
         token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
@@ -193,10 +196,12 @@ class TestPasswordResetConfirm:
 
     def test_password_reset_confirm_expired_token(self, api_client, user):
         """Expired token returns 400."""
-        from apps.accounts.models import PasswordResetToken
-        from django.utils import timezone
-        from datetime import timedelta
         import hashlib
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.accounts.models import PasswordResetToken
 
         raw_token = "expired-token-789"
         token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
@@ -214,8 +219,9 @@ class TestPasswordResetConfirm:
 
     def test_password_reset_confirm_missing_password(self, api_client, user):
         """Missing new_password returns 400."""
-        from apps.accounts.models import PasswordResetToken
         import hashlib
+
+        from apps.accounts.models import PasswordResetToken
 
         raw_token = "missing-pass-token"
         token_hash = hashlib.sha256(raw_token.encode()).hexdigest()

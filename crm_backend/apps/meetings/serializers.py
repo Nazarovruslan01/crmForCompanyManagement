@@ -14,9 +14,7 @@ class AgendaItemSerializer(serializers.ModelSerializer):
 
 class VoteSerializer(serializers.ModelSerializer):
     resident_display = serializers.CharField(source="resident.__str__", read_only=True)
-    vote_choice_display = serializers.CharField(
-        source="get_vote_choice_display", read_only=True
-    )
+    vote_choice_display = serializers.CharField(source="get_vote_choice_display", read_only=True)
 
     class Meta:
         model = Vote
@@ -42,9 +40,7 @@ class MeetingProtocolSerializer(serializers.ModelSerializer):
 class MeetingSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     building_display = serializers.CharField(source="building.__str__", read_only=True)
-    created_by_display = serializers.CharField(
-        source="created_by.__str__", read_only=True
-    )
+    created_by_display = serializers.CharField(source="created_by.__str__", read_only=True)
     agenda_items = AgendaItemSerializer(many=True, read_only=True)
 
     class Meta:

@@ -32,8 +32,12 @@ class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewS
     ordering_fields = ["name", "created_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
-    @action(detail=True, methods=["post"], url_path="generate_apartments",
-            permission_classes=[permissions.IsAuthenticated, IsAdminOrManager])
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="generate_apartments",
+        permission_classes=[permissions.IsAuthenticated, IsAdminOrManager],
+    )
     def generate_apartments(self, request: Request, pk: int | None = None) -> Response:
         """Bulk-create apartments from a block/floor configuration.
 
@@ -133,6 +137,7 @@ class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewS
         for block_name in sorted(blocks.keys()):
             floors_list = []
             for floor_num in sorted(blocks[block_name].keys(), reverse=True):
+
                 def _apt_sort_key(x: dict) -> tuple:
                     num = x["apartment_number"]
                     try:

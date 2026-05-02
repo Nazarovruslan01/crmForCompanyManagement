@@ -193,6 +193,7 @@ class TestChessboardViewSet:
     @pytest.fixture(autouse=True)
     def _clear_cache(self):
         from django.core.cache import cache
+
         cache.clear()
         yield
         cache.clear()

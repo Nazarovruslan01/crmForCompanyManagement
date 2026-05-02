@@ -17,9 +17,7 @@ class DocumentViewSet(
     ResidentQuerySetMixin,
     viewsets.ModelViewSet[Document],
 ):
-    queryset = Document.objects.select_related(
-        "building", "apartment", "resident", "uploaded_by"
-    ).all()
+    queryset = Document.objects.select_related("building", "apartment", "resident", "uploaded_by").all()
     serializer_class = DocumentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     filterset_fields = ["document_type", "building", "apartment", "resident"]

@@ -1,4 +1,5 @@
 """Tests for notifications signals."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -72,13 +73,13 @@ class TestCommentSignals:
     """Tests for broadcast_new_comment signal."""
 
     @patch("apps.notifications.signals.get_channel_layer")
-    def test_broadcast_new_comment_notifies_participants(self, mock_get_channel_layer, apartment, employee, user, admin_user):
+    def test_broadcast_new_comment_notifies_participants(
+        self, mock_get_channel_layer, apartment, employee, user, admin_user
+    ):
         mock_channel = MagicMock()
         mock_get_channel_layer.return_value = mock_channel
 
-        ticket = Ticket.objects.create(
-            title="Test", apartment=apartment, created_by=user, assigned_worker=employee
-        )
+        ticket = Ticket.objects.create(title="Test", apartment=apartment, created_by=user, assigned_worker=employee)
         TicketComment.objects.create(ticket=ticket, author=admin_user, content="Hello")
 
         calls = [c for c in mock_channel.group_send.call_args_list if "ticket_comment" in str(c)]
@@ -122,6 +123,7 @@ class TestPaymentSignals:
 
         # Ensure primary ownership for signal to trigger
         from apps.residents.models import Ownership
+
         Ownership.objects.filter(resident=resident_with_profile, apartment=apartment).update(is_primary=True)
 
         Payment.objects.create(apartment=apartment, amount=100, payment_method=Payment.PaymentMethod.CASH)

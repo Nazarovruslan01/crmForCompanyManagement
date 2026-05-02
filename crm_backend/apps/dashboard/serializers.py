@@ -1,7 +1,5 @@
 """Dashboard serializers."""
 
-from decimal import Decimal
-
 from rest_framework import serializers
 
 from apps.tickets.serializers import TicketSerializer

@@ -171,10 +171,14 @@ class TestVote:
         client = APIClient()
         client.force_authenticate(user=resident_user)
         url = reverse("meeting-vote", kwargs={"pk": meeting.pk})
-        response = client.post(url, {
-            "agenda_item": agenda_item.id,
-            "vote_choice": "yes",
-        }, format="json")
+        response = client.post(
+            url,
+            {
+                "agenda_item": agenda_item.id,
+                "vote_choice": "yes",
+            },
+            format="json",
+        )
         assert response.status_code == 201
         assert response.json()["vote_choice"] == "yes"
 
@@ -191,10 +195,14 @@ class TestVote:
         client = APIClient()
         client.force_authenticate(user=resident_user)
         url = reverse("meeting-vote", kwargs={"pk": meeting.pk})
-        response = client.post(url, {
-            "agenda_item": agenda_item.id,
-            "vote_choice": "yes",
-        }, format="json")
+        response = client.post(
+            url,
+            {
+                "agenda_item": agenda_item.id,
+                "vote_choice": "yes",
+            },
+            format="json",
+        )
         assert response.status_code == 400
 
     def test_non_resident_cannot_vote(self, manager_user, meeting, agenda_item):
@@ -204,10 +212,14 @@ class TestVote:
         client = APIClient()
         client.force_authenticate(user=manager_user)
         url = reverse("meeting-vote", kwargs={"pk": meeting.pk})
-        response = client.post(url, {
-            "agenda_item": agenda_item.id,
-            "vote_choice": "yes",
-        }, format="json")
+        response = client.post(
+            url,
+            {
+                "agenda_item": agenda_item.id,
+                "vote_choice": "yes",
+            },
+            format="json",
+        )
         assert response.status_code == 403
 
 

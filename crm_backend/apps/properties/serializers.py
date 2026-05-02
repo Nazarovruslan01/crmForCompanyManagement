@@ -10,9 +10,7 @@ from .models import Apartment, Building
 
 
 class BuildingSerializer(serializers.ModelSerializer):
-    management_type_display = serializers.CharField(
-        source="get_management_type_display", read_only=True
-    )
+    management_type_display = serializers.CharField(source="get_management_type_display", read_only=True)
 
     class Meta:
         model = Building

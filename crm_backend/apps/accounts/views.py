@@ -1,11 +1,7 @@
 """Accounts app views for REST API."""
 
 from django.contrib.auth import get_user_model
-from rest_framework import generics, permissions, status, viewsets
-from rest_framework.request import Request
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework import generics, permissions, viewsets
 
 from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManager

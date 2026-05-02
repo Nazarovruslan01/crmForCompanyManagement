@@ -43,6 +43,7 @@ def invalidate_building_chessboard(building_id: int) -> None:
 
 # ─── Building ────────────────────────────────────────────────────────────────
 
+
 @receiver(post_save, sender=Building)
 @receiver(post_delete, sender=Building)
 def invalidate_building_cache(sender: type[Building], **kwargs: Any) -> None:
@@ -54,6 +55,7 @@ def invalidate_building_cache(sender: type[Building], **kwargs: Any) -> None:
 
 # ─── Apartment ───────────────────────────────────────────────────────────────
 
+
 @receiver(post_save, sender=Apartment)
 @receiver(post_delete, sender=Apartment)
 def invalidate_apartment_cache(sender: type[Apartment], **kwargs: Any) -> None:
@@ -64,6 +66,7 @@ def invalidate_apartment_cache(sender: type[Apartment], **kwargs: Any) -> None:
 
 
 # ─── Ownership ───────────────────────────────────────────────────────────────
+
 
 @receiver(post_save, sender=Ownership)
 def invalidate_ownership_chessboard_on_save(sender: type[Ownership], **kwargs: Any) -> None:
@@ -79,12 +82,7 @@ def invalidate_ownership_chessboard_on_delete(sender: type[Ownership], **kwargs:
     if not instance or not instance.apartment_id:
         return
     try:
-        building_id = (
-            Apartment.objects
-            .filter(id=instance.apartment_id)
-            .values_list("building_id", flat=True)
-            .first()
-        )
+        building_id = Apartment.objects.filter(id=instance.apartment_id).values_list("building_id", flat=True).first()
         if building_id:
             invalidate_building_chessboard(building_id)
     except Exception:
@@ -93,6 +91,7 @@ def invalidate_ownership_chessboard_on_delete(sender: type[Ownership], **kwargs:
 
 
 # ─── AidatCharge ─────────────────────────────────────────────────────────────
+
 
 @receiver(post_save, sender=AidatCharge)
 def invalidate_aidat_chessboard_on_save(sender: type[AidatCharge], **kwargs: Any) -> None:
@@ -108,12 +107,7 @@ def invalidate_aidat_chessboard_on_delete(sender: type[AidatCharge], **kwargs: A
     if not instance or not instance.apartment_id:
         return
     try:
-        building_id = (
-            Apartment.objects
-            .filter(id=instance.apartment_id)
-            .values_list("building_id", flat=True)
-            .first()
-        )
+        building_id = Apartment.objects.filter(id=instance.apartment_id).values_list("building_id", flat=True).first()
         if building_id:
             invalidate_building_chessboard(building_id)
     except Exception:

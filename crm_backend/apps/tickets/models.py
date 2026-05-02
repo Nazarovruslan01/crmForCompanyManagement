@@ -126,9 +126,7 @@ class Ticket(models.Model):
 
     def save(self, *args: Any, **kwargs: Any) -> None:
         update_fields = kwargs.get("update_fields")
-        self._validate_status_transition(
-            update_fields=set(update_fields) if update_fields else None
-        )
+        self._validate_status_transition(update_fields=set(update_fields) if update_fields else None)
         if self.status == self.Status.RESOLVED and not self.resolved_at:
             self.resolved_at = timezone.now()
         super().save(*args, **kwargs)

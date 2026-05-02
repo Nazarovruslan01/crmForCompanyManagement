@@ -6,81 +6,162 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
-        ('properties', '0003_alter_apartment_id_alter_building_id'),
-        ('residents', '0006_resident_is_active'),
+        ("properties", "0003_alter_apartment_id_alter_building_id"),
+        ("residents", "0006_resident_is_active"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Meeting',
+            name="Meeting",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=255, verbose_name='Название')),
-                ('description', models.TextField(blank=True, verbose_name='Описание')),
-                ('scheduled_date', models.DateTimeField(verbose_name='Дата проведения')),
-                ('status', models.CharField(choices=[('scheduled', 'Запланировано'), ('active', 'Активно'), ('completed', 'Завершено'), ('cancelled', 'Отменено')], default='scheduled', max_length=20, verbose_name='Статус')),
-                ('quorum_required', models.PositiveIntegerField(default=1, help_text='Минимальное количество голосов для принятия решения', verbose_name='Необходимый кворум')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('building', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='meetings', to='properties.building', verbose_name='Здание')),
-                ('created_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_meetings', to=settings.AUTH_USER_MODEL, verbose_name='Создал')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("title", models.CharField(max_length=255, verbose_name="Название")),
+                ("description", models.TextField(blank=True, verbose_name="Описание")),
+                ("scheduled_date", models.DateTimeField(verbose_name="Дата проведения")),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("scheduled", "Запланировано"),
+                            ("active", "Активно"),
+                            ("completed", "Завершено"),
+                            ("cancelled", "Отменено"),
+                        ],
+                        default="scheduled",
+                        max_length=20,
+                        verbose_name="Статус",
+                    ),
+                ),
+                (
+                    "quorum_required",
+                    models.PositiveIntegerField(
+                        default=1,
+                        help_text="Минимальное количество голосов для принятия решения",
+                        verbose_name="Необходимый кворум",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "building",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="meetings",
+                        to="properties.building",
+                        verbose_name="Здание",
+                    ),
+                ),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="created_meetings",
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name="Создал",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Собрание',
-                'verbose_name_plural': 'Собрания',
-                'ordering': ['-scheduled_date'],
+                "verbose_name": "Собрание",
+                "verbose_name_plural": "Собрания",
+                "ordering": ["-scheduled_date"],
             },
         ),
         migrations.CreateModel(
-            name='AgendaItem',
+            name="AgendaItem",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=255, verbose_name='Пункт повестки')),
-                ('description', models.TextField(blank=True, verbose_name='Описание')),
-                ('order', models.PositiveIntegerField(default=0, verbose_name='Порядок')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('meeting', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='agenda_items', to='meetings.meeting', verbose_name='Собрание')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("title", models.CharField(max_length=255, verbose_name="Пункт повестки")),
+                ("description", models.TextField(blank=True, verbose_name="Описание")),
+                ("order", models.PositiveIntegerField(default=0, verbose_name="Порядок")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "meeting",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="agenda_items",
+                        to="meetings.meeting",
+                        verbose_name="Собрание",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Пункт повестки',
-                'verbose_name_plural': 'Пункты повестки',
-                'ordering': ['order', 'created_at'],
+                "verbose_name": "Пункт повестки",
+                "verbose_name_plural": "Пункты повестки",
+                "ordering": ["order", "created_at"],
             },
         ),
         migrations.CreateModel(
-            name='MeetingProtocol',
+            name="MeetingProtocol",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('content', models.TextField(blank=True, verbose_name='Содержание протокола')),
-                ('file', models.FileField(blank=True, null=True, upload_to='protocols/%Y/%m/', verbose_name='Файл протокола')),
-                ('approved_at', models.DateTimeField(blank=True, null=True, verbose_name='Утвержден')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('meeting', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='protocol', to='meetings.meeting', verbose_name='Собрание')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                ("content", models.TextField(blank=True, verbose_name="Содержание протокола")),
+                (
+                    "file",
+                    models.FileField(
+                        blank=True, null=True, upload_to="protocols/%Y/%m/", verbose_name="Файл протокола"
+                    ),
+                ),
+                ("approved_at", models.DateTimeField(blank=True, null=True, verbose_name="Утвержден")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "meeting",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="protocol",
+                        to="meetings.meeting",
+                        verbose_name="Собрание",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Протокол',
-                'verbose_name_plural': 'Протоколы',
+                "verbose_name": "Протокол",
+                "verbose_name_plural": "Протоколы",
             },
         ),
         migrations.CreateModel(
-            name='Vote',
+            name="Vote",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('vote_choice', models.CharField(choices=[('yes', 'За'), ('no', 'Против'), ('abstain', 'Воздержался')], max_length=10, verbose_name='Голос')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('agenda_item', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='votes', to='meetings.agendaitem', verbose_name='Пункт повестки')),
-                ('resident', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='votes', to='residents.resident', verbose_name='Жилец')),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "vote_choice",
+                    models.CharField(
+                        choices=[("yes", "За"), ("no", "Против"), ("abstain", "Воздержался")],
+                        max_length=10,
+                        verbose_name="Голос",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "agenda_item",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="votes",
+                        to="meetings.agendaitem",
+                        verbose_name="Пункт повестки",
+                    ),
+                ),
+                (
+                    "resident",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="votes",
+                        to="residents.resident",
+                        verbose_name="Жилец",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Голос',
-                'verbose_name_plural': 'Голоса',
-                'ordering': ['-created_at'],
-                'unique_together': {('agenda_item', 'resident')},
+                "verbose_name": "Голос",
+                "verbose_name_plural": "Голоса",
+                "ordering": ["-created_at"],
+                "unique_together": {("agenda_item", "resident")},
             },
         ),
     ]

@@ -2,8 +2,6 @@
 
 from decimal import Decimal
 
-from decimal import Decimal
-
 from django.db.models import Count
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
@@ -47,9 +45,7 @@ class DashboardSummaryView(AuditLogMixin, APIView):
             aidat_qs = AidatCharge.objects.all()
         else:
             # Resident: scope to their apartments
-            owned_apartment_ids = Ownership.objects.filter(
-                resident__user=user
-            ).values_list("apartment_id", flat=True)
+            owned_apartment_ids = Ownership.objects.filter(resident__user=user).values_list("apartment_id", flat=True)
             buildings_qs = Apartment.objects.filter(id__in=owned_apartment_ids)
             tickets_qs = Ticket.objects.filter(apartment_id__in=owned_apartment_ids)
             residents_qs = Ownership.objects.filter(apartment_id__in=owned_apartment_ids)
@@ -57,22 +53,17 @@ class DashboardSummaryView(AuditLogMixin, APIView):
 
         # Aggregates
         buildings_count = (
-            Apartment.objects.filter(id__in=buildings_qs.values("id"))
-            .aggregate(total=Count("building", distinct=True))["total"]
+            Apartment.objects.filter(id__in=buildings_qs.values("id")).aggregate(
+                total=Count("building", distinct=True)
+            )["total"]
             or 0
         )
         active_tickets_count = tickets_qs.filter(status=Ticket.Status.NEW).count()
-        residents_count = (
-            residents_qs.values("resident_id").distinct().count()
-        )
-        overdue_charges_count = aidat_qs.filter(
-            status=AidatCharge.Status.OVERDUE
-        ).count()
+        residents_count = residents_qs.values("resident_id").distinct().count()
+        overdue_charges_count = aidat_qs.filter(status=AidatCharge.Status.OVERDUE).count()
 
         # Total debt: computed in Python because late_fee_amount is a property
-        pending_charges = aidat_qs.filter(
-            status__in=(AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE)
-        )
+        pending_charges = aidat_qs.filter(status__in=(AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE))
         total_debt = sum(
             (charge.total_due for charge in pending_charges),
             Decimal("0"),
@@ -81,15 +72,9 @@ class DashboardSummaryView(AuditLogMixin, APIView):
         # Occupancy rate
         total_apartments = buildings_qs.count()
         occupied_apartments = (
-            buildings_qs.filter(ownerships__isnull=False).distinct().count()
-            if total_apartments > 0
-            else 0
+            buildings_qs.filter(ownerships__isnull=False).distinct().count() if total_apartments > 0 else 0
         )
-        occupancy_rate = (
-            round((occupied_apartments / total_apartments) * 100, 1)
-            if total_apartments > 0
-            else 0.0
-        )
+        occupancy_rate = round((occupied_apartments / total_apartments) * 100, 1) if total_apartments > 0 else 0.0
 
         # Recent tickets with apartment detail (limited to 10)
         recent_tickets = (

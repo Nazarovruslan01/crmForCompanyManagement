@@ -9,9 +9,7 @@ from .models import Ownership, PersonalAccount, Resident
 
 class ResidentSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
-    owner_type_display = serializers.CharField(
-        source="get_owner_type_display", read_only=True
-    )
+    owner_type_display = serializers.CharField(source="get_owner_type_display", read_only=True)
 
     class Meta:
         model = Resident
