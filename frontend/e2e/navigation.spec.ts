@@ -6,6 +6,8 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Sidebar Navigation', () => {
+  test.use({ storageState: 'playwright/.auth/admin.json' });
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/dashboard');
   });

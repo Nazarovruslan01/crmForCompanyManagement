@@ -9,22 +9,15 @@ import { test, expect } from '@playwright/test';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 const API = `${BACKEND_URL}/api/v2`;
 
-async function loginAdmin(
-  request: Parameters<Parameters<typeof test>[1]>[0]['request'],
-) {
-  const res = await request.post(`${API}/accounts/login/`, {
-    data: { username: 'admin', password: 'admin123!' },
-  });
-  expect(res.ok(), 'admin login failed').toBeTruthy();
-  const data = (await res.json()) as { access: string; refresh: string };
-  return data.access;
-}
-
 test.describe('Staff Mutations — Admin', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
   test('admin can create an employee', async ({ page, request }) => {
-    const adminToken = await loginAdmin(request);
+    // Ensure we are on the app origin so localStorage is accessible
+    await page.goto('/');
+    // Use the already-authenticated browser token instead of re-logging in
+    const adminToken = await page.evaluate(() => localStorage.getItem('access_token') || '');
+    expect(adminToken, 'admin access token not found in localStorage').toBeTruthy();
 
     // Seed a free user
     const username = `e2e_staff_${Date.now()}`;
@@ -65,13 +58,7 @@ test.describe('Staff Mutations — Admin', () => {
     await expect(page.getByRole('heading', { name: /Новый сотрудник/i })).toBeVisible();
 
     // Fill creation form (fields have no name attribute, use placeholders/labels)
-    // Playwright fill/type don't work on <input type="number"> — set value directly
-    const numberInput = page.locator('input[type="number"]').first();
-    await numberInput.evaluate((el: HTMLElement, val: string) => {
-      (el as HTMLInputElement).value = val;
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    }, String(userId));
+    await page.locator('input[type="number"]').first().fill(String(userId));
 
     // Form has two selects: department (first) and role (second)
     // Use the first real department option from the dropdown (seeded data is always present)
@@ -80,7 +67,7 @@ test.describe('Staff Mutations — Admin', () => {
     const firstDept = deptOptions.find((o) => o !== 'Выберите отдел');
     if (!firstDept) throw new Error('No departments available in dropdown');
     await deptSelect.selectOption(firstDept);
-    await page.locator('select').nth(1).selectOption('worker');
+    await page.locator('select').nth(1).selectOption('security');
 
     await page.getByPlaceholder('+90 555 000 00 00', { exact: true }).fill('+90 555 000 00 02');
     await page.locator('input[type="date"]').fill(new Date().toISOString().slice(0, 10));

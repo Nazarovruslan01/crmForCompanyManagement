@@ -52,7 +52,7 @@ test.describe('Role-based navigation', () => {
       if (!isLogin && !isDashboard) {
         // If still on /buildings, the page should show an error from the API call
         await expect(
-          page.getByText(/Ошибка|Доступ запрещен|403|Forbidden/i).first(),
+          page.getByText(/Ошибка|Доступ запрещен|403|Forbidden|permission|izniniz|bulunmuyor/i).first(),
         ).toBeVisible({ timeout: 5000 });
       }
     });
@@ -87,7 +87,7 @@ test.describe('Role-based navigation', () => {
 
       if (!isLogin && !isDashboard) {
         await expect(
-          page.getByText(/Ошибка|Доступ запрещен|403|Forbidden/i).first(),
+          page.getByText(/Ошибка|Доступ запрещен|403|Forbidden|permission|izniniz|bulunmuyor/i).first(),
         ).toBeVisible({ timeout: 5000 });
       }
     });

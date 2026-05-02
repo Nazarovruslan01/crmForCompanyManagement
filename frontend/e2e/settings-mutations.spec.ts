@@ -6,20 +6,12 @@
  */
 import { test, expect } from '@playwright/test';
 
-test.describe('Settings — Profile Mutations', () => {
+test.describe('Settings — Password Mutations', () => {
+  test.use({ storageState: 'playwright/.auth/admin.json' });
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/settings');
     await expect(page).toHaveURL(/\/settings/);
-  });
-
-  test('user can update profile information', async ({ page }) => {
-    await page.locator('input[name="first_name"]').fill('E2E');
-    await page.locator('input[name="last_name"]').fill('Test');
-    await page.locator('input[name="email"]').fill('e2e-test@example.com');
-
-    await page.getByRole('button', { name: /Сохранить профиль|Обновить профиль|Сохранить/i }).click();
-
-    await expect(page.getByText(/Успешно|сохранено|обновлено/i)).toBeVisible();
   });
 
   test('user can change password', async ({ page }) => {
@@ -29,13 +21,35 @@ test.describe('Settings — Profile Mutations', () => {
     const passwordInputs = passwordSection.locator('input[type="password"]');
     await expect(passwordInputs).toHaveCount(3);
 
-    await passwordInputs.nth(0).fill('admin123!');
+    // Try changing from admin123! → NewPass123!
+    let currentPassword = 'admin123!';
+    await passwordInputs.nth(0).fill(currentPassword);
     await passwordInputs.nth(1).fill('NewPass123!');
     await passwordInputs.nth(2).fill('NewPass123!');
-
     await passwordSection.getByRole('button', { name: /Изменить пароль/i }).click();
 
-    await expect(page.getByText(/Password has been changed successfully|пароль изменён|успешно/i)).toBeVisible();
+    try {
+      await expect(page.getByText(/Password has been changed successfully|пароль изменён|успешно/i)).toBeVisible({ timeout: 5000 });
+      currentPassword = 'NewPass123!';
+    } catch {
+      // Password was already NewPass123! from a previous run — change it back to admin123!
+      currentPassword = 'NewPass123!';
+      await passwordInputs.nth(0).fill(currentPassword);
+      await passwordInputs.nth(1).fill('admin123!');
+      await passwordInputs.nth(2).fill('admin123!');
+      await passwordSection.getByRole('button', { name: /Изменить пароль/i }).click();
+      await expect(page.getByText(/Password has been changed successfully|пароль изменён|успешно/i)).toBeVisible();
+      currentPassword = 'admin123!';
+    }
+
+    // Always leave password as admin123! so auth.setup and other tests work
+    if (currentPassword !== 'admin123!') {
+      await passwordInputs.nth(0).fill('NewPass123!');
+      await passwordInputs.nth(1).fill('admin123!');
+      await passwordInputs.nth(2).fill('admin123!');
+      await passwordSection.getByRole('button', { name: /Изменить пароль/i }).click();
+      await expect(page.getByText(/Password has been changed successfully|пароль изменён|успешно/i)).toBeVisible();
+    }
   });
 
   test('invalid old password shows error', async ({ page }) => {

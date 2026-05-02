@@ -8,22 +8,14 @@ import { test, expect } from '@playwright/test';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 const API = `${BACKEND_URL}/api/v2`;
 
-async function loginAdmin(
-  request: Parameters<Parameters<typeof test>[1]>[0]['request'],
-) {
-  const res = await request.post(`${API}/accounts/login/`, {
-    data: { username: 'admin', password: 'admin123!' },
-  });
-  expect(res.ok(), 'admin login failed').toBeTruthy();
-  const data = (await res.json()) as { access: string; refresh: string };
-  return data.access;
-}
-
 test.describe('Apartment Detail', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
   test('navigates from chessboard to apartment detail', async ({ page, request }) => {
-    const adminToken = await loginAdmin(request);
+    // Ensure we are on the app origin so localStorage is accessible
+    await page.goto('/');
+    const adminToken = await page.evaluate(() => localStorage.getItem('access_token') || '');
+    expect(adminToken, 'admin access token not found in localStorage').toBeTruthy();
 
     // Seed a building
     const buildingRes = await request.post(`${API}/properties/buildings/`, {

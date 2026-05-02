@@ -6,6 +6,8 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Buildings Page', () => {
+  test.use({ storageState: 'playwright/.auth/admin.json' });
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/buildings');
     await expect(page).toHaveURL(/\/buildings/);
@@ -43,6 +45,8 @@ test.describe('Buildings Page', () => {
 });
 
 test.describe('Building Detail', () => {
+  test.use({ storageState: 'playwright/.auth/admin.json' });
+
   test.beforeEach(async ({ page }) => {
     await page.goto('/buildings');
     const firstRow = page.locator('table tbody tr').first();

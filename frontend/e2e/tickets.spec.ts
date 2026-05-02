@@ -58,6 +58,6 @@ test.describe('Ticket Detail', () => {
     await firstRow.click();
     await expect(page).toHaveURL(/\/tickets\/\d+/);
     await expect(page.locator('h1').first()).toContainText('Заявка');
-    await expect(page.getByRole('button', { name: 'Назад к списку' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Назад к заявкам' })).toBeVisible();
   });
 });

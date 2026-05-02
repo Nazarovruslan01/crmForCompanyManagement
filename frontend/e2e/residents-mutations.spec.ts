@@ -6,17 +6,22 @@
  */
 import { test, expect } from '@playwright/test';
 
-/** Generate a valid TC Kimlik No (11-digit Turkish ID with backend checksum). */
+/** Generate a valid TC Kimlik No (11-digit Turkish ID with correct checksum). */
 function generateValidTc(): string {
   // First 9 digits: first cannot be 0
-  const first9 = [Math.floor(Math.random() * 9) + 1];
+  const d = [Math.floor(Math.random() * 9) + 1];
   for (let i = 0; i < 8; i++) {
-    first9.push(Math.floor(Math.random() * 10));
+    d.push(Math.floor(Math.random() * 10));
   }
-  const sumFirst9 = first9.reduce((a, b) => a + b, 0);
-  const digit10 = sumFirst9 % 10;
-  const digit11 = Math.floor(sumFirst9 / 10) % 10;
-  return [...first9, digit10, digit11].join('');
+  // Digit 10: (sum of odd-positioned digits * 7 - sum of even-positioned digits) % 10
+  const sumOdd = d[0] + d[2] + d[4] + d[6] + d[8];
+  const sumEven = d[1] + d[3] + d[5] + d[7];
+  let digit10 = (sumOdd * 7 - sumEven) % 10;
+  if (digit10 < 0) digit10 += 10;
+  d.push(digit10);
+  // Digit 11: (sum of first 10 digits) % 10
+  d.push(d.slice(0, 10).reduce((a, b) => a + b, 0) % 10);
+  return d.join('');
 }
 
 test.describe('Resident Mutations — Admin', () => {
@@ -52,7 +57,10 @@ test.describe('Resident Mutations — Admin', () => {
     // Verify success feedback
     await expect(page.getByText(/Резидент добавлен|успешно/i)).toBeVisible();
 
-    // Verify resident appears in list
-    await expect(page.getByText(`E2E ${uniqueSuffix}`)).toBeVisible();
+    // Reload and search to locate the new resident (list is paginated)
+    await page.reload();
+    await page.getByPlaceholder('Поиск по ФИО, ТС или паспорту').fill(`E2E ${uniqueSuffix}`);
+    await page.waitForTimeout(400);
+    await expect(page.locator('table').getByText(`E2E ${uniqueSuffix}`).first()).toBeVisible();
   });
 });

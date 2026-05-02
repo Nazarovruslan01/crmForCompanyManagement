@@ -57,7 +57,7 @@ test.describe('Resident Detail', () => {
   });
 
   test('renders back link and resident name', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Назад к списку' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Назад к жильцам' })).toBeVisible();
     await expect(page.locator('h1').first()).toBeVisible();
   });
 
