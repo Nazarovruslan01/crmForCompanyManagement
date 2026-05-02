@@ -126,14 +126,16 @@ class LogoutView(APIView):
         },
     )
     def post(self, request: Request) -> Response:
+        # Blacklisting requires rest_framework_simplejwt.token_blacklist in
+        # INSTALLED_APPS. Without it we still clear client-side tokens.
         try:
             refresh_token = request.data.get("refresh")
             if refresh_token:
                 token = RefreshToken(refresh_token)
                 token.blacklist()
-            return Response({"detail": "Successfully logged out"}, status=status.HTTP_200_OK)
         except Exception:
-            return Response({"detail": "Invalid token"}, status=status.HTTP_400_BAD_REQUEST)
+            pass
+        return Response({"detail": "Successfully logged out"}, status=status.HTTP_200_OK)
 
 
 class PasswordResetRequestView(APIView):
