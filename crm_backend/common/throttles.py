@@ -8,11 +8,14 @@ from rest_framework.views import APIView
 class LoginRateThrottle(SimpleRateThrottle):
     """
     Rate limit login attempts: 5 attempts per minute per IP + username.
+    Disabled when DISABLE_THROTTLING env var is set (e.g. E2E/load tests).
     """
 
     scope = "login"
 
     def get_cache_key(self, request: Request, view: APIView) -> str | None:
+        if __import__("os").environ.get("DISABLE_THROTTLING"):
+            return None
         username = request.data.get("username")
         if not username:
             return None

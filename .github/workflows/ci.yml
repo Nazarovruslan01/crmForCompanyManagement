@@ -310,6 +310,7 @@ jobs:
       REDIS_URL: redis://localhost:6379/0
       BACKEND_URL: http://localhost:8000
       BASE_URL: http://localhost:4173
+      DISABLE_THROTTLING: 1
     services:
       postgres:
         image: postgres:16-alpine
