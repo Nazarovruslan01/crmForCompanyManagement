@@ -23,7 +23,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         storageState: 'playwright/.auth/admin.json',
       },
-      testMatch: /(?!auth\.spec\.ts$).*\.spec\.ts$/,
+      testMatch: /^(?!.*auth\.spec\.ts$).*\.spec\.ts$/,
       dependencies: ['setup'],
     },
     {
@@ -32,7 +32,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         storageState: 'playwright/.auth/worker.json',
       },
-      testMatch: /(?!auth\.spec\.ts$).*\.spec\.ts$/,
+      testMatch: /^(?!.*auth\.spec\.ts$).*\.spec\.ts$/,
       dependencies: ['setup'],
     },
     {
@@ -41,7 +41,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         storageState: 'playwright/.auth/resident.json',
       },
-      testMatch: /(?!auth\.spec\.ts$).*\.spec\.ts$/,
+      testMatch: /^(?!.*auth\.spec\.ts$).*\.spec\.ts$/,
       dependencies: ['setup'],
     },
     {
@@ -50,7 +50,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         storageState: 'playwright/.auth/manager.json',
       },
-      testMatch: /(?!auth\.spec\.ts$).*\.spec\.ts$/,
+      testMatch: /^(?!.*auth\.spec\.ts$).*\.spec\.ts$/,
       dependencies: ['setup'],
     },
     {

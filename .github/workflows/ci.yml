@@ -303,7 +303,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        role: [chromium, chromium-worker, chromium-resident, chromium-manager]
+        role: [chromium, chromium-worker, chromium-resident, chromium-manager, chromium-auth]
     env:
       DATABASE_URL: postgresql://crm_user:crm_password@localhost:5432/crm_test
       DJANGO_SETTINGS_MODULE: config.settings.local
