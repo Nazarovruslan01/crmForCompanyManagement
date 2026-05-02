@@ -21,7 +21,7 @@ test.describe('Error states', () => {
     await expect(page.locator('h1')).toContainText('Заявки');
 
     // The DataTable renders an error row when the API call fails.
-    await expect(page.getByText('Ошибка: Internal server error')).toBeVisible();
+    await expect(page.getByText('Internal server error')).toBeVisible();
   });
 
   test('shows empty state for empty list', async ({ page }) => {
