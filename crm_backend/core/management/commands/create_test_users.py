@@ -5,6 +5,11 @@ from typing import Any
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
+from apps.properties.models import Apartment, Building
+from apps.residents.models import Ownership, PersonalAccount, Resident
+from apps.staff.models import Department, Employee
+from apps.tickets.models import Ticket
+
 User = get_user_model()
 
 TEST_USERS = [
@@ -43,7 +48,7 @@ TEST_USERS = [
 ]
 
 
-def _create_or_update_user(data: dict[str, Any]) -> User:
+def _create_or_update_user(data: dict[str, Any]) -> Any:
     user_data = data.copy()
     password = user_data.pop("password")
     role = user_data.pop("role")
@@ -59,23 +64,11 @@ def _create_or_update_user(data: dict[str, Any]) -> User:
 
 
 class Command(BaseCommand):
-    help = "Create test users and seed E2E test data"
+    help = "Create test users and seed data for E2E tests"
 
     def handle(self, *args: Any, **options: Any) -> None:
-        created_users = 0
-        updated_users = 0
-
         for user_data in TEST_USERS:
-            user = _create_or_update_user(user_data)
-            if User.objects.filter(username=user_data["username"]).count() == 1 and user._state.adding is False:
-                # Check if user was just created by looking at creation logic above
-                pass
-
-        # Recount after update_or_create
-        for user_data in TEST_USERS:
-            user = User.objects.get(username=user_data["username"])
-            # We can't reliably distinguish created vs updated after the fact,
-            # so just report all as ensured.
+            _create_or_update_user(user_data)
 
         self.stdout.write(self.style.SUCCESS("Ensured 4 test users exist"))
         self.stdout.write("\nTest credentials:")
@@ -90,8 +83,6 @@ class Command(BaseCommand):
         self._seed_tickets()
 
     def _seed_departments(self) -> None:
-        from apps.staff.models import Department
-
         dept, _ = Department.objects.get_or_create(
             name="Teknik",
             defaults={"description": "Teknik servis departmanı"},
@@ -99,8 +90,6 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Ensured department: {dept.name}"))
 
     def _seed_buildings_and_apartments(self) -> None:
-        from apps.properties.models import Building, Apartment
-
         building, _ = Building.objects.get_or_create(
             name="E2E Test Sitesi",
             defaults={
@@ -128,9 +117,6 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Ensured apartment: {apt}"))
 
     def _seed_residents(self) -> None:
-        from apps.properties.models import Apartment
-        from apps.residents.models import Ownership, PersonalAccount, Resident
-
         try:
             apartment = Apartment.objects.get(building__name="E2E Test Sitesi", apartment_number="101")
         except Apartment.DoesNotExist:
@@ -161,11 +147,9 @@ class Command(BaseCommand):
             defaults={"account_number": "PA-001", "balance": 0},
         )
 
-        self.stdout.write(self.style.SUCCESS(f"Ensured resident: {resident.full_name}"))
+        self.stdout.write(self.style.SUCCESS(f"Ensured resident: {resident}"))
 
     def _seed_employees(self) -> None:
-        from apps.staff.models import Department, Employee
-
         try:
             worker_user = User.objects.get(username="worker")
             dept = Department.objects.get(name="Teknik")
@@ -186,14 +170,12 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"Ensured employee: {employee}"))
 
     def _seed_tickets(self) -> None:
-        from apps.properties.models import Apartment
-        from apps.staff.models import Employee
-        from apps.tickets.models import Ticket
-
         try:
             apartment = Apartment.objects.get(building__name="E2E Test Sitesi", apartment_number="101")
             admin_user = User.objects.get(username="admin")
-            employee = Employee.objects.get(user__username="worker")
+            employee = Employee.objects.get(  # type: ignore[misc]
+                user__username="worker"
+            )
         except (Apartment.DoesNotExist, User.DoesNotExist, Employee.DoesNotExist):
             self.stdout.write(self.style.WARNING("Required data missing, skipping ticket seed"))
             return
