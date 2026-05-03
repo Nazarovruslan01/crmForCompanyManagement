@@ -19,6 +19,12 @@ class NotificationConsumer(AsyncJsonWebsocketConsumer):  # type: ignore[misc]
             await self.close(code=4001)
             return
 
+        # Reject deactivated users (defense-in-depth — middleware should catch this)
+        if not getattr(self.user, "is_active", True):
+            logger.warning("WebSocket connection rejected: user %s is deactivated", getattr(self.user, "id", None))
+            await self.close(code=4001)
+            return
+
         self.group_name = f"user_{self.user.id}"
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()

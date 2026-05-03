@@ -37,17 +37,21 @@ class ReadinessCheckView(APIView):
         checks: dict[str, dict[str, str]] = {
             "database": self._check_database(),
             "cache": self._check_cache(),
+            "celery": self._check_celery(),
         }
 
-        all_healthy = all(c["status"] == "ok" for c in checks.values())
+        # Only database and cache are critical for serving requests.
+        # Celery being down degrades functionality (no async tasks) but
+        # the service can still serve synchronous API requests.
+        critical_healthy = all(checks[k]["status"] == "ok" for k in ("database", "cache"))
 
         response_data = {
-            "status": "ok" if all_healthy else "degraded",
+            "status": "ok" if critical_healthy else "degraded",
             "checks": checks,
         }
 
         return Response(
-            response_data, status=status.HTTP_200_OK if all_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
+            response_data, status=status.HTTP_200_OK if critical_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
         )
 
     def _check_database(self) -> dict[str, str]:
@@ -67,5 +71,18 @@ class ReadinessCheckView(APIView):
             if value == "ok":
                 return {"status": "ok"}
             return {"status": "error", "message": "Cache read/write failed"}
+        except Exception as e:
+            return {"status": "error", "message": str(e)}
+
+    def _check_celery(self) -> dict[str, str]:
+        """Check Celery worker availability via inspector ping."""
+        try:
+            from celery import current_app
+
+            inspect = current_app.control.inspect(timeout=2.0)
+            result = inspect.ping()
+            if result:
+                return {"status": "ok"}
+            return {"status": "error", "message": "No Celery workers responded"}
         except Exception as e:
             return {"status": "error", "message": str(e)}

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, cast
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import permissions, status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -44,18 +44,35 @@ class LoginView(APIView):
             "required": ["username", "password"],
         },
         responses={
-            200: {
-                "type": "object",
-                "properties": {
-                    "access": {"type": "string"},
-                    "refresh": {"type": "string"},
-                    "user": {"$ref": "#/components/schemas/User"},
-                },
-            },
-            202: {"description": "MFA required - temporary token returned"},
-            400: {"description": "Username and password are required"},
-            401: {"description": "Invalid credentials"},
-            403: {"description": "Account is disabled"},
+            200: OpenApiResponse(
+                description="Login successful — JWT tokens and user data returned",
+                examples=[
+                    OpenApiExample(
+                        "Successful login",
+                        value={
+                            "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                            "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                            "user": {
+                                "id": 1,
+                                "username": "admin",
+                                "email": "admin@example.com",
+                                "role": "admin",
+                            },
+                        },
+                    ),
+                ],
+            ),
+            202: OpenApiResponse(
+                description="MFA required — temporary token returned for TOTP verification",
+                examples=[
+                    OpenApiExample(
+                        "MFA required",
+                        value={"mfa_required": True, "temp_token": "eyJ...mfa..."},
+                    ),
+                ],
+            ),
+            400: OpenApiResponse(description="Username and password are required"),
+            401: OpenApiResponse(description="Invalid credentials"),
         },
     )
     def post(self, request: Request) -> Response:

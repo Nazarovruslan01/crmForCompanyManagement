@@ -41,6 +41,12 @@ class MessengerConsumer(AsyncJsonWebsocketConsumer):  # type: ignore[misc]
             logger.warning("Messenger WS rejected: unauthenticated")
             await self.close(code=4001)
             return
+
+        # Reject deactivated users (defense-in-depth — middleware should catch this)
+        if not getattr(user, "is_active", True):
+            logger.warning("Messenger WS rejected: user %s is deactivated", getattr(user, "id", None))
+            await self.close(code=4001)
+            return
         self.user = user  # type: ignore[assignment]
 
         ticket_id = self.scope.get("url_route", {}).get("kwargs", {}).get("ticket_id")
