@@ -1,5 +1,6 @@
 """Billing app views for REST API."""
 
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -19,6 +20,94 @@ from .serializers import (
 )
 
 
+@extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response=AidatChargeSerializer,
+                examples=[
+                    OpenApiExample(
+                        "Aidat charge list",
+                        value=[
+                            {
+                                "id": 1,
+                                "apartment": 1,
+                                "apartment_display": "Sunset Residences - 101",
+                                "billing_period_start": "2026-04-01",
+                                "billing_period_end": "2026-04-30",
+                                "base_amount": "500.00",
+                                "late_fee_rate": "0.0010",
+                                "due_date": "2026-05-15",
+                                "status": "pending",
+                                "status_display": "Ödenmedi",
+                                "paid_at": None,
+                                "paid_amount": None,
+                                "created_at": "2026-04-01T00:00:00Z",
+                                "updated_at": "2026-04-01T00:00:00Z",
+                            }
+                        ],
+                    ),
+                ],
+            ),
+        },
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response=AidatChargeSerializer,
+                examples=[
+                    OpenApiExample(
+                        "Aidat charge detail",
+                        value={
+                            "id": 1,
+                            "apartment": 1,
+                            "apartment_display": "Sunset Residences - 101",
+                            "billing_period_start": "2026-04-01",
+                            "billing_period_end": "2026-04-30",
+                            "base_amount": "500.00",
+                            "late_fee_rate": "0.0010",
+                            "due_date": "2026-05-15",
+                            "status": "overdue",
+                            "status_display": "Gecikmiş",
+                            "paid_at": None,
+                            "paid_amount": None,
+                            "created_at": "2026-04-01T00:00:00Z",
+                            "updated_at": "2026-04-01T00:00:00Z",
+                        },
+                    ),
+                ],
+            ),
+        },
+    ),
+    create=extend_schema(
+        responses={
+            201: OpenApiResponse(
+                response=AidatChargeSerializer,
+                examples=[
+                    OpenApiExample(
+                        "Created aidat charge",
+                        value={
+                            "id": 1,
+                            "apartment": 1,
+                            "apartment_display": "Sunset Residences - 101",
+                            "billing_period_start": "2026-04-01",
+                            "billing_period_end": "2026-04-30",
+                            "base_amount": "500.00",
+                            "late_fee_rate": "0.0010",
+                            "due_date": "2026-05-15",
+                            "status": "pending",
+                            "status_display": "Ödenmedi",
+                            "paid_at": None,
+                            "paid_amount": None,
+                            "created_at": "2026-04-01T00:00:00Z",
+                            "updated_at": "2026-04-01T00:00:00Z",
+                        },
+                    ),
+                ],
+            ),
+        },
+    ),
+)
 class AidatChargeViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[AidatCharge]):
     queryset = AidatCharge.objects.select_related("apartment__building").all()
     serializer_class = AidatChargeSerializer

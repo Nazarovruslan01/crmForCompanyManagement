@@ -1,5 +1,6 @@
 """Residents app views for REST API."""
 
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -18,6 +19,94 @@ from .serializers import (
 )
 
 
+@extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response=ResidentSerializer,
+                examples=[
+                    OpenApiExample(
+                        "Resident list",
+                        value=[
+                            {
+                                "id": 1,
+                                "user": 2,
+                                "tc_kimlik_no": "12345678901",
+                                "passport_no": "",
+                                "name": "Ahmet",
+                                "surname": "Yılmaz",
+                                "full_name": "Ahmet Yılmaz",
+                                "phone": "+905551234567",
+                                "email": "ahmet@example.com",
+                                "is_foreign_owner": False,
+                                "owner_type": "owner",
+                                "owner_type_display": "Malik",
+                                "created_at": "2026-01-15T08:00:00Z",
+                                "updated_at": "2026-04-20T10:00:00Z",
+                            }
+                        ],
+                    ),
+                ],
+            ),
+        },
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response=ResidentSerializer,
+                examples=[
+                    OpenApiExample(
+                        "Resident detail",
+                        value={
+                            "id": 1,
+                            "user": 2,
+                            "tc_kimlik_no": "12345678901",
+                            "passport_no": "",
+                            "name": "Ahmet",
+                            "surname": "Yılmaz",
+                            "full_name": "Ahmet Yılmaz",
+                            "phone": "+905551234567",
+                            "email": "ahmet@example.com",
+                            "is_foreign_owner": False,
+                            "owner_type": "owner",
+                            "owner_type_display": "Malik",
+                            "created_at": "2026-01-15T08:00:00Z",
+                            "updated_at": "2026-04-20T10:00:00Z",
+                        },
+                    ),
+                ],
+            ),
+        },
+    ),
+    create=extend_schema(
+        responses={
+            201: OpenApiResponse(
+                response=ResidentSerializer,
+                examples=[
+                    OpenApiExample(
+                        "Created resident",
+                        value={
+                            "id": 1,
+                            "user": 2,
+                            "tc_kimlik_no": "12345678901",
+                            "passport_no": "",
+                            "name": "Ahmet",
+                            "surname": "Yılmaz",
+                            "full_name": "Ahmet Yılmaz",
+                            "phone": "+905551234567",
+                            "email": "ahmet@example.com",
+                            "is_foreign_owner": False,
+                            "owner_type": "owner",
+                            "owner_type_display": "Malik",
+                            "created_at": "2026-05-03T08:00:00Z",
+                            "updated_at": "2026-05-03T08:00:00Z",
+                        },
+                    ),
+                ],
+            ),
+        },
+    ),
+)
 class ResidentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Resident]):
     queryset = Resident.objects.select_related("user").all()
     serializer_class = ResidentSerializer
