@@ -4,7 +4,7 @@ from decimal import Decimal
 
 from django.db import connection
 from django.db.models import Count, F, Sum
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import permissions, status
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -32,7 +32,43 @@ class DashboardSummaryView(AuditLogMixin, APIView):
 
     @extend_schema(
         responses={
-            200: DashboardSummarySerializer,
+            200: OpenApiResponse(
+                description="Dashboard summary statistics",
+                response=DashboardSummarySerializer,
+                examples=[
+                    OpenApiExample(
+                        "Admin dashboard",
+                        value={
+                            "buildings_count": 3,
+                            "active_tickets_count": 5,
+                            "residents_count": 24,
+                            "overdue_charges_count": 8,
+                            "total_debt": "12500.00",
+                            "occupancy_rate": 85.7,
+                            "recent_tickets": [
+                                {
+                                    "id": 12,
+                                    "title": "Leaking pipe in bathroom",
+                                    "status": "new",
+                                    "created_at": "2026-05-01T10:30:00Z",
+                                },
+                            ],
+                        },
+                    ),
+                    OpenApiExample(
+                        "Resident dashboard",
+                        value={
+                            "buildings_count": 1,
+                            "active_tickets_count": 2,
+                            "residents_count": 1,
+                            "overdue_charges_count": 1,
+                            "total_debt": "1500.00",
+                            "occupancy_rate": 100.0,
+                            "recent_tickets": [],
+                        },
+                    ),
+                ],
+            ),
         },
     )
     def get(self, request: Request) -> Response:

@@ -60,6 +60,13 @@ class JWTAuthMiddleware(BaseMiddleware):  # type: ignore[misc]
         if user_id is None:
             return AnonymousUser()
         try:
-            return await User.objects.aget(pk=user_id)
+            user = await User.objects.aget(pk=user_id)
         except User.DoesNotExist:
             return AnonymousUser()
+
+        # Reject soft-deleted / deactivated users
+        if not user.is_active:
+            logger.warning("WS auth rejected: user %s is deactivated", user_id)
+            return AnonymousUser()
+
+        return user
