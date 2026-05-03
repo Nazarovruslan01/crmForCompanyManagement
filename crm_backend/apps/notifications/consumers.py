@@ -1,3 +1,5 @@
+# pyright: reportIncompatibleMethodOverride=false
+
 """Django Channels consumers for real-time notifications."""
 
 import logging

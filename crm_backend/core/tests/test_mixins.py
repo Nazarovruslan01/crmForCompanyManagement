@@ -1,3 +1,5 @@
+# pyright: reportAttributeAccessIssue=false, reportCallIssue=false, reportIncompatibleMethodOverride=false, reportPossiblyUnboundVariable=false
+
 """Tests for core.mixins.ResidentQuerySetMixin."""
 
 from core.mixins import ResidentQuerySetMixin

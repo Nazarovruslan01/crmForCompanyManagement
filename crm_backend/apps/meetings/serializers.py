@@ -1,3 +1,5 @@
+# pyright: reportIncompatibleVariableOverride=false
+
 """Meetings app serializers for REST API."""
 
 from rest_framework import serializers

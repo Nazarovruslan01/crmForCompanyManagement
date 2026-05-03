@@ -2,15 +2,13 @@
 
 from typing import Any
 
-from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 
+from apps.accounts.models import User
 from apps.properties.models import Apartment, Building
 from apps.residents.models import Ownership, PersonalAccount, Resident
 from apps.staff.models import Department, Employee
 from apps.tickets.models import Ticket
-
-User = get_user_model()
 
 TEST_USERS = [
     {

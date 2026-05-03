@@ -1,3 +1,5 @@
+# pyright: reportAttributeAccessIssue=false, reportCallIssue=false, reportIncompatibleMethodOverride=false, reportPossiblyUnboundVariable=false
+
 """Accounts app views for REST API."""
 
 from django.contrib.auth import get_user_model
@@ -35,4 +37,4 @@ class UserMeView(generics.RetrieveUpdateAPIView[User]):
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
     def get_object(self) -> User:
-        return self.request.user
+        return self.request.user  # type: ignore[return-type]

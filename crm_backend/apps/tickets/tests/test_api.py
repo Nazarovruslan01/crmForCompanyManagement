@@ -70,7 +70,7 @@ class TestTicketViewSet:
             description="Test",
             created_by=admin_user,
         )
-        response = admin_client.get(f"/api/v2/tickets/tickets/{ticket.id}/")
+        response = admin_client.get(f"/api/v2/tickets/tickets/{ticket.pk}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["title"] == "Retrieve Ticket"
 
@@ -82,7 +82,7 @@ class TestTicketViewSet:
             description="Test",
         )
         payload = {"title": "Updated Title"}
-        response = admin_client.patch(f"/api/v2/tickets/tickets/{ticket.id}/", payload, format="json")
+        response = admin_client.patch(f"/api/v2/tickets/tickets/{ticket.pk}/", payload, format="json")
         assert response.status_code == status.HTTP_200_OK
         ticket.refresh_from_db()
         assert ticket.title == "Updated Title"
@@ -94,7 +94,7 @@ class TestTicketViewSet:
             title="Delete Ticket",
             description="Test",
         )
-        response = admin_client.delete(f"/api/v2/tickets/tickets/{ticket.id}/")
+        response = admin_client.delete(f"/api/v2/tickets/tickets/{ticket.pk}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
     def test_filter_tickets_by_status(self, admin_client, apartment):
@@ -130,7 +130,7 @@ class TestTicketViewSet:
             title="Resolve Ticket",
             description="Test",
         )
-        response = admin_client.post(f"/api/v2/tickets/tickets/{ticket.id}/resolve/")
+        response = admin_client.post(f"/api/v2/tickets/tickets/{ticket.pk}/resolve/")
         assert response.status_code == status.HTTP_200_OK
         ticket.refresh_from_db()
         assert ticket.status == Ticket.Status.RESOLVED
@@ -142,7 +142,7 @@ class TestTicketViewSet:
             title="Close Ticket",
             description="Test",
         )
-        response = admin_client.post(f"/api/v2/tickets/tickets/{ticket.id}/close/")
+        response = admin_client.post(f"/api/v2/tickets/tickets/{ticket.pk}/close/")
         assert response.status_code == status.HTTP_200_OK
         ticket.refresh_from_db()
         assert ticket.status == Ticket.Status.CLOSED
@@ -171,7 +171,7 @@ class TestTicketCommentViewSet:
             created_by=admin_user,
         )
         payload = {
-            "ticket": ticket.id,
+            "ticket": ticket.pk,
             "content": "Test comment content",
         }
         response = admin_client.post("/api/v2/tickets/comments/", payload, format="json")
@@ -184,7 +184,7 @@ class TestTicketCommentViewSet:
             title="Filter Comment Test",
             description="Test",
         )
-        response = admin_client.get("/api/v2/tickets/comments/", {"ticket": ticket.id})
+        response = admin_client.get("/api/v2/tickets/comments/", {"ticket": ticket.pk})
         assert response.status_code == status.HTTP_200_OK
 
 
@@ -206,7 +206,7 @@ class TestTicketAttachmentViewSet:
             created_by=admin_user,
         )
         payload = {
-            "ticket": ticket.id,
+            "ticket": ticket.pk,
             "file_url": "https://example.com/file.pdf",
             "file_name": "test.pdf",
             "file_type": "document",
@@ -242,7 +242,7 @@ class TestTicketViewSetResidentAccess:
         from apps.tickets.models import Ticket
 
         ticket = Ticket.objects.create(apartment=apartment, title="My Ticket", description="Mine")
-        response = resident_client.get(f"/api/v2/tickets/tickets/{ticket.id}/")
+        response = resident_client.get(f"/api/v2/tickets/tickets/{ticket.pk}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["title"] == "My Ticket"
 
@@ -261,14 +261,14 @@ class TestTicketViewSetResidentAccess:
         from apps.tickets.models import Ticket
 
         ticket = Ticket.objects.create(apartment=apartment, title="Old Title", description="Mine")
-        response = resident_client.patch(f"/api/v2/tickets/tickets/{ticket.id}/", {"title": "Hacked"}, format="json")
+        response = resident_client.patch(f"/api/v2/tickets/tickets/{ticket.pk}/", {"title": "Hacked"}, format="json")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_resident_cannot_delete_ticket(self, resident_client, resident_with_profile, apartment):
         from apps.tickets.models import Ticket
 
         ticket = Ticket.objects.create(apartment=apartment, title="Delete Me", description="Mine")
-        response = resident_client.delete(f"/api/v2/tickets/tickets/{ticket.id}/")
+        response = resident_client.delete(f"/api/v2/tickets/tickets/{ticket.pk}/")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_worker_can_list_all_tickets(self, staff_client, apartment):
@@ -284,7 +284,7 @@ class TestTicketViewSetResidentAccess:
         from apps.tickets.models import Ticket
 
         ticket = Ticket.objects.create(apartment=apartment, title="Any Ticket", description="Test")
-        response = staff_client.get(f"/api/v2/tickets/tickets/{ticket.id}/")
+        response = staff_client.get(f"/api/v2/tickets/tickets/{ticket.pk}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["title"] == "Any Ticket"
 
@@ -294,7 +294,7 @@ class TestTicketViewSetResidentAccess:
         ticket = Ticket.objects.create(
             apartment=apartment, title="Assigned", description="Test", assigned_worker=employee
         )
-        response = staff_client.patch(f"/api/v2/tickets/tickets/{ticket.id}/", {"title": "Updated"}, format="json")
+        response = staff_client.patch(f"/api/v2/tickets/tickets/{ticket.pk}/", {"title": "Updated"}, format="json")
         assert response.status_code == status.HTTP_200_OK
         ticket.refresh_from_db()
         assert ticket.title == "Updated"
@@ -303,14 +303,14 @@ class TestTicketViewSetResidentAccess:
         from apps.tickets.models import Ticket
 
         ticket = Ticket.objects.create(apartment=apartment, title="Unassigned", description="Test")
-        response = staff_client.patch(f"/api/v2/tickets/tickets/{ticket.id}/", {"title": "Hacked"}, format="json")
+        response = staff_client.patch(f"/api/v2/tickets/tickets/{ticket.pk}/", {"title": "Hacked"}, format="json")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_worker_can_comment_on_any_ticket(self, staff_client, apartment):
         from apps.tickets.models import Ticket
 
         ticket = Ticket.objects.create(apartment=apartment, title="Any Ticket", description="Test")
-        payload = {"ticket": ticket.id, "content": "Working on it"}
+        payload = {"ticket": ticket.pk, "content": "Working on it"}
         response = staff_client.post("/api/v2/tickets/comments/", payload, format="json")
         assert response.status_code == status.HTTP_201_CREATED
 
@@ -325,7 +325,7 @@ class TestTicketViewSetResidentAccess:
         from apps.tickets.models import TicketComment
 
         comment = TicketComment.objects.create(ticket=ticket, author=admin_user, content="Hello")
-        response = admin_client.get(f"/api/v2/tickets/comments/{comment.id}/")
+        response = admin_client.get(f"/api/v2/tickets/comments/{comment.pk}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["content"] == "Hello"
 
@@ -341,7 +341,7 @@ class TestTicketViewSetResidentAccess:
 
         comment = TicketComment.objects.create(ticket=ticket, author=admin_user, content="Old")
         payload = {"content": "Updated"}
-        response = admin_client.patch(f"/api/v2/tickets/comments/{comment.id}/", payload, format="json")
+        response = admin_client.patch(f"/api/v2/tickets/comments/{comment.pk}/", payload, format="json")
         assert response.status_code == status.HTTP_200_OK
         comment.refresh_from_db()
         assert comment.content == "Updated"
@@ -357,7 +357,7 @@ class TestTicketViewSetResidentAccess:
         from apps.tickets.models import TicketComment
 
         comment = TicketComment.objects.create(ticket=ticket, author=admin_user, content="Bye")
-        response = admin_client.delete(f"/api/v2/tickets/comments/{comment.id}/")
+        response = admin_client.delete(f"/api/v2/tickets/comments/{comment.pk}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
     def test_retrieve_comment_404(self, admin_client):
@@ -382,7 +382,7 @@ class TestTicketAttachmentViewSetFull:
         attachment = TicketAttachment.objects.create(
             ticket=ticket, file_url="https://example.com/file.pdf", file_name="test.pdf", file_type="document"
         )
-        response = admin_client.get(f"/api/v2/tickets/attachments/{attachment.id}/")
+        response = admin_client.get(f"/api/v2/tickets/attachments/{attachment.pk}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["file_name"] == "test.pdf"
 
@@ -400,7 +400,7 @@ class TestTicketAttachmentViewSetFull:
             ticket=ticket, file_url="https://example.com/file.pdf", file_name="old.pdf", file_type="document"
         )
         payload = {"file_name": "new.pdf"}
-        response = admin_client.patch(f"/api/v2/tickets/attachments/{attachment.id}/", payload, format="json")
+        response = admin_client.patch(f"/api/v2/tickets/attachments/{attachment.pk}/", payload, format="json")
         assert response.status_code == status.HTTP_200_OK
         attachment.refresh_from_db()
         assert attachment.file_name == "new.pdf"
@@ -418,7 +418,7 @@ class TestTicketAttachmentViewSetFull:
         attachment = TicketAttachment.objects.create(
             ticket=ticket, file_url="https://example.com/file.pdf", file_name="del.pdf", file_type="document"
         )
-        response = admin_client.delete(f"/api/v2/tickets/attachments/{attachment.id}/")
+        response = admin_client.delete(f"/api/v2/tickets/attachments/{attachment.pk}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
     def test_retrieve_attachment_404(self, admin_client):
@@ -462,7 +462,7 @@ class TestTicketCommentViewSetResidentAccess:
         from apps.tickets.models import Ticket
 
         ticket = Ticket.objects.create(apartment=apartment, title="My Ticket", description="Mine")
-        payload = {"ticket": ticket.id, "content": "Spam"}
+        payload = {"ticket": ticket.pk, "content": "Spam"}
         response = resident_client.post("/api/v2/tickets/comments/", payload, format="json")
         assert response.status_code == status.HTTP_403_FORBIDDEN
 

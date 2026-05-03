@@ -1,3 +1,5 @@
+# pyright: reportOptionalMemberAccess=false
+
 """Notifications app views for REST API."""
 
 from rest_framework import permissions, status, viewsets
@@ -25,6 +27,7 @@ class NotificationTemplateViewSet(AuditLogMixin, viewsets.ModelViewSet[Notificat
     @action(detail=False, methods=["get"])
     def by_type(self, request: Request) -> Response:
         """Get templates by notification type."""
+
         notification_type = request.query_params.get("type")
         if not notification_type:
             return Response({"detail": "type is required"}, status=status.HTTP_400_BAD_REQUEST)

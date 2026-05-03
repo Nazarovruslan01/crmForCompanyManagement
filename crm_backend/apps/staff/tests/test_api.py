@@ -156,7 +156,7 @@ class TestTaskViewSet:
             title="Retrieve Task",
             assigned_to=employee,
         )
-        response = admin_client.get(f"/api/v2/staff/tasks/{task.id}/")
+        response = admin_client.get(f"/api/v2/staff/tasks/{task.pk}/")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["title"] == "Retrieve Task"
 
@@ -169,7 +169,7 @@ class TestTaskViewSet:
             assigned_to=employee,
         )
         payload = {"status": "in_progress"}
-        response = admin_client.patch(f"/api/v2/staff/tasks/{task.id}/", payload, format="json")
+        response = admin_client.patch(f"/api/v2/staff/tasks/{task.pk}/", payload, format="json")
         assert response.status_code == status.HTTP_200_OK
         task.refresh_from_db()
         assert task.status == "in_progress"
@@ -202,7 +202,7 @@ class TestTaskViewSet:
         from apps.staff.models import Task
 
         task = Task.objects.create(title="Delete Task", assigned_to=employee)
-        response = admin_client.delete(f"/api/v2/staff/tasks/{task.id}/")
+        response = admin_client.delete(f"/api/v2/staff/tasks/{task.pk}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
     def test_retrieve_task_404(self, admin_client):

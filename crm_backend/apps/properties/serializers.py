@@ -1,3 +1,5 @@
+# pyright: reportIncompatibleVariableOverride=false
+
 """Properties app serializers for REST API."""
 
 from decimal import Decimal

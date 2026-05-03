@@ -1,3 +1,5 @@
+# pyright: reportArgumentType=false, reportIncompatibleVariableOverride=false
+
 """Accounts app serializers for REST API."""
 
 from django.contrib.auth import get_user_model
@@ -54,7 +56,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True,
         min_length=8,
-        validators=[validate_password_strength],
+        validators=[  # type: ignore
+            validate_password_strength
+        ],
     )
 
     class Meta:

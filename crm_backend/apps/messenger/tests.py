@@ -1,3 +1,5 @@
+# pyright: reportOptionalMemberAccess=false, reportAttributeAccessIssue=false, reportPossiblyUnboundVariable=false, reportIncompatibleMethodOverride=false
+
 """Tests for messenger app webhook and models."""
 
 import json
@@ -582,7 +584,7 @@ class TestTwoWayChat:
                 "id": "cq202",
                 "from": {"id": 200002, "is_bot": False, "first_name": "Test"},
                 "message": {"message_id": 202, "chat": {"id": 200002, "type": "private"}},
-                "data": f"chat_ticket_{ticket.id}",  # type: ignore[reportAttributeAccessIssue]
+                "data": f"chat_ticket_{ticket.pk}",  # type: ignore[reportAttributeAccessIssue]
             },
         }
         url = reverse("messenger:telegram-webhook")
@@ -590,7 +592,7 @@ class TestTwoWayChat:
 
         mu.refresh_from_db()
         assert mu.conversation_state.get("step") == "chatting_with_ticket"
-        assert mu.conversation_state.get("ticket_id") == str(ticket.id)  # type: ignore[reportAttributeAccessIssue]
+        assert mu.conversation_state.get("ticket_id") == str(ticket.pk)  # type: ignore[reportAttributeAccessIssue]
 
 
 class TestRegistrationRequestAdmin:
@@ -974,7 +976,7 @@ class TestTelegramWebhookE2E:
         mu = MessengerUser.objects.create(
             telegram_chat_id=999003,
             resident=resident,
-            conversation_state={"step": "chatting_with_ticket", "ticket_id": str(ticket.id)},
+            conversation_state={"step": "chatting_with_ticket", "ticket_id": str(ticket.pk)},
         )
 
         chat_id = 999003

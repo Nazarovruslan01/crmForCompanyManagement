@@ -79,8 +79,8 @@ class ReadinessCheckView(APIView):
         try:
             from celery import current_app
 
-            inspect = current_app.control.inspect(timeout=2.0)
-            result = inspect.ping()
+            celery_inspect = current_app.control.inspect(timeout=2.0)
+            result = celery_inspect.ping()
             if result:
                 return {"status": "ok"}
             return {"status": "error", "message": "No Celery workers responded"}

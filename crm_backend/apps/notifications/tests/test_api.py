@@ -127,7 +127,7 @@ class TestNotificationLogViewSet:
             channel="email",
             status="sent",
         )
-        response = admin_client.get(f"/api/v2/notifications/logs/{log.id}/")
+        response = admin_client.get(f"/api/v2/notifications/logs/{log.pk}/")
         assert response.status_code == status.HTTP_200_OK
 
     def test_filter_logs_by_status(self, admin_client, notification_template, resident):
@@ -167,7 +167,7 @@ class TestNotificationLogViewSet:
             status="pending",
         )
         payload = {"status": "sent"}
-        response = admin_client.patch(f"/api/v2/notifications/logs/{log.id}/", payload, format="json")
+        response = admin_client.patch(f"/api/v2/notifications/logs/{log.pk}/", payload, format="json")
         assert response.status_code == status.HTTP_200_OK
         log.refresh_from_db()
         assert log.status == "sent"
@@ -182,7 +182,7 @@ class TestNotificationLogViewSet:
             channel="email",
             status="sent",
         )
-        response = admin_client.delete(f"/api/v2/notifications/logs/{log.id}/")
+        response = admin_client.delete(f"/api/v2/notifications/logs/{log.pk}/")
         assert response.status_code == status.HTTP_204_NO_CONTENT
 
     def test_retrieve_notification_log_404(self, admin_client):

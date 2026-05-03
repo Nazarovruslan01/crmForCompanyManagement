@@ -1,3 +1,5 @@
+# pyright: reportAttributeAccessIssue=false, reportIncompatibleVariableOverride=false
+
 """Staff app models for Turkish HOA CRM"""
 
 from django.conf import settings

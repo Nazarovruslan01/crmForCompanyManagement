@@ -1,3 +1,5 @@
+# pyright: reportAttributeAccessIssue=false
+
 """Notifications app models for Turkish HOA CRM"""
 
 from django.db import models

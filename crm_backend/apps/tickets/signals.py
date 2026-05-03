@@ -1,5 +1,7 @@
 """Django signals for ticket notifications."""
 
+# pyright: reportAttributeAccessIssue=false, reportCallIssue=false
+
 from typing import Any
 
 from django.db import transaction

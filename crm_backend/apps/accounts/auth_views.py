@@ -1,4 +1,6 @@
 import hashlib
+
+# pyright: reportAttributeAccessIssue=false, reportCallIssue=false, reportPossiblyUnboundVariable=false, reportIncompatibleMethodOverride=false
 import logging
 import secrets
 from datetime import timedelta

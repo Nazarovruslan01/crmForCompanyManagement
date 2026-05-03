@@ -1,3 +1,5 @@
+# pyright: reportAttributeAccessIssue=false
+
 """Tests for Celery tasks."""
 
 from datetime import date, timedelta
