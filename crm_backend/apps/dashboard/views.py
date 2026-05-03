@@ -3,7 +3,8 @@
 from decimal import Decimal
 
 from django.db import connection
-from django.db.models import Count, F, Sum
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Func, Sum, Value
+from django.db.models.functions import Greatest
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import permissions, status
 from rest_framework.request import Request
@@ -18,6 +19,13 @@ from apps.tickets.models import Ticket
 from common.permissions import IsAdminOrManagerOrResidentReadOwn
 
 from .serializers import DashboardSummarySerializer
+
+
+class CurrentDate(Func):  # type: ignore[misc]
+    """Emit PostgreSQL CURRENT_DATE without parentheses."""
+
+    function = "CURRENT_DATE"
+    template = "%(function)s"
 
 
 class DashboardSummaryView(AuditLogMixin, APIView):
@@ -99,18 +107,21 @@ class DashboardSummaryView(AuditLogMixin, APIView):
         residents_count = residents_qs.values("resident_id").distinct().count()
         overdue_charges_count = aidat_qs.filter(status=AidatCharge.Status.OVERDUE).count()
 
-        # Total debt: computed at DB level on PostgreSQL or in Python on SQLite.
+        # Total debt: computed at DB level for O(1) memory.
         # Formula: base_amount + base_amount * late_fee_rate * days_overdue
         # where days_overdue = GREATEST(0, CURRENT_DATE - due_date)
         # Only PENDING and OVERDUE charges contribute to debt.
         pending_charges = aidat_qs.filter(status__in=(AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE))
         if connection.vendor == "postgresql":
-            from django.db.models import DecimalField
-            from django.db.models.expressions import RawSQL
-
-            # PostgreSQL: compute entirely in DB for O(1) memory
+            # PostgreSQL: compute entirely in DB using ORM Greatest + CURRENT_DATE Func
             total_debt = pending_charges.annotate(
-                days_overdue=RawSQL("GREATEST(0, CURRENT_DATE - due_date)", []),
+                days_overdue=Greatest(
+                    ExpressionWrapper(
+                        CurrentDate() - F("due_date"),
+                        output_field=DecimalField(max_digits=10, decimal_places=0),
+                    ),
+                    Value(0),
+                ),
             ).aggregate(
                 total=Sum(
                     F("base_amount") + F("base_amount") * F("late_fee_rate") * F("days_overdue"),
