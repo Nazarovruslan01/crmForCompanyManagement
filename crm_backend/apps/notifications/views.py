@@ -1,6 +1,6 @@
 """Notifications app views for REST API."""
 
-from rest_framework import permissions, viewsets
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -27,7 +27,7 @@ class NotificationTemplateViewSet(AuditLogMixin, viewsets.ModelViewSet[Notificat
         """Get templates by notification type."""
         notification_type = request.query_params.get("type")
         if not notification_type:
-            return Response({"error": "type is required"}, status=400)
+            return Response({"detail": "type is required"}, status=status.HTTP_400_BAD_REQUEST)
         templates = self.queryset.filter(notification_type=notification_type, is_active=True)
         serializer = self.get_serializer(templates, many=True)
         return Response(serializer.data)

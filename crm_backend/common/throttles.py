@@ -1,8 +1,37 @@
 """Custom throttle classes for rate limiting."""
 
+import os
+
+from django.conf import settings
 from rest_framework.request import Request
 from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
+
+
+def get_client_ip(request: Request) -> str:
+    """Extract client IP safely, only trusting X-Forwarded-For from known proxies.
+
+    When the request comes through a trusted reverse proxy (listed in
+    TRUSTED_PROXY_IPS setting), we use the rightmost untrusted IP from
+    X-Forwarded-For. Otherwise we fall back to REMOTE_ADDR to prevent
+    header spoofing.
+    """
+    trusted_proxies: set[str] = getattr(settings, "TRUSTED_PROXY_IPS", set())
+    remote_addr = request.META.get("REMOTE_ADDR", "")
+
+    if trusted_proxies and remote_addr in trusted_proxies:
+        xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        if xff:
+            # X-Forwarded-For: client, proxy1, proxy2
+            # The rightmost IP not in trusted_proxies is the real client
+            ips = [ip.strip() for ip in xff.split(",")]
+            for ip in reversed(ips):
+                if ip not in trusted_proxies:
+                    return str(ip)
+            # All IPs are trusted proxies — use the leftmost
+            return str(ips[0]) if ips[0] else remote_addr
+
+    return remote_addr or "unknown"
 
 
 class LoginRateThrottle(SimpleRateThrottle):
@@ -14,19 +43,12 @@ class LoginRateThrottle(SimpleRateThrottle):
     scope = "login"
 
     def get_cache_key(self, request: Request, view: APIView) -> str | None:
-        if __import__("os").environ.get("DISABLE_THROTTLING"):
+        if os.environ.get("DISABLE_THROTTLING"):
             return None
         username = request.data.get("username")
         if not username:
             return None
-        return f"throttle_login:{self.get_ident(request)}:{username}"
-
-    def get_ident(self, request: Request) -> str:
-        """Get client IP from X-Forwarded-For or REMOTE_ADDR."""
-        xff = request.META.get("HTTP_X_FORWARDED_FOR")
-        if xff:
-            return str(xff.split(",")[0].strip())
-        return str(request.META.get("REMOTE_ADDR", "unknown"))
+        return f"throttle_login:{get_client_ip(request)}:{username}"
 
 
 class PasswordResetRateThrottle(SimpleRateThrottle):
@@ -80,14 +102,7 @@ class TelegramWebhookThrottle(SimpleRateThrottle):
     scope = "telegram_webhook"
 
     def get_cache_key(self, request: Request, view: APIView) -> str | None:
-        return f"throttle_telegram_webhook:{self.get_ident(request)}"
-
-    def get_ident(self, request: Request) -> str:
-        """Get client IP from X-Forwarded-For or REMOTE_ADDR."""
-        xff = request.META.get("HTTP_X_FORWARDED_FOR")
-        if xff:
-            return str(xff.split(",")[0].strip())
-        return str(request.META.get("REMOTE_ADDR", "unknown"))
+        return f"throttle_telegram_webhook:{get_client_ip(request)}"
 
 
 class PresignedUploadThrottle(SimpleRateThrottle):
@@ -105,18 +120,10 @@ class PresignedUploadThrottle(SimpleRateThrottle):
 
 class MFAVerifyThrottle(SimpleRateThrottle):
     """
-    Rate limit MFA verification attempts: 5 per minute per IP + username.
+    Rate limit MFA verification attempts: 5 per minute per IP.
     """
 
     scope = "mfa_verify"
 
     def get_cache_key(self, request: Request, view: APIView) -> str | None:
-        ident = self.get_ident(request)
-        return f"throttle_mfa_verify:{ident}"
-
-    def get_ident(self, request: Request) -> str:
-        """Get client IP from X-Forwarded-For or REMOTE_ADDR."""
-        xff = request.META.get("HTTP_X_FORWARDED_FOR")
-        if xff:
-            return str(xff.split(",")[0].strip())
-        return str(request.META.get("REMOTE_ADDR", "unknown"))
+        return f"throttle_mfa_verify:{get_client_ip(request)}"

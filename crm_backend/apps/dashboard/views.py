@@ -2,7 +2,8 @@
 
 from decimal import Decimal
 
-from django.db.models import Count
+from django.db import connection
+from django.db.models import Count, F, Sum
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.request import Request
@@ -62,12 +63,30 @@ class DashboardSummaryView(AuditLogMixin, APIView):
         residents_count = residents_qs.values("resident_id").distinct().count()
         overdue_charges_count = aidat_qs.filter(status=AidatCharge.Status.OVERDUE).count()
 
-        # Total debt: computed in Python because late_fee_amount is a property
+        # Total debt: computed at DB level on PostgreSQL or in Python on SQLite.
+        # Formula: base_amount + base_amount * late_fee_rate * days_overdue
+        # where days_overdue = GREATEST(0, CURRENT_DATE - due_date)
+        # Only PENDING and OVERDUE charges contribute to debt.
         pending_charges = aidat_qs.filter(status__in=(AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE))
-        total_debt = sum(
-            (charge.total_due for charge in pending_charges),
-            Decimal("0"),
-        )
+        if connection.vendor == "postgresql":
+            from django.db.models import DecimalField
+            from django.db.models.expressions import RawSQL
+
+            # PostgreSQL: compute entirely in DB for O(1) memory
+            total_debt = pending_charges.annotate(
+                days_overdue=RawSQL("GREATEST(0, CURRENT_DATE - due_date)", []),
+            ).aggregate(
+                total=Sum(
+                    F("base_amount") + F("base_amount") * F("late_fee_rate") * F("days_overdue"),
+                    output_field=DecimalField(max_digits=15, decimal_places=2),
+                )
+            )["total"]
+        else:
+            # SQLite fallback: compute in Python (acceptable for local dev)
+            total_debt = sum(
+                (charge.total_due for charge in pending_charges.select_related("apartment")),
+                Decimal("0"),
+            )
 
         # Occupancy rate
         total_apartments = buildings_qs.count()
@@ -88,7 +107,7 @@ class DashboardSummaryView(AuditLogMixin, APIView):
             "active_tickets_count": active_tickets_count,
             "residents_count": residents_count,
             "overdue_charges_count": overdue_charges_count,
-            "total_debt": total_debt,
+            "total_debt": total_debt or 0,
             "occupancy_rate": occupancy_rate,
             "recent_tickets": recent_tickets,
         }

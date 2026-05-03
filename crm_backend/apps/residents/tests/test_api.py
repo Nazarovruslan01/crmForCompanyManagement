@@ -294,21 +294,25 @@ class TestResidentSerializerValidation:
     """Tests for ResidentSerializer field validation."""
 
     def test_create_resident_without_optional_fields(self, admin_client):
-        """Resident can be created without email, phone, tc_kimlik_no."""
+        """Resident can be created without email, phone — but needs passport_no or tc_kimlik_no."""
         payload = {
             "name": "Minimal",
             "surname": "Resident",
             "owner_type": "owner",
+            "passport_no": "MP1234567",
         }
         response = admin_client.post("/api/v2/residents/residents/", payload, format="json")
         assert response.status_code == status.HTTP_201_CREATED
         assert response.data["name"] == "Minimal"
         assert response.data["email"] is None
         assert response.data["phone"] is None
-        assert response.data["tc_kimlik_no"] is None
+        assert response.data["passport_no"] == "MP1234567"
 
     def test_update_resident_clear_optional_fields(self, admin_client, resident):
-        """Optional fields can be cleared (set to null)."""
+        """Optional fields can be cleared (set to null) — but at least one ID must remain."""
+        # Add passport_no first so tc_kimlik_no can be cleared
+        resident.passport_no = "CL1234567"
+        resident.save()
         payload = {
             "email": None,
             "phone": None,
@@ -320,6 +324,7 @@ class TestResidentSerializerValidation:
         assert resident.email is None
         assert resident.phone is None
         assert resident.tc_kimlik_no is None
+        assert resident.passport_no == "CL1234567"
 
     def test_resident_str_method(self, resident):
         assert str(resident) == "Test Resident"

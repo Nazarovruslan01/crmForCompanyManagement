@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import secrets
 from datetime import timedelta
 from typing import TYPE_CHECKING, cast
@@ -14,9 +15,12 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from common.throttles import LoginRateThrottle, MFAVerifyThrottle, PasswordResetRateThrottle
+from common.validators import validate_password_strength
 from core.tasks import send_email_async
 
 from .serializers import UserSerializer
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from apps.accounts.models import User as UserType
@@ -59,19 +63,14 @@ class LoginView(APIView):
         password = request.data.get("password")
 
         if not username or not password:
-            return Response({"error": "Username and password are required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Username and password are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         user = authenticate(username=username, password=password)
 
         if not user:
-            # authenticate() returns None for inactive users; check explicitly
-            try:
-                potential = User.objects.get(username=username)
-                if not potential.is_active and potential.check_password(password):
-                    return Response({"error": "Account is disabled"}, status=status.HTTP_403_FORBIDDEN)
-            except User.DoesNotExist:
-                pass
-            return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+            # Always return the same error regardless of whether the username
+            # exists or the account is disabled — prevents account enumeration.
+            return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
         # Check if MFA is required for admin/manager accounts
         try:
@@ -134,7 +133,7 @@ class LogoutView(APIView):
                 token = RefreshToken(refresh_token)
                 token.blacklist()
         except Exception:
-            pass
+            logger.warning("Failed to blacklist refresh token during logout", exc_info=True)
         return Response({"detail": "Successfully logged out"}, status=status.HTTP_200_OK)
 
 
@@ -169,7 +168,7 @@ class PasswordResetRequestView(APIView):
         email = request.data.get("email")
 
         if not email:
-            return Response({"error": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Email is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             user = User.objects.get(email=email)
@@ -239,7 +238,7 @@ class PasswordResetConfirmView(APIView):
         new_password = request.data.get("new_password")
 
         if not new_password:
-            return Response({"error": "New password is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "New password is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         from apps.accounts.models import PasswordResetToken
 
@@ -248,14 +247,15 @@ class PasswordResetConfirmView(APIView):
         try:
             reset_token = PasswordResetToken.objects.get(token_hash=token_hash, used_at__isnull=True)
         except PasswordResetToken.DoesNotExist:
-            return Response({"error": "Invalid or expired token"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Invalid or expired token"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check expiry
         expiry = reset_token.created_at + timedelta(minutes=self.TOKEN_LIFETIME_MINUTES)
         if timezone.now() > expiry:
-            return Response({"error": "Invalid or expired token"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Invalid or expired token"}, status=status.HTTP_400_BAD_REQUEST)
 
         user = reset_token.user
+        validate_password_strength(new_password)
         user.set_password(new_password)
         user.save()
 
@@ -291,11 +291,12 @@ class PasswordChangeView(APIView):
         new_password = request.data.get("new_password")
 
         if not old_password or not new_password:
-            return Response({"error": "Old and new password are required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Old and new password are required"}, status=status.HTTP_400_BAD_REQUEST)
 
         if not user.check_password(old_password):
-            return Response({"error": "Invalid old password"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Invalid old password"}, status=status.HTTP_400_BAD_REQUEST)
 
+        validate_password_strength(new_password)
         user.set_password(new_password)
         user.save()
 
@@ -324,7 +325,7 @@ class MFASetupView(APIView):
         user = cast("UserType", request.user)
         if user.role not in (User.Role.ADMIN, User.Role.MANAGER):  # type: ignore[attr-defined]
             return Response(
-                {"error": "MFA is only available for admin and manager accounts"},
+                {"detail": "MFA is only available for admin and manager accounts"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -391,31 +392,36 @@ class MFAVerifyView(APIView):
 
         if not temp_token or not totp_code:
             return Response(
-                {"error": "temp_token and totp_code are required"},
+                {"detail": "temp_token and totp_code are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
             token = AccessToken(temp_token)
             if token.payload.get("type") != "mfa":
-                return Response({"error": "Invalid token type"}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response({"detail": "Invalid token type"}, status=status.HTTP_401_UNAUTHORIZED)
             user_id = token.payload.get("user_id")
             if not user_id:
-                raise ValueError("No user_id in token")
+                return Response({"detail": "Invalid token: missing user_id"}, status=status.HTTP_401_UNAUTHORIZED)
             user = User.objects.get(id=user_id)
-        except Exception:
-            return Response({"error": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except User.DoesNotExist:
+            logger.warning("MFA verify: user_id %s not found", token.payload.get("user_id"))
+            return Response({"detail": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
+        except Exception as exc:
+            # TokenError, InvalidToken, expired tokens — all get 401
+            logger.info("MFA verify token validation failed: %s", type(exc).__name__)
+            return Response({"detail": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
 
         import pyotp
 
         try:
             device = user.totp_device  # type: ignore[attr-defined]
         except User.totp_device.RelatedObjectDoesNotExist:  # type: ignore[attr-defined]
-            return Response({"error": "MFA not configured"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "MFA not configured"}, status=status.HTTP_400_BAD_REQUEST)
 
         totp = pyotp.TOTP(device.secret_key)
         if not totp.verify(totp_code, valid_window=1):
-            return Response({"error": "Invalid TOTP code"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": "Invalid TOTP code"}, status=status.HTTP_403_FORBIDDEN)
 
         # Mark device as confirmed on first successful verification
         if not device.confirmed:
@@ -456,15 +462,15 @@ class MFADisableView(APIView):
         password = request.data.get("password")
 
         if not password:
-            return Response({"error": "Password is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Password is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         if not user.check_password(password):
-            return Response({"error": "Invalid password"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": "Invalid password"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
             user.totp_device.delete()  # type: ignore[attr-defined]
         except User.totp_device.RelatedObjectDoesNotExist:  # type: ignore[attr-defined]
-            return Response({"error": "MFA is not enabled"}, status=status.HTTP_403_FORBIDDEN)
+            return Response({"detail": "MFA is not enabled"}, status=status.HTTP_403_FORBIDDEN)
 
         return Response({"detail": "MFA disabled successfully"}, status=status.HTTP_200_OK)
 

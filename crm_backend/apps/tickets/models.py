@@ -84,9 +84,10 @@ class Ticket(models.Model):
         if update_fields is not None and "status" not in update_fields:
             return
 
-        # Fetch old status from DB to validate the transition.
+        # Fetch old status from DB with row lock to prevent race conditions.
+        # Two concurrent PATCHes will serialize at the DB row level.
         try:
-            old_status = Ticket.objects.values_list("status", flat=True).get(pk=self.pk)
+            old_status = Ticket.objects.select_for_update().values_list("status", flat=True).get(pk=self.pk)
         except Ticket.DoesNotExist:
             old_status = None
 
@@ -125,11 +126,22 @@ class Ticket(models.Model):
         super().clean()
 
     def save(self, *args: Any, **kwargs: Any) -> None:
+        from django.db import transaction
+
         update_fields = kwargs.get("update_fields")
-        self._validate_status_transition(update_fields=set(update_fields) if update_fields else None)
-        if self.status == self.Status.RESOLVED and not self.resolved_at:
-            self.resolved_at = timezone.now()
-        super().save(*args, **kwargs)
+        status_changing = not self._state.adding and (update_fields is None or "status" in (update_fields or set()))
+
+        if status_changing:
+            with transaction.atomic():
+                self._validate_status_transition(update_fields=set(update_fields) if update_fields else None)
+                if self.status == self.Status.RESOLVED and not self.resolved_at:
+                    self.resolved_at = timezone.now()
+                super().save(*args, **kwargs)
+        else:
+            self._validate_status_transition(update_fields=set(update_fields) if update_fields else None)
+            if self.status == self.Status.RESOLVED and not self.resolved_at:
+                self.resolved_at = timezone.now()
+            super().save(*args, **kwargs)
 
     def __str__(self) -> str:
         return f"#{self.id} - {self.title[:50]}"

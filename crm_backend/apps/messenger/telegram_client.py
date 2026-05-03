@@ -16,7 +16,7 @@ def get_bot_token() -> str:
 
 
 def send_telegram_message(
-    chat_id: int,
+    chat_id: int | str,
     text: str,
     parse_mode: str = "",
     reply_markup: dict[str, Any] | None = None,

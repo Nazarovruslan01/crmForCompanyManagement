@@ -18,6 +18,11 @@ DEBUG = os.getenv("DEBUG", "False") == "True"
 
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
+# Trusted reverse proxy IPs for safe X-Forwarded-For handling.
+# Only these IPs are allowed to set X-Forwarded-For; others are ignored to prevent spoofing.
+# Set in production to your load balancer / nginx IP(s), e.g. "10.0.0.1,10.0.0.2"
+TRUSTED_PROXY_IPS = set(os.getenv("TRUSTED_PROXY_IPS", "").split(",")) - {""}
+
 # Application definition
 INSTALLED_APPS = [
     "daphne",
@@ -62,6 +67,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.middleware.DeactivatedUserMiddleware",
     "core.middleware.IdempotencyKeyMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -227,6 +233,7 @@ REST_FRAMEWORK = {
     "DEFAULT_VERSION": "v2",
     "ALLOWED_VERSIONS": ["v2"],
     "VERSION_PARAM": "version",
+    "EXCEPTION_HANDLER": "common.exceptions.exception_handler",
 }
 
 # JWT Settings
@@ -239,7 +246,9 @@ SIMPLE_JWT = {
 }
 
 # CORS
-CORS_ALLOW_ALL_ORIGINS = DEBUG
+# Decoupled from DEBUG to prevent accidental all-origins on staging.
+# Set CORS_ALLOW_ALL_ORIGINS=True explicitly in local.py for development only.
+CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "").lower() == "true"
 CORS_ALLOWED_ORIGINS = [x for x in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if x]
 
 # Cache (Redis)
@@ -327,6 +336,7 @@ AIDAT_DEFAULT_LATE_FEE_RATE = Decimal("0.001")  # 0.1% per day
 
 # Telegram Bot
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "")
 
 # Spectacular (OpenAPI)
 SPECTACULAR_SETTINGS = {

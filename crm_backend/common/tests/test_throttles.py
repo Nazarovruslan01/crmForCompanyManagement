@@ -1,55 +1,76 @@
 """Tests for common.throttles."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-from common.throttles import LoginRateThrottle, PasswordResetRateThrottle
+from common.throttles import LoginRateThrottle, PasswordResetRateThrottle, get_client_ip
 
 
-class TestLoginRateThrottleGetIdent:
-    """Test get_ident method which doesn't require rate config."""
+class TestGetClientIp:
+    """Test safe IP extraction with trusted proxy validation."""
 
-    def test_get_ident_from_x_forwarded_for(self):
-        throttle = LoginRateThrottle()
+    def test_no_trusted_proxies_uses_remote_addr(self):
+        """Without trusted proxies configured, REMOTE_ADDR is used directly."""
         request = MagicMock()
         request.META = {"HTTP_X_FORWARDED_FOR": "10.0.0.1, 192.168.1.1", "REMOTE_ADDR": "127.0.0.1"}
 
-        ident = throttle.get_ident(request)
-        assert ident == "10.0.0.1"
+        with patch("common.throttles.settings") as mock_settings:
+            mock_settings.TRUSTED_PROXY_IPS = set()
+            ip = get_client_ip(request)
+        assert ip == "127.0.0.1"
 
-    def test_get_ident_without_x_forwarded_for(self):
-        throttle = LoginRateThrottle()
+    def test_trusted_proxy_uses_rightmost_untrusted_ip(self):
+        """When REMOTE_ADDR is a trusted proxy, use the rightmost non-proxy IP from X-Forwarded-For."""
+        request = MagicMock()
+        request.META = {"HTTP_X_FORWARDED_FOR": "10.0.0.1, 192.168.1.1", "REMOTE_ADDR": "10.0.0.2"}
+
+        with patch("common.throttles.settings") as mock_settings:
+            mock_settings.TRUSTED_PROXY_IPS = {"10.0.0.2"}
+            ip = get_client_ip(request)
+        assert ip == "192.168.1.1"
+
+    def test_trusted_proxy_all_ips_trusted_uses_leftmost(self):
+        """When all XFF IPs are trusted proxies, use the leftmost one."""
+        request = MagicMock()
+        request.META = {"HTTP_X_FORWARDED_FOR": "10.0.0.1, 10.0.0.2", "REMOTE_ADDR": "10.0.0.2"}
+
+        with patch("common.throttles.settings") as mock_settings:
+            mock_settings.TRUSTED_PROXY_IPS = {"10.0.0.1", "10.0.0.2"}
+            ip = get_client_ip(request)
+        assert ip == "10.0.0.1"
+
+    def test_no_xff_header_uses_remote_addr(self):
+        """Without X-Forwarded-For, fall back to REMOTE_ADDR."""
         request = MagicMock()
         request.META = {"REMOTE_ADDR": "192.168.1.100"}
 
-        ident = throttle.get_ident(request)
-        assert ident == "192.168.1.100"
+        with patch("common.throttles.settings") as mock_settings:
+            mock_settings.TRUSTED_PROXY_IPS = set()
+            ip = get_client_ip(request)
+        assert ip == "192.168.1.100"
 
-    def test_get_ident_unknown_when_no_meta(self):
-        throttle = LoginRateThrottle()
+    def test_unknown_when_no_meta(self):
+        """Missing REMOTE_ADDR returns 'unknown'."""
         request = MagicMock()
         request.META = {}
 
-        ident = throttle.get_ident(request)
-        assert ident == "unknown"
+        ip = get_client_ip(request)
+        assert ip == "unknown"
 
-
-class TestPasswordResetRateThrottleGetIdent:
-    """Test get_ident method which doesn't require rate config."""
-
-    def test_get_ident_uses_remote_addr(self):
-        throttle = PasswordResetRateThrottle()
+    def test_spoofed_xff_from_untrusted_source_ignored(self):
+        """X-Forwarded-For from an untrusted REMOTE_ADDR is ignored."""
         request = MagicMock()
-        request.META = {"REMOTE_ADDR": "192.168.1.1"}
+        request.META = {"HTTP_X_FORWARDED_FOR": "spoofed-ip", "REMOTE_ADDR": "unknown-attacker"}
 
-        ident = throttle.get_ident(request)
-        assert ident == "192.168.1.1"
+        with patch("common.throttles.settings") as mock_settings:
+            mock_settings.TRUSTED_PROXY_IPS = {"10.0.0.1"}
+            ip = get_client_ip(request)
+        assert ip == "unknown-attacker"
 
 
 class TestLoginRateThrottleCacheKey:
     """Test get_cache_key logic without rate limiting."""
 
     def test_cache_key_format_with_username_and_ip(self):
-        # Test the cache key format directly
         ip = "192.168.1.1"
         username = "testuser"
         expected = f"throttle_login:{ip}:{username}"
@@ -76,7 +97,6 @@ class TestPasswordResetRateThrottleCacheKey:
     """Test get_cache_key logic without rate limiting."""
 
     def test_cache_key_format_with_email(self):
-        # Test the cache key format directly
         email = "test@example.com"
         expected = f"throttle_password_reset:{email}"
         assert expected == "throttle_password_reset:test@example.com"

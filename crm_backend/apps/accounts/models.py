@@ -1,5 +1,6 @@
 """Custom User model for CRM — replaces Django's built-in User."""
 
+from datetime import timedelta
 from typing import Any
 
 from django.contrib.auth.models import AbstractUser
@@ -54,9 +55,26 @@ class User(AbstractUser):
         return self.role == self.Role.RESIDENT
 
     def delete(self, using: Any = None, keep_parents: bool = False) -> tuple[int, dict[str, int]]:
-        """Soft delete: deactivate instead of hard-deleting."""
+        """Soft delete: deactivate instead of hard-deleting.
+
+        Also marks the user as deactivated in cache so that outstanding
+        JWT access tokens are rejected within the cache TTL (matches
+        ACCESS_TOKEN_LIFETIME from SIMPLE_JWT settings).
+        """
+        from django.core.cache import cache
+
         self.is_active = False
         self.save(update_fields=["is_active"])
+
+        # Mark user as deactivated in cache to invalidate outstanding JWT tokens.
+        # TTL matches access token lifetime so the entry auto-expires when
+        # all outstanding access tokens would have expired anyway.
+        from django.conf import settings
+
+        access_token_lifetime = getattr(settings, "SIMPLE_JWT", {}).get("ACCESS_TOKEN_LIFETIME", timedelta(minutes=60))
+        ttl = int(access_token_lifetime.total_seconds())
+        cache.set(f"user_deactivated:{self.pk}", True, timeout=ttl)
+
         return 0, {}
 
     def hard_delete(self, using: Any = None, keep_parents: bool = False) -> tuple[int, dict[str, int]]:

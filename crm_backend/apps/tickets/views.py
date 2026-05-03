@@ -116,6 +116,16 @@ class PresignedUploadView(APIView):
         "application/pdf",
     }
 
+    # Whitelist of allowed file extensions (must match ALLOWED_CONTENT_TYPES).
+    ALLOWED_EXTENSIONS = {
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".webp",
+        ".gif",
+        ".pdf",
+    }
+
     def post(self, request: Request) -> Response:
         serializer = PresignedUploadSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -127,6 +137,18 @@ class PresignedUploadView(APIView):
         if content_type not in self.ALLOWED_CONTENT_TYPES:
             return Response(
                 {"detail": f"Content type '{content_type}' is not allowed."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate file extension matches allowed types
+        import os
+
+        _, ext = os.path.splitext(file_name.lower())
+        if ext not in self.ALLOWED_EXTENSIONS:
+            return Response(
+                {
+                    "detail": f"File extension '{ext}' is not allowed. Allowed: {', '.join(sorted(self.ALLOWED_EXTENSIONS))}"
+                },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

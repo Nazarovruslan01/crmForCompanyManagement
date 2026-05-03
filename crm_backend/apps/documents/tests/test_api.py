@@ -130,7 +130,7 @@ class TestDocumentPermissions:
         client = APIClient()
         client.force_authenticate(user=resident_user)
 
-        resident = Resident.objects.create(user=resident_user, name="Test", surname="User")
+        resident = Resident.objects.create(user=resident_user, name="Test", surname="User", tc_kimlik_no="50000000010")
         from apps.residents.models import Ownership
 
         Ownership.objects.create(
