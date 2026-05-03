@@ -162,20 +162,37 @@ class DeactivatedUserMiddleware:
 
 
 class DeprecationMiddleware:
-    """Add Deprecation and Sunset headers to API v1 responses.
+    """Add Deprecation and Sunset headers to deprecated API routes.
 
-    Signals to API consumers that v1 endpoints are deprecated and will be
-    removed on the date specified in the ``Sunset`` header (RFC 8594).
+    When a new API version is released, add the old prefix to
+    ``DEPRECATED_PREFIXES`` in settings to signal consumers that those
+    endpoints will be removed (RFC 8594).
+
+    Example settings::
+
+        DEPRECATED_API_PREFIXES = {
+            "/api/v2/": "Sat, 31 Dec 2027 23:59:59 GMT",
+        }
+
+    If the setting is absent or empty, the middleware is a no-op.
     """
-
-    sunset_date: str = "Sat, 31 Dec 2026 23:59:59 GMT"
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
+        from django.conf import settings
+
+        self.deprecated_prefixes: dict[str, str] = getattr(settings, "DEPRECATED_API_PREFIXES", {})
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
         response = self.get_response(request)
-        if request.path.startswith("/api/v1/"):
-            response["Deprecation"] = "true"
-            response["Sunset"] = self.sunset_date
+        for prefix, sunset_date in self.deprecated_prefixes.items():
+            if request.path.startswith(prefix):
+                response["Deprecation"] = "true"
+                response["Sunset"] = sunset_date
+                # RFC 8594: Link header pointing to the successor resource
+                new_version = prefix.replace("/v2/", "/v3/")
+                new_link = f'<{new_version}>; rel="successor-version"'
+                existing = response.get("Link", "")
+                response["Link"] = f"{existing}, {new_link}" if existing else new_link
+                break  # Only match the first prefix
         return response
