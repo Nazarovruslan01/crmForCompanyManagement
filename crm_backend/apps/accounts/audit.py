@@ -59,6 +59,17 @@ class AuditLogMixin:
 
     audit_enabled: bool = True
 
+    # Fields that should never be logged in changes (passwords, tokens, secrets)
+    SENSITIVE_FIELDS: frozenset[str] = frozenset(
+        {
+            "password",
+            "secret_key",
+            "token_hash",
+            "tc_kimlik_no",
+            "passport_no",
+        }
+    )
+
     def perform_create(self, serializer: Any) -> Any:
         instance = serializer.save()
         if self.audit_enabled:
@@ -81,6 +92,9 @@ class AuditLogMixin:
         if self.audit_enabled:
             changes: dict[str, Any] = {}
             for field, new_val in serializer.validated_data.items():
+                if field in self.SENSITIVE_FIELDS:
+                    changes[field] = {"old": "***", "new": "***"}
+                    continue
                 old_val = old_values.get(field)
                 if old_val != new_val:
                     changes[field] = {"old": self._serialize_value(old_val), "new": self._serialize_value(new_val)}
@@ -122,12 +136,11 @@ class AuditLogMixin:
 
 
 def _get_client_ip(request: Request) -> str | None:
-    """Extract client IP from request."""
-    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-    if x_forwarded_for:
-        return str(x_forwarded_for.split(",")[0].strip())
-    ip = request.META.get("REMOTE_ADDR")
-    return str(ip) if ip else None
+    """Extract client IP safely, respecting trusted proxy configuration."""
+    from common.throttles import get_client_ip
+
+    ip = get_client_ip(request)
+    return ip if ip != "unknown" else None
 
 
 # Django signals for auth events

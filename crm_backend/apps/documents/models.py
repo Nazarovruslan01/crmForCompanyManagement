@@ -71,6 +71,16 @@ class Document(models.Model):
         ordering = ["-created_at"]
         verbose_name = "Документ"
         verbose_name_plural = "Документы"
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(building__isnull=False)
+                    | models.Q(apartment__isnull=False)
+                    | models.Q(resident__isnull=False)
+                ),
+                name="document_has_at_least_one_link",
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.title

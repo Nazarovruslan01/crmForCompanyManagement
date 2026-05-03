@@ -1,9 +1,9 @@
 """Residents app models for Turkish HOA CRM"""
 
 from django.conf import settings
-from django.core.validators import RegexValidator
 from django.db import models
 
+from common.validators import validate_tc_kimlik_no
 from core.models import SoftDeleteMixin
 
 
@@ -18,13 +18,13 @@ class Resident(SoftDeleteMixin, models.Model):
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="resident_profile"
     )
-    # TC Kimlik - 11 digits for Turkish citizens
+    # TC Kimlik - 11 digits for Turkish citizens (with official checksum validation)
     tc_kimlik_no = models.CharField(
         max_length=11,
         unique=True,
         null=True,
         blank=True,
-        validators=[RegexValidator(regex=r"^[0-9]{11}$", message="TC Kimlik No must be 11 digits")],
+        validators=[validate_tc_kimlik_no],
         verbose_name="TC Kimlik No",
     )
     # Passport for foreigners
@@ -45,6 +45,15 @@ class Resident(SoftDeleteMixin, models.Model):
         verbose_name = "Resident"
         verbose_name_plural = "Residents"
         ordering = ["surname", "name"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(tc_kimlik_no__isnull=False, tc_kimlik_no__gt="")
+                    | models.Q(passport_no__isnull=False, passport_no__gt="")
+                ),
+                name="resident_has_at_least_one_id",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"{self.name} {self.surname}"

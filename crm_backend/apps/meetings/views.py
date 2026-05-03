@@ -49,7 +49,7 @@ class MeetingViewSet(
         meeting = self.get_object()
         if meeting.status != Meeting.Status.SCHEDULED:
             return Response(
-                {"error": "Meeting can only be started from scheduled state"},
+                {"detail": "Meeting can only be started from scheduled state"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         meeting.status = Meeting.Status.ACTIVE
@@ -62,7 +62,7 @@ class MeetingViewSet(
         meeting = self.get_object()
         if meeting.status != Meeting.Status.ACTIVE:
             return Response(
-                {"error": "Meeting can only be closed from active state"},
+                {"detail": "Meeting can only be closed from active state"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         meeting.status = Meeting.Status.COMPLETED
@@ -75,7 +75,7 @@ class MeetingViewSet(
         meeting = self.get_object()
         if meeting.status != Meeting.Status.ACTIVE:
             return Response(
-                {"error": "Voting is only allowed while meeting is active"},
+                {"detail": "Voting is only allowed while meeting is active"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -83,7 +83,7 @@ class MeetingViewSet(
         vote_choice = request.data.get("vote_choice")
         if not agenda_item_id or not vote_choice:
             return Response(
-                {"error": "agenda_item and vote_choice are required"},
+                {"detail": "agenda_item and vote_choice are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -91,14 +91,14 @@ class MeetingViewSet(
             agenda_item = meeting.agenda_items.get(id=agenda_item_id)
         except AgendaItem.DoesNotExist:
             return Response(
-                {"error": "Agenda item not found in this meeting"},
+                {"detail": "Agenda item not found in this meeting"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         resident = getattr(request.user, "resident_profile", None)
         if not resident:
             return Response(
-                {"error": "Only residents can vote"},
+                {"detail": "Only residents can vote"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

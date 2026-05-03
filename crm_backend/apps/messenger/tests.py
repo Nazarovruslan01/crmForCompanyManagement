@@ -135,7 +135,7 @@ class TestTelegramWebhookView:
 
 
 class TestTelegramRegistrationFlow:
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_register_command_starts_flow(self, mock_send, api_client):
         payload = {
             "update_id": 10,
@@ -159,7 +159,7 @@ class TestTelegramRegistrationFlow:
         assert mu.conversation_state.get("step") == "waiting_for_contact"
         mock_send.assert_called_once()
 
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_contact_message_advances_flow(self, mock_send, api_client):
         mu = MessengerUser.objects.create(
             telegram_chat_id=222222,
@@ -187,7 +187,7 @@ class TestTelegramRegistrationFlow:
         assert mu.conversation_state.get("step") == "waiting_for_full_name"
         assert mu.conversation_state.get("phone") == "+905551234567"
 
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_full_name_advances_flow(self, mock_send, api_client):
         mu = MessengerUser.objects.create(
             telegram_chat_id=333333,
@@ -210,7 +210,7 @@ class TestTelegramRegistrationFlow:
         assert mu.conversation_state.get("step") == "waiting_for_building"
         assert mu.conversation_state.get("full_name") == "John Smith"
 
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_building_name_advances_flow(self, mock_send, api_client):
         mu = MessengerUser.objects.create(
             telegram_chat_id=444444,
@@ -237,7 +237,7 @@ class TestTelegramRegistrationFlow:
         assert mu.conversation_state.get("step") == "waiting_for_apartment"
         assert mu.conversation_state.get("building_name") == "Sunset Tower"
 
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_apartment_number_advances_flow(self, mock_send, api_client):
         mu = MessengerUser.objects.create(
             telegram_chat_id=555555,
@@ -265,7 +265,7 @@ class TestTelegramRegistrationFlow:
         assert mu.conversation_state.get("step") == "waiting_for_role"
         assert mu.conversation_state.get("apartment_number") == "42B"
 
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_role_callback_creates_request(self, mock_send, api_client):
         mu = MessengerUser.objects.create(
             telegram_chat_id=666666,
@@ -302,7 +302,7 @@ class TestTelegramRegistrationFlow:
 
 
 class TestTelegramTicketFlow:
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_ticket_command_requires_registration(self, mock_send, api_client):
         MessengerUser.objects.create(telegram_chat_id=100000)
         payload = {
@@ -322,7 +322,7 @@ class TestTelegramTicketFlow:
         args = mock_send.call_args[0]
         assert "Please complete registration" in args[1]
 
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_ticket_command_starts_flow(self, mock_send, api_client, user):
         from apps.residents.models import Resident
 
@@ -333,7 +333,7 @@ class TestTelegramTicketFlow:
             district="Alanya",
         )
         apartment = Apartment.objects.create(building=building, apartment_number="1A")
-        resident = Resident.objects.create(user=user, name="Test", surname="User")
+        resident = Resident.objects.create(user=user, name="Test", surname="User", tc_kimlik_no="70000000010")
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
         mu = MessengerUser.objects.create(telegram_chat_id=100001, resident=resident)
         payload = {
@@ -352,11 +352,11 @@ class TestTelegramTicketFlow:
         mu.refresh_from_db()
         assert mu.conversation_state.get("step") == "waiting_for_ticket_category"
 
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_ticket_category_callback_advances(self, mock_send, api_client, user):
         from apps.residents.models import Resident
 
-        resident = Resident.objects.create(user=user, name="Test", surname="User")
+        resident = Resident.objects.create(user=user, name="Test", surname="User", tc_kimlik_no="70000000010")
         mu = MessengerUser.objects.create(
             telegram_chat_id=100002,
             resident=resident,
@@ -378,11 +378,11 @@ class TestTelegramTicketFlow:
         assert mu.conversation_state.get("step") == "waiting_for_ticket_title"
         assert mu.conversation_state.get("ticket_category") == "plumbing"
 
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_ticket_title_advances(self, mock_send, api_client, user):
         from apps.residents.models import Resident
 
-        resident = Resident.objects.create(user=user, name="Test", surname="User")
+        resident = Resident.objects.create(user=user, name="Test", surname="User", tc_kimlik_no="70000000010")
         mu = MessengerUser.objects.create(
             telegram_chat_id=100003,
             resident=resident,
@@ -405,11 +405,11 @@ class TestTelegramTicketFlow:
         assert mu.conversation_state.get("step") == "waiting_for_ticket_description"
         assert mu.conversation_state.get("ticket_title") == "Leaking faucet"
 
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_ticket_description_shows_confirm(self, mock_send, api_client, user):
         from apps.residents.models import Resident
 
-        resident = Resident.objects.create(user=user, name="Test", surname="User")
+        resident = Resident.objects.create(user=user, name="Test", surname="User", tc_kimlik_no="70000000010")
         mu = MessengerUser.objects.create(
             telegram_chat_id=100004,
             resident=resident,
@@ -436,7 +436,7 @@ class TestTelegramTicketFlow:
         assert mu.conversation_state.get("step") == "waiting_for_ticket_confirm"
         assert mu.conversation_state.get("ticket_description") == "The kitchen faucet is leaking since yesterday"
 
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_ticket_confirm_creates_ticket(self, mock_send, api_client, user):
         from apps.residents.models import Resident
 
@@ -447,7 +447,7 @@ class TestTelegramTicketFlow:
             district="Alanya",
         )
         apartment = Apartment.objects.create(building=building, apartment_number="42B")
-        resident = Resident.objects.create(user=user, name="Test", surname="User")
+        resident = Resident.objects.create(user=user, name="Test", surname="User", tc_kimlik_no="70000000010")
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
         mu = MessengerUser.objects.create(
             telegram_chat_id=100005,
@@ -484,7 +484,7 @@ class TestTelegramTicketFlow:
 
 
 class TestTwoWayChat:
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_text_message_linked_to_active_ticket(self, mock_send, api_client, user):
         from apps.residents.models import Resident
         from apps.tickets.models import Ticket, TicketComment
@@ -496,7 +496,7 @@ class TestTwoWayChat:
             district="Alanya",
         )
         apartment = Apartment.objects.create(building=building, apartment_number="42B")
-        resident = Resident.objects.create(user=user, name="Test", surname="User")
+        resident = Resident.objects.create(user=user, name="Test", surname="User", tc_kimlik_no="70000000010")
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
         ticket = Ticket.objects.create(
             apartment=apartment,
@@ -528,11 +528,11 @@ class TestTwoWayChat:
         assert bot_msg is not None
         assert bot_msg.text == "My sink is still leaking"
 
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_text_message_no_ticket_prompts_creation(self, mock_send, api_client, user):
         from apps.residents.models import Resident
 
-        resident = Resident.objects.create(user=user, name="Test", surname="User")
+        resident = Resident.objects.create(user=user, name="Test", surname="User", tc_kimlik_no="70000000010")
         mu = MessengerUser.objects.create(telegram_chat_id=200001, resident=resident)
 
         payload = {
@@ -553,7 +553,7 @@ class TestTwoWayChat:
         assert bot_msg.text == "Hello managers"
         assert bot_msg.ticket is None
 
-    @patch("apps.messenger.views.send_telegram_message")
+    @patch("apps.messenger.telegram_client.send_telegram_message")
     def test_chat_ticket_selection(self, mock_send, api_client, user):
         from apps.residents.models import Resident
         from apps.tickets.models import Ticket
@@ -565,7 +565,7 @@ class TestTwoWayChat:
             district="Alanya",
         )
         apartment = Apartment.objects.create(building=building, apartment_number="42B")
-        resident = Resident.objects.create(user=user, name="Test", surname="User")
+        resident = Resident.objects.create(user=user, name="Test", surname="User", tc_kimlik_no="70000000010")
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
         ticket = Ticket.objects.create(
             apartment=apartment,
@@ -834,7 +834,7 @@ class TestTelegramWebhookE2E:
             district="Alanya",
         )
         apartment = Apartment.objects.create(building=building, apartment_number="1E")
-        resident = Resident.objects.create(user=user, name="E2E", surname="Resident")
+        resident = Resident.objects.create(user=user, name="E2E", surname="Resident", tc_kimlik_no="70000000020")
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
         mu = MessengerUser.objects.create(telegram_chat_id=999002, resident=resident)
 
@@ -962,7 +962,7 @@ class TestTelegramWebhookE2E:
             district="Alanya",
         )
         apartment = Apartment.objects.create(building=building, apartment_number="5C")
-        resident = Resident.objects.create(user=user, name="Chat", surname="User")
+        resident = Resident.objects.create(user=user, name="Chat", surname="User", tc_kimlik_no="70000000030")
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
         ticket = Ticket.objects.create(
             apartment=apartment,
@@ -1045,7 +1045,7 @@ class TestMessengerConsumer:
             district="Alanya",
         )
         apartment = Apartment.objects.create(building=building, apartment_number="WS1")
-        resident = Resident.objects.create(user=user, name="WS", surname="Resident")
+        resident = Resident.objects.create(user=user, name="WS", surname="Resident", tc_kimlik_no="70000000040")
         Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
         ticket = Ticket.objects.create(
             apartment=apartment,

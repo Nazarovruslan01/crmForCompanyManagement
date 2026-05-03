@@ -2,6 +2,7 @@
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError
 
 from apps.residents.models import Ownership, PersonalAccount, Resident
 
@@ -26,6 +27,10 @@ class TestResident:
         with pytest.raises(ValidationError):
             r = Resident(name="No", surname="ID")
             r.clean()
+
+        # Also test DB constraint: creating without either should raise IntegrityError
+        with pytest.raises(IntegrityError):
+            Resident.objects.create(name="No", surname="ID")
 
     def test_foreign_owner_with_passport(self, db):
         r = Resident.objects.create(

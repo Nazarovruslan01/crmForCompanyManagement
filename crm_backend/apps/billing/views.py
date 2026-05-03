@@ -67,17 +67,27 @@ class PaymentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet
         Clients should send ``Idempotency-Key: <uuid>`` header to prevent
         duplicate payments on network retries. If a payment with the same key
         already exists, the existing record is returned with 200 OK.
+
+        Uses the database UNIQUE constraint on idempotency_key for atomic
+        deduplication instead of a check-then-create TOCTOU race.
         """
+        from django.db import IntegrityError
+
         idempotency_key = request.headers.get("Idempotency-Key")
-        if idempotency_key:
-            existing = Payment.objects.filter(idempotency_key=idempotency_key).first()
-            if existing:
-                serializer = self.get_serializer(existing)
-                return Response(serializer.data, status=status.HTTP_200_OK)
 
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save(idempotency_key=idempotency_key)
+
+        try:
+            serializer.save(idempotency_key=idempotency_key)
+        except IntegrityError:
+            # Concurrent request with same idempotency_key won the race
+            if idempotency_key:
+                existing = Payment.objects.filter(idempotency_key=idempotency_key).first()
+                if existing:
+                    serializer = self.get_serializer(existing)
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+            raise
 
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)

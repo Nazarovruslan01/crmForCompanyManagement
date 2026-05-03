@@ -1,6 +1,7 @@
 """Custom validators for serializers."""
 
 import re
+from typing import Any
 
 from rest_framework import serializers
 
@@ -37,7 +38,7 @@ def validate_password_strength(value: str) -> str:
     return value
 
 
-def validate_tc_kimlik_no(value: str) -> str:
+def validate_tc_kimlik_no(value: Any) -> Any:
     """Validate Turkish ID number (TC Kimlik No) using the official algorithm.
 
     Official checksum rules (1-based positions):

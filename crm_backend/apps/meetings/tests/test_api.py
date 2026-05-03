@@ -158,7 +158,7 @@ class TestVote:
         meeting.status = Meeting.Status.ACTIVE
         meeting.save()
 
-        resident = Resident.objects.create(user=resident_user, name="Test", surname="User")
+        resident = Resident.objects.create(user=resident_user, name="Test", surname="User", tc_kimlik_no="60000000010")
         Ownership.objects.create(
             resident=resident,
             apartment=apartment,
@@ -183,7 +183,7 @@ class TestVote:
         assert response.json()["vote_choice"] == "yes"
 
     def test_cannot_vote_when_not_active(self, resident_user, apartment, meeting, agenda_item):
-        resident = Resident.objects.create(user=resident_user, name="Test", surname="User")
+        resident = Resident.objects.create(user=resident_user, name="Test", surname="User", tc_kimlik_no="60000000010")
         Ownership.objects.create(
             resident=resident,
             apartment=apartment,
@@ -225,7 +225,7 @@ class TestVote:
 
 class TestMeetingPermissions:
     def test_resident_can_list_own_building_meetings(self, resident_user, apartment, meeting):
-        resident = Resident.objects.create(user=resident_user, name="Test", surname="User")
+        resident = Resident.objects.create(user=resident_user, name="Test", surname="User", tc_kimlik_no="60000000010")
         Ownership.objects.create(
             resident=resident,
             apartment=apartment,

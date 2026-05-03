@@ -1,6 +1,6 @@
 """Residents app views for REST API."""
 
-from rest_framework import permissions, viewsets
+from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -55,7 +55,7 @@ class OwnershipViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewS
         """Get all ownerships for a specific apartment."""
         apartment_id = request.query_params.get("apartment_id")
         if not apartment_id:
-            return Response({"error": "apartment_id is required"}, status=400)
+            return Response({"detail": "apartment_id is required"}, status=status.HTTP_400_BAD_REQUEST)
         ownerships = self.get_queryset().filter(apartment_id=apartment_id)
         serializer = self.get_serializer(ownerships, many=True)
         return Response(serializer.data)

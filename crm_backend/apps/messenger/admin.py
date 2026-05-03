@@ -96,12 +96,14 @@ class RegistrationRequestAdmin(admin.ModelAdmin):
                 first_name = name_parts[0] if name_parts else req.full_name
                 last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else "-"
 
-                # Create resident
+                # Create resident — passport_no is a placeholder until verified
                 resident = Resident.objects.create(
                     user=user,
                     name=first_name,
                     surname=last_name,
                     phone=req.phone,
+                    passport_no=f"TG-{req.messenger_user.telegram_chat_id}",
+                    is_foreign_owner=True,
                 )
 
                 # Create ownership

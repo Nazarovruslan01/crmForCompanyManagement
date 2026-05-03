@@ -49,7 +49,7 @@ class TestLogin:
             },
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-        assert "error" in response.data
+        assert "detail" in response.data
 
     def test_login_missing_credentials(self, db):
         """Login without credentials returns 400."""
@@ -60,7 +60,7 @@ class TestLogin:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_login_inactive_user(self, db):
-        """Login with inactive user returns 403."""
+        """Login with inactive user returns 401 (same as invalid creds to prevent account enumeration)."""
         User.objects.create_user(
             username="inactiveuser3",
             email="inactive3@example.com",
@@ -78,7 +78,7 @@ class TestLogin:
                 "password": "TestPass123!",
             },
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 class TestLogout:

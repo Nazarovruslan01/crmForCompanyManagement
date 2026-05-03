@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Callable
 
 from django.core.cache import cache
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 
 logger = logging.getLogger(__name__)
 
@@ -63,10 +63,22 @@ class IdempotencyKeyMiddleware:
 
     Keys expire after 24 hours. Only successful responses (2xx) are cached
     so that transient errors can be retried with the same key.
+
+    Auth endpoints (login, token refresh, MFA) are excluded from caching
+    because they return sensitive tokens that should not persist in Redis.
     """
 
     header = "HTTP_IDEMPOTENCY_KEY"
     cache_prefix = "idempotency"
+
+    # Paths that return sensitive data (tokens, secrets) — skip caching.
+    EXCLUDED_PATH_PREFIXES = (
+        "/api/v2/accounts/login/",
+        "/api/v2/accounts/logout/",
+        "/api/v2/accounts/mfa/",
+        "/api/v2/auth/token/",
+        "/api/v2/accounts/password/",
+    )
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
         self.get_response = get_response
@@ -77,6 +89,11 @@ class IdempotencyKeyMiddleware:
 
         raw_key = request.META.get(self.header)
         if not raw_key:
+            return self.get_response(request)
+
+        # Skip caching for sensitive endpoints
+        path = request.path
+        if any(path.startswith(prefix) for prefix in self.EXCLUDED_PATH_PREFIXES):
             return self.get_response(request)
 
         # Sanitise and scope the key per user session via Authorization header.
@@ -96,13 +113,13 @@ class IdempotencyKeyMiddleware:
                 status=cached["status"],
                 content_type=cached["content_type"],
             )
-            for key, value in cached.get("headers", {}).items():
-                resp[key] = value
             return resp
 
         response = self.get_response(request)
 
-        # Only cache successful responses so retries on errors still work
+        # Only cache successful responses so retries on errors still work.
+        # We do NOT cache response headers to avoid leaking security headers
+        # or session cookies in cached responses.
         if 200 <= response.status_code < 300:
             body = response.content
             cache.set(
@@ -111,9 +128,34 @@ class IdempotencyKeyMiddleware:
                     "body": body.decode("utf-8", errors="replace"),
                     "status": response.status_code,
                     "content_type": response.get("Content-Type", "application/json"),
-                    "headers": dict(response.items()),
                 },
                 timeout=_IDEMPOTENCY_TTL,
             )
 
         return response
+
+
+class DeactivatedUserMiddleware:
+    """Reject requests from users who were soft-deleted after their JWT was issued.
+
+    When a user is soft-deleted (is_active=False), their existing JWT tokens
+    remain valid until expiry. This middleware checks a cache flag set during
+    soft-delete to immediately reject such tokens without waiting for expiry.
+
+    The cache key ``user_deactivated:<user_id>`` is set in ``User.delete()``
+    with a TTL matching the access token lifetime, so it auto-expires when
+    all outstanding tokens would have expired anyway.
+    """
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        user = getattr(request, "user", None)
+        if user is not None and user.is_authenticated and user.pk is not None:
+            if cache.get(f"user_deactivated:{user.pk}"):
+                return JsonResponse(
+                    {"detail": "User account is deactivated."},
+                    status=401,
+                )
+        return self.get_response(request)
