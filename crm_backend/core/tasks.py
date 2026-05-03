@@ -653,10 +653,124 @@ def backup_database(self: Any) -> BackupResult:
                 size_bytes=0,
                 error="Disk full — backup aborted",
             )
-        raise
-    except Exception as exc:
-        logger.error("Database backup failed: %s", exc)
-        # Clean up partial file
-        if os.path.exists(local_path):
-            os.remove(local_path)
-        raise self.retry(exc=exc)
+
+
+class SentryAlertResult(TypedDict):
+    alerts_sent: int
+
+
+@shared_task
+def alert_failed_payments() -> SentryAlertResult:
+    """
+    Business alert: send Sentry message for overdue aidat charges (failed payments).
+
+    Runs daily via Celery beat at 08:00.
+    """
+    import sentry_sdk
+
+    from apps.billing.models import AidatCharge
+
+    today = timezone.now().date()
+    overdue_charges = AidatCharge.objects.filter(
+        status=AidatCharge.Status.OVERDUE,
+    ).select_related("apartment__building")
+
+    count = overdue_charges.count()
+    if count == 0:
+        return SentryAlertResult(alerts_sent=0)
+
+    total_debt = sum(c.total_due for c in overdue_charges)
+
+    sentry_sdk.capture_message(
+        f"{count} overdue aidat charges (total debt {total_debt:.2f} TRY)",
+        level="warning",
+        contexts={
+            "business": {
+                "alert_type": "failed_payments",
+                "overdue_count": count,
+                "total_debt": float(total_debt),
+                "date": str(today),
+            }
+        },
+    )
+    logger.info("Sentry business alert sent: %d overdue charges", count)
+    return SentryAlertResult(alerts_sent=1)
+
+
+@shared_task
+def alert_stuck_tickets() -> SentryAlertResult:
+    """
+    Business alert: send Sentry message for tickets stuck without progress.
+
+    Criteria:
+    - NEW for > 3 days
+    - ASSIGNED for > 3 days without moving to IN_PROGRESS
+    - IN_PROGRESS for > 7 days without resolution
+
+    Runs daily via Celery beat at 08:05.
+    """
+    import sentry_sdk
+
+    from apps.tickets.models import Ticket
+
+    now = timezone.now()
+    new_threshold = now - timedelta(days=3)
+    in_progress_threshold = now - timedelta(days=7)
+
+    stuck_new = Ticket.objects.filter(status=Ticket.Status.NEW, created_at__lt=new_threshold).count()
+    stuck_assigned = Ticket.objects.filter(status=Ticket.Status.ASSIGNED, updated_at__lt=new_threshold).count()
+    stuck_in_progress = Ticket.objects.filter(
+        status=Ticket.Status.IN_PROGRESS, updated_at__lt=in_progress_threshold
+    ).count()
+
+    total_stuck = stuck_new + stuck_assigned + stuck_in_progress
+    if total_stuck == 0:
+        return SentryAlertResult(alerts_sent=0)
+
+    sentry_sdk.capture_message(
+        f"{total_stuck} tickets stuck without progress",
+        level="warning",
+        contexts={
+            "business": {
+                "alert_type": "stuck_tickets",
+                "stuck_new": stuck_new,
+                "stuck_assigned": stuck_assigned,
+                "stuck_in_progress": stuck_in_progress,
+                "total_stuck": total_stuck,
+                "date": str(now.date()),
+            }
+        },
+    )
+    logger.info("Sentry business alert sent: %d stuck tickets", total_stuck)
+    return SentryAlertResult(alerts_sent=1)
+
+
+@shared_task
+def alert_deactivated_users() -> SentryAlertResult:
+    """
+    Business alert: send Sentry message for deactivated (soft-deleted) users.
+
+    Runs daily via Celery beat at 08:10.
+    """
+    import sentry_sdk
+
+    from apps.accounts.models import User
+
+    today = timezone.now().date()
+    deactivated_count = User.objects.filter(is_active=False).count()
+    if deactivated_count == 0:
+        return SentryAlertResult(alerts_sent=0)
+
+    sentry_sdk.capture_message(
+        f"{deactivated_count} deactivated users in the system",
+        level="warning",
+        contexts={
+            "business": {
+                "alert_type": "deactivated_users",
+                "deactivated_count": deactivated_count,
+                "date": str(today),
+            }
+        },
+    )
+    logger.info("Sentry business alert sent: %d deactivated users", deactivated_count)
+    return SentryAlertResult(alerts_sent=1)
