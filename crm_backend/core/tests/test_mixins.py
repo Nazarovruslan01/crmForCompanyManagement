@@ -8,7 +8,6 @@ from core.mixins import ResidentQuerySetMixin
 class MockQuerySet:
     """Stub queryset that records filter calls."""
 
-
     def __init__(self, data: list[object] | None = None) -> None:
         self._data = data or []
         self.filter_calls: list[dict] = []

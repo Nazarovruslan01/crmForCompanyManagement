@@ -44,7 +44,6 @@ class UserSerializer(serializers.ModelSerializer):
 class UserMeSerializer(UserSerializer):
     """Serializer for /me/ endpoint — role is read-only for self-update."""
 
-
     class Meta(UserSerializer.Meta):
         read_only_fields = [
             *UserSerializer.Meta.read_only_fields,

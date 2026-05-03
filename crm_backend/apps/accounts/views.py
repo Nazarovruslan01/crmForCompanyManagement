@@ -32,7 +32,6 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet[User]):
 class UserMeView(generics.RetrieveUpdateAPIView[User]):
     """Get or update current user profile."""
 
-
     serializer_class = UserMeSerializer
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]

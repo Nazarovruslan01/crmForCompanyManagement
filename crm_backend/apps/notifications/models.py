@@ -8,7 +8,6 @@ from django.db import models
 class NotificationTemplate(models.Model):
     """Шаблон уведомления"""
 
-
     class Channel(models.TextChoices):
         PUSH = "push", "Push Bildirim"
         SMS = "sms", "SMS"
