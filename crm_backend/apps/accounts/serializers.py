@@ -1,4 +1,4 @@
-# pyright: reportArgumentType=false
+# pyright: reportArgumentType=false, reportIncompatibleVariableOverride=false
 
 """Accounts app serializers for REST API."""
 
@@ -44,7 +44,6 @@ class UserSerializer(serializers.ModelSerializer):
 class UserMeSerializer(UserSerializer):
     """Serializer for /me/ endpoint — role is read-only for self-update."""
 
-# pyright: reportIncompatibleVariableOverride=false
 
     class Meta(UserSerializer.Meta):
         read_only_fields = [
@@ -59,7 +58,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
         write_only=True,
         min_length=8,
         validators=[  # type: ignore
-            validate_password_strength],
+            validate_password_strength
+        ],
     )
 
     class Meta:

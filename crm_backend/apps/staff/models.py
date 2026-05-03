@@ -11,7 +11,6 @@ from core.models import SoftDeleteMixin
 class Department(models.Model):
     """Department (Departman)"""
 
-
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
 

@@ -56,7 +56,7 @@ def _create_or_update_user(data: dict[str, Any]) -> Any:
         defaults=user_data,
     )
     user.set_password(password)
-    user.role = role  # type: ignore[attr-defined]
+    user.role = role
     user.save()
     return user
 

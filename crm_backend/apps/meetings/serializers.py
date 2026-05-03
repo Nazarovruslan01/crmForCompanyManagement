@@ -1,3 +1,5 @@
+# pyright: reportIncompatibleVariableOverride=false
+
 """Meetings app serializers for REST API."""
 
 from rest_framework import serializers
@@ -67,7 +69,6 @@ class MeetingSerializer(serializers.ModelSerializer):
 class MeetingDetailSerializer(MeetingSerializer):
     """Extended serializer with nested votes and protocol."""
 
-# pyright: reportIncompatibleVariableOverride=false
 
     votes = VoteSerializer(many=True, read_only=True)
     protocol = MeetingProtocolSerializer(read_only=True)

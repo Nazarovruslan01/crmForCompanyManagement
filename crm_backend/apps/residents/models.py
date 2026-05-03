@@ -12,7 +12,6 @@ from core.models import SoftDeleteMixin
 class Resident(SoftDeleteMixin, models.Model):
     """Жилец / Собственник (Kat Mali / Sakli)"""
 
-
     class OwnerType(models.TextChoices):
         OWNER = "owner", "Mal Sahibi"
         TENANT = "tenant", "Kiracı"

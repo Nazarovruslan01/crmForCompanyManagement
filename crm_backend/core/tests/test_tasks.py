@@ -1,3 +1,5 @@
+# pyright: reportAttributeAccessIssue=false
+
 """Tests for Celery tasks."""
 
 from datetime import date, timedelta
@@ -18,7 +20,6 @@ pytestmark = pytest.mark.django_db
 class TestTicketAutoClose:
     """Tests for ticket_auto_close task."""
 
-# pyright: reportAttributeAccessIssue=false
 
     def test_auto_close_resolved_tickets(self, admin_user):
         """Resolved tickets older than 7 days are auto-closed."""

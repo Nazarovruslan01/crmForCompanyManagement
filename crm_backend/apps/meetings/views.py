@@ -1,3 +1,5 @@
+# pyright: reportIncompatibleMethodOverride=false
+
 """Meetings app views for REST API."""
 
 from rest_framework import permissions, status, viewsets
@@ -47,7 +49,6 @@ class MeetingViewSet(
     def start(self, request: Request, pk: int) -> Response:
         """Transition meeting from scheduled to active."""
 
-# pyright: reportIncompatibleMethodOverride=false
         meeting = self.get_object()
         if meeting.status != Meeting.Status.SCHEDULED:
             return Response(

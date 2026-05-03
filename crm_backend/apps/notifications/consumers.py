@@ -1,3 +1,5 @@
+# pyright: reportIncompatibleMethodOverride=false
+
 """Django Channels consumers for real-time notifications."""
 
 import logging
@@ -12,7 +14,6 @@ logger = logging.getLogger(__name__)
 class NotificationConsumer(AsyncJsonWebsocketConsumer):  # type: ignore[misc]
     """WebSocket consumer for per-user real-time notifications."""
 
-# pyright: reportIncompatibleMethodOverride=false
 
     async def connect(self) -> None:
         self.user = self.scope.get("user", AnonymousUser())

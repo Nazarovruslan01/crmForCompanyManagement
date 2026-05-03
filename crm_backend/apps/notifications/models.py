@@ -1,3 +1,5 @@
+# pyright: reportAttributeAccessIssue=false
+
 """Notifications app models for Turkish HOA CRM"""
 
 from django.db import models
@@ -6,7 +8,6 @@ from django.db import models
 class NotificationTemplate(models.Model):
     """Шаблон уведомления"""
 
-# pyright: reportAttributeAccessIssue=false
 
     class Channel(models.TextChoices):
         PUSH = "push", "Push Bildirim"

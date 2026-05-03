@@ -685,7 +685,6 @@ class TestRegistrationRequestAdmin:
 class TestTelegramWebhookE2E:
     """End-to-end tests that exercise the full webhook flow without mocking send_telegram_message."""
 
-
     @patch("apps.messenger.telegram_client.requests.post")
     def test_full_registration_flow_e2e(self, mock_post, api_client):
         """Complete registration flow from /start to role selection."""

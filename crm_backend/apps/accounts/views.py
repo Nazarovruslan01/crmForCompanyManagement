@@ -1,3 +1,5 @@
+# pyright: reportAttributeAccessIssue=false, reportCallIssue=false, reportIncompatibleMethodOverride=false, reportPossiblyUnboundVariable=false
+
 """Accounts app views for REST API."""
 
 from django.contrib.auth import get_user_model
@@ -30,7 +32,6 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet[User]):
 class UserMeView(generics.RetrieveUpdateAPIView[User]):
     """Get or update current user profile."""
 
-# pyright: reportAttributeAccessIssue=false, reportCallIssue=false, reportPossiblyUnboundVariable=false, reportIncompatibleMethodOverride=false
 
     serializer_class = UserMeSerializer
     permission_classes = [permissions.IsAuthenticated]

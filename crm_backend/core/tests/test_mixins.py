@@ -1,3 +1,5 @@
+# pyright: reportAttributeAccessIssue=false, reportCallIssue=false, reportIncompatibleMethodOverride=false, reportPossiblyUnboundVariable=false
+
 """Tests for core.mixins.ResidentQuerySetMixin."""
 
 from core.mixins import ResidentQuerySetMixin
@@ -6,7 +8,6 @@ from core.mixins import ResidentQuerySetMixin
 class MockQuerySet:
     """Stub queryset that records filter calls."""
 
-# pyright: reportAttributeAccessIssue=false, reportCallIssue=false, reportPossiblyUnboundVariable=false, reportIncompatibleMethodOverride=false
 
     def __init__(self, data: list[object] | None = None) -> None:
         self._data = data or []

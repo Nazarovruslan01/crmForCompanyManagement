@@ -41,7 +41,7 @@ def broadcast_new_ticket(sender: type[Ticket], instance: Ticket, created: bool, 
         return
 
     # Notify ticket creator if authenticated
-    if instance.created_by.pk:
+    if instance.created_by is not None:
         _notify_user(
             instance.created_by.pk,
             "ticket_created",
@@ -54,7 +54,7 @@ def broadcast_new_ticket(sender: type[Ticket], instance: Ticket, created: bool, 
 
     # Notify assigned worker
     worker = instance.assigned_worker
-    if worker is not None and worker.user.pk:
+    if worker is not None and worker.user is not None:
         _notify_user(
             worker.user.pk,
             "ticket_assigned",
@@ -71,12 +71,12 @@ def broadcast_new_comment(sender: type[TicketComment], instance: TicketComment, 
     ticket = instance.ticket
     recipients: set[int] = set()
 
-    if ticket.created_by.pk:
+    if ticket.created_by is not None:
         recipients.add(ticket.created_by.pk)
     worker = ticket.assigned_worker
-    if worker is not None and worker.user.pk:
+    if worker is not None and worker.user is not None:
         recipients.add(worker.user.pk)
-    if instance.author.pk:
+    if instance.author is not None:
         recipients.add(instance.author.pk)
 
     for user_id in recipients:
@@ -99,7 +99,7 @@ def broadcast_payment_update(sender: type[Payment], instance: Payment, created: 
 
     try:
         ownership = Ownership.objects.filter(apartment=instance.apartment, is_primary=True).first()
-        if ownership is not None and ownership.resident.user.pk:
+        if ownership is not None and ownership.resident.user is not None:
             _notify_user(
                 ownership.resident.user.pk,
                 "payment_status",
