@@ -71,6 +71,7 @@ MIDDLEWARE = [
     "core.middleware.IdempotencyKeyMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.DeprecationMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
