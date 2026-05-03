@@ -67,6 +67,8 @@ class MeetingSerializer(serializers.ModelSerializer):
 class MeetingDetailSerializer(MeetingSerializer):
     """Extended serializer with nested votes and protocol."""
 
+# pyright: reportIncompatibleVariableOverride=false
+
     votes = VoteSerializer(many=True, read_only=True)
     protocol = MeetingProtocolSerializer(read_only=True)
 

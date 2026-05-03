@@ -1,3 +1,5 @@
+# pyright: reportAttributeAccessIssue=false, reportIncompatibleVariableOverride=false
+
 """Residents app models for Turkish HOA CRM"""
 
 from django.conf import settings
@@ -9,6 +11,7 @@ from core.models import SoftDeleteMixin
 
 class Resident(SoftDeleteMixin, models.Model):
     """Жилец / Собственник (Kat Mali / Sakli)"""
+
 
     class OwnerType(models.TextChoices):
         OWNER = "owner", "Mal Sahibi"

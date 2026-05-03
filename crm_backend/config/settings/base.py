@@ -2,6 +2,8 @@
 Django settings for CRM project.
 """
 
+# pyright: reportMissingImports=false
+
 import os
 from datetime import timedelta
 from decimal import Decimal

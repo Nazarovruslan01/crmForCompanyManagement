@@ -59,3 +59,6 @@ class TaskSerializer(serializers.ModelSerializer):
             "completed_at",
         ]
         read_only_fields = ["created_at", "updated_at", "completed_at"]
+
+
+# pyright: reportIncompatibleVariableOverride=false

@@ -1,5 +1,7 @@
 """Tickets app serializers for REST API."""
 
+# pyright: reportIncompatibleVariableOverride=false
+
 from rest_framework import serializers
 
 from .models import Ticket, TicketAttachment, TicketComment

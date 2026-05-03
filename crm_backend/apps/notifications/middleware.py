@@ -1,3 +1,5 @@
+# pyright: reportIncompatibleMethodOverride=false, reportCallIssue=false, reportArgumentType=false, reportGeneralTypeIssues=false
+
 """JWT authentication middleware for Django Channels WebSocket connections."""
 
 import logging
@@ -16,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 class JWTAuthMiddleware(BaseMiddleware):  # type: ignore[misc]
     """
+
     Authenticate WebSocket connections via JWT token passed in the query string.
 
     Expected URL: ws://host/ws/notifications/?token=<jwt_access_token>

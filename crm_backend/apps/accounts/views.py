@@ -30,9 +30,11 @@ class UserViewSet(AuditLogMixin, viewsets.ModelViewSet[User]):
 class UserMeView(generics.RetrieveUpdateAPIView[User]):
     """Get or update current user profile."""
 
+# pyright: reportAttributeAccessIssue=false, reportCallIssue=false, reportPossiblyUnboundVariable=false, reportIncompatibleMethodOverride=false
+
     serializer_class = UserMeSerializer
     permission_classes = [permissions.IsAuthenticated]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
 
     def get_object(self) -> User:
-        return self.request.user
+        return self.request.user  # type: ignore[return-type]

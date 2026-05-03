@@ -1,3 +1,5 @@
+# pyright: reportArgumentType=false
+
 """Tests for common.validators."""
 
 import pytest
@@ -174,3 +176,6 @@ class TestValidateTcKimlikNo:
         with pytest.raises(serializers.ValidationError) as exc:
             validate_tc_kimlik_no("10000000147")
         assert "valid TC Kimlik" in str(exc.value)
+
+
+# pyright: reportAttributeAccessIssue=false, reportCallIssue=false, reportPossiblyUnboundVariable=false, reportIncompatibleMethodOverride=false

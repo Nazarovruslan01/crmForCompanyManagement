@@ -254,23 +254,23 @@ def send_reminder_notifications(self: Any) -> ReminderResult:
     from apps.notifications.models import NotificationLog
     from apps.residents.models import Ownership
 
-    apartment_ids = [c.apartment_id for c in overdue_charges]
+    apartment_ids = [c.apartment.pk for c in overdue_charges]
     ownerships = Ownership.objects.filter(
-        apartment_id__in=apartment_ids,
+        apartment__pk__in=apartment_ids,
         is_primary=True,
     ).select_related("resident")
 
     apartment_to_resident: dict[int, Any] = {}
     for ownership in ownerships:
         if ownership.resident:
-            apartment_to_resident[ownership.apartment_id] = ownership.resident
+            apartment_to_resident[ownership.apartment.pk] = ownership.resident
 
     logs_to_create: list[NotificationLog] = []
     email_payloads: list[dict[str, Any]] = []
 
     for charge in overdue_charges:
         try:
-            resident = apartment_to_resident.get(charge.apartment_id)
+            resident = apartment_to_resident.get(charge.apartment.pk)
             if not resident or not resident.email:
                 continue
 
@@ -309,7 +309,7 @@ def send_reminder_notifications(self: Any) -> ReminderResult:
             )
 
         except Exception as exc:
-            logger.error("Failed to prepare reminder for charge %s: %s", charge.id, exc)
+            logger.error("Failed to prepare reminder for charge %s: %s", charge.pk, exc)
             failed += 1
 
     # Bulk create notification logs (chunked)
@@ -324,7 +324,7 @@ def send_reminder_notifications(self: Any) -> ReminderResult:
 
     # Queue email tasks
     for payload in email_payloads:
-        send_email_async.delay(**payload)
+        send_email_async.delay(**payload)  # type: ignore[operator]
 
     logger.info("Sent %d reminder notifications, %d failed", sent, failed)
     return ReminderResult(notifications_sent=sent, notifications_failed=failed)
@@ -376,21 +376,21 @@ def send_telegram_debt_reminders() -> TelegramReminderResult:
         return TelegramReminderResult(sent=0, failed=0, no_chat_id=0)
 
     # Step 3: Map apartments to residents
-    apartment_ids = [c.apartment_id for c in overdue_charges]
+    apartment_ids = [c.apartment.pk for c in overdue_charges]
     ownerships = Ownership.objects.filter(
-        apartment_id__in=apartment_ids,
+        apartment__pk__in=apartment_ids,
         is_primary=True,
     ).select_related("resident")
 
     apartment_to_resident: dict[int, Any] = {}
     for ownership in ownerships:
         if ownership.resident:
-            apartment_to_resident[ownership.apartment_id] = ownership.resident
+            apartment_to_resident[ownership.apartment.pk] = ownership.resident
 
     # Group charges by resident
     resident_charges: dict[int, list[AidatCharge]] = {}
     for charge in overdue_charges:
-        resident = apartment_to_resident.get(charge.apartment_id)
+        resident = apartment_to_resident.get(charge.apartment.pk)
         if not resident:
             continue
         resident_charges.setdefault(resident.id, []).append(charge)
@@ -398,9 +398,9 @@ def send_telegram_debt_reminders() -> TelegramReminderResult:
     # Step 4: Send Telegram messages
     residents_with_charges = list(resident_charges.keys())
     messenger_users = {
-        mu.resident_id: mu
+        mu.resident.pk: mu
         for mu in MessengerUser.objects.filter(
-            resident_id__in=residents_with_charges,
+            resident__pk__in=residents_with_charges,
             telegram_chat_id__isnull=False,
             is_active=True,
         )
@@ -653,6 +653,8 @@ def backup_database(self: Any) -> BackupResult:
                 size_bytes=0,
                 error="Disk full — backup aborted",
             )
+        # Re-raise other OS errors so Celery can retry
+        raise
 
 
 class SentryAlertResult(TypedDict):
@@ -666,7 +668,7 @@ def alert_failed_payments() -> SentryAlertResult:
 
     Runs daily via Celery beat at 08:00.
     """
-    import sentry_sdk
+    import sentry_sdk  # type: ignore[import]
 
     from apps.billing.models import AidatCharge
 
@@ -709,7 +711,7 @@ def alert_stuck_tickets() -> SentryAlertResult:
 
     Runs daily via Celery beat at 08:05.
     """
-    import sentry_sdk
+    import sentry_sdk  # type: ignore[import]
 
     from apps.tickets.models import Ticket
 
@@ -752,7 +754,7 @@ def alert_deactivated_users() -> SentryAlertResult:
 
     Runs daily via Celery beat at 08:10.
     """
-    import sentry_sdk
+    import sentry_sdk  # type: ignore[import]
 
     from apps.accounts.models import User
 

@@ -152,7 +152,7 @@ def create_ticket(messenger_user: MessengerUser) -> None:
         messenger_user=messenger_user,
         direction=BotMessage.Direction.SYSTEM,
         message_type=BotMessage.MessageType.TEXT,
-        text=f"Ticket #{ticket.id} created",
+        text=f"Ticket #{ticket.pk} created",
         ticket=ticket,
     )
 
@@ -162,7 +162,7 @@ def create_ticket(messenger_user: MessengerUser) -> None:
     send_telegram_message(
         messenger_user.telegram_chat_id,
         (
-            f"✅ Ticket #{ticket.id} has been created successfully!\n\n"
+            f"✅ Ticket #{ticket.pk} has been created successfully!\n\n"
             f"Category: {ticket.get_category_display()}\n"
             f"Status: {ticket.get_status_display()}\n\n"
             "Our team will review it shortly."
@@ -197,7 +197,7 @@ def process_chat_ticket_selection(messenger_user: MessengerUser, ticket_id: str)
     send_telegram_message(
         messenger_user.telegram_chat_id,
         (
-            f"You are now chatting about Ticket #{ticket.id}: {ticket.title}\n\n"
+            f"You are now chatting about Ticket #{ticket.pk}: {ticket.title}\n\n"
             "Send your messages and they will be forwarded to the management team."
         ),
     )
@@ -244,11 +244,14 @@ def process_chat_message(messenger_user: MessengerUser, text: str) -> None:
         ticket=ticket,
     )
     broadcast_to_ticket_group(
-        ticket.id,
+        ticket.pk,
         text,
         author_name=messenger_user.resident.full_name,
     )
     send_telegram_message(
         messenger_user.telegram_chat_id,
-        f"Message sent to Ticket #{ticket.id}.",
+        f"Message sent to Ticket #{ticket.pk}.",
     )
+
+
+# pyright: reportAttributeAccessIssue=false

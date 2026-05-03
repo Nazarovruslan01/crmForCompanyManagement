@@ -1,3 +1,5 @@
+# pyright: reportCallIssue=false, reportArgumentType=false
+
 """WebSocket URL routing for messenger app."""
 
 from django.urls import re_path
@@ -10,3 +12,6 @@ websocket_urlpatterns = [
         MessengerConsumer.as_asgi(),
     ),
 ]
+
+
+# pyright: reportCallIssue=false

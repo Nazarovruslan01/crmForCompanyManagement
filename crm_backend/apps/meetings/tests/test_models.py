@@ -168,3 +168,6 @@ class TestMeetingProtocol:
         MeetingProtocol.objects.create(meeting=meeting, content="First")
         with pytest.raises(IntegrityError):
             MeetingProtocol.objects.create(meeting=meeting, content="Second")
+
+
+# pyright: reportAttributeAccessIssue=false

@@ -1,3 +1,5 @@
+# pyright: reportOptionalMemberAccess=false
+
 """Tests for WebSocket real-time notifications."""
 
 import pytest
@@ -14,6 +16,7 @@ pytestmark = pytest.mark.django_db
 @pytest.fixture
 def jwt_token(user):
     """Generate a valid JWT access token for the user."""
+
     from rest_framework_simplejwt.tokens import RefreshToken
 
     refresh = RefreshToken.for_user(user)

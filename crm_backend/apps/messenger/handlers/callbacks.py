@@ -168,13 +168,13 @@ def _handle_registered_text(messenger_user: MessengerUser, text: str) -> None:
             ticket=ticket,
         )
         broadcast_to_ticket_group(
-            ticket.id,
+            ticket.pk,
             text,
             author_name=messenger_user.resident.full_name,
         )
         send_telegram_message(
             messenger_user.telegram_chat_id,
-            f"Your message has been added to Ticket #{ticket.id}.",
+            f"Your message has been added to Ticket #{ticket.pk}.",
         )
     elif active_tickets.count() > 1:
         messenger_user.conversation_state = {"step": "waiting_for_ticket_select"}
@@ -183,7 +183,7 @@ def _handle_registered_text(messenger_user: MessengerUser, text: str) -> None:
         keyboard = []
         for ticket in active_tickets[:5]:
             keyboard.append(
-                [{"text": f"#{ticket.id} {ticket.title[:30]}", "callback_data": f"chat_ticket_{ticket.id}"}]
+                [{"text": f"#{ticket.pk} {ticket.title[:30]}", "callback_data": f"chat_ticket_{ticket.pk}"}]
             )
         keyboard.append([{"text": "Cancel", "callback_data": "chat_cancel"}])
 

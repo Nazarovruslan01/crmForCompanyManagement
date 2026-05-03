@@ -144,7 +144,7 @@ class Ticket(models.Model):
             super().save(*args, **kwargs)
 
     def __str__(self) -> str:
-        return f"#{self.id} - {self.title[:50]}"
+        return f"#{self.pk} - {self.title[:50]}"
 
 
 class TicketComment(models.Model):

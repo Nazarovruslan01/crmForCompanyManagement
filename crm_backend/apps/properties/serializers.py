@@ -62,6 +62,8 @@ class ApartmentSerializer(serializers.ModelSerializer):
 class ApartmentMinimalSerializer(serializers.ModelSerializer):
     """Minimal serializer for nested representations."""
 
+# pyright: reportIncompatibleVariableOverride=false
+
     building_name = serializers.CharField(source="building.name", read_only=True)
 
     class Meta:

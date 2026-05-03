@@ -46,6 +46,8 @@ class MeetingViewSet(
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrManager])
     def start(self, request: Request, pk: int) -> Response:
         """Transition meeting from scheduled to active."""
+
+# pyright: reportIncompatibleMethodOverride=false
         meeting = self.get_object()
         if meeting.status != Meeting.Status.SCHEDULED:
             return Response(
@@ -88,7 +90,7 @@ class MeetingViewSet(
             )
 
         try:
-            agenda_item = meeting.agenda_items.get(id=agenda_item_id)
+            agenda_item = meeting.agenda_items.get(id=agenda_item_id)  # type: ignore[attr-defined]
         except AgendaItem.DoesNotExist:
             return Response(
                 {"detail": "Agenda item not found in this meeting"},

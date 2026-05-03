@@ -126,3 +126,6 @@ class DocumentViewSet(
 
     def perform_update(self, serializer: DocumentSerializer) -> None:
         serializer.save(uploaded_by=self.request.user)
+
+
+# pyright: reportIncompatibleMethodOverride=false

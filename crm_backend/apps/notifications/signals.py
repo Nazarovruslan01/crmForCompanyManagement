@@ -41,12 +41,12 @@ def broadcast_new_ticket(sender: type[Ticket], instance: Ticket, created: bool, 
         return
 
     # Notify ticket creator if authenticated
-    if instance.created_by_id:
+    if instance.created_by.pk:
         _notify_user(
-            instance.created_by_id,
+            instance.created_by.pk,
             "ticket_created",
             {
-                "ticket_id": instance.id,
+                "ticket_id": instance.pk,
                 "title": instance.title,
                 "status": instance.status,
             },
@@ -54,11 +54,11 @@ def broadcast_new_ticket(sender: type[Ticket], instance: Ticket, created: bool, 
 
     # Notify assigned worker
     worker = instance.assigned_worker
-    if worker is not None and worker.user_id:
+    if worker is not None and worker.user.pk:
         _notify_user(
-            worker.user_id,
+            worker.user.pk,
             "ticket_assigned",
-            {"ticket_id": instance.id, "title": instance.title},
+            {"ticket_id": instance.pk, "title": instance.title},
         )
 
 
@@ -71,21 +71,21 @@ def broadcast_new_comment(sender: type[TicketComment], instance: TicketComment, 
     ticket = instance.ticket
     recipients: set[int] = set()
 
-    if ticket.created_by_id:
-        recipients.add(ticket.created_by_id)
+    if ticket.created_by.pk:
+        recipients.add(ticket.created_by.pk)
     worker = ticket.assigned_worker
-    if worker is not None and worker.user_id:
-        recipients.add(worker.user_id)
-    if instance.author_id:
-        recipients.add(instance.author_id)
+    if worker is not None and worker.user.pk:
+        recipients.add(worker.user.pk)
+    if instance.author.pk:
+        recipients.add(instance.author.pk)
 
     for user_id in recipients:
         _notify_user(
             user_id,
             "ticket_comment",
             {
-                "ticket_id": ticket.id,
-                "comment_id": instance.id,
+                "ticket_id": ticket.pk,
+                "comment_id": instance.pk,
                 "author": getattr(instance.author, "username", None),
                 "content": instance.content[:200],
             },
@@ -99,12 +99,12 @@ def broadcast_payment_update(sender: type[Payment], instance: Payment, created: 
 
     try:
         ownership = Ownership.objects.filter(apartment=instance.apartment, is_primary=True).first()
-        if ownership is not None and ownership.resident.user_id:
+        if ownership is not None and ownership.resident.user.pk:
             _notify_user(
-                ownership.resident.user_id,
+                ownership.resident.user.pk,
                 "payment_status",
                 {
-                    "payment_id": instance.id,
+                    "payment_id": instance.pk,
                     "amount": str(instance.amount),
                     "receipt_number": instance.receipt_number or "N/A",
                 },

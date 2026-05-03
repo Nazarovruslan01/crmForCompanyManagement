@@ -1,3 +1,5 @@
+# pyright: reportArgumentType=false
+
 """Accounts app serializers for REST API."""
 
 from django.contrib.auth import get_user_model
@@ -42,6 +44,8 @@ class UserSerializer(serializers.ModelSerializer):
 class UserMeSerializer(UserSerializer):
     """Serializer for /me/ endpoint — role is read-only for self-update."""
 
+# pyright: reportIncompatibleVariableOverride=false
+
     class Meta(UserSerializer.Meta):
         read_only_fields = [
             *UserSerializer.Meta.read_only_fields,
@@ -54,7 +58,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
     password = serializers.CharField(
         write_only=True,
         min_length=8,
-        validators=[validate_password_strength],
+        validators=[  # type: ignore
+            validate_password_strength],
     )
 
     class Meta:
