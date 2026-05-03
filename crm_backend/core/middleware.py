@@ -159,3 +159,23 @@ class DeactivatedUserMiddleware:
                     status=401,
                 )
         return self.get_response(request)
+
+
+class DeprecationMiddleware:
+    """Add Deprecation and Sunset headers to API v1 responses.
+
+    Signals to API consumers that v1 endpoints are deprecated and will be
+    removed on the date specified in the ``Sunset`` header (RFC 8594).
+    """
+
+    sunset_date: str = "Sat, 31 Dec 2026 23:59:59 GMT"
+
+    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest) -> HttpResponse:
+        response = self.get_response(request)
+        if request.path.startswith("/api/v1/"):
+            response["Deprecation"] = "true"
+            response["Sunset"] = self.sunset_date
+        return response
