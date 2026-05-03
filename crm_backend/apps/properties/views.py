@@ -2,6 +2,7 @@
 
 from django.core.cache import cache
 from django.db.models import Prefetch
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -23,6 +24,82 @@ from .serializers import (
 )
 
 
+@extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response=BuildingSerializer,
+                examples=[
+                    OpenApiExample(
+                        "Building list",
+                        value=[
+                            {
+                                "id": 1,
+                                "name": "Sunset Residences",
+                                "address": "Atatürk Cd. No:42",
+                                "city": "Antalya",
+                                "district": "Alanya",
+                                "management_type": "professional",
+                                "management_type_display": "Profesyonel Yönetim",
+                                "annual_budget": "250000.00",
+                                "created_at": "2026-01-10T08:00:00Z",
+                                "updated_at": "2026-04-01T10:00:00Z",
+                            }
+                        ],
+                    ),
+                ],
+            ),
+        },
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response=BuildingSerializer,
+                examples=[
+                    OpenApiExample(
+                        "Building detail",
+                        value={
+                            "id": 1,
+                            "name": "Sunset Residences",
+                            "address": "Atatürk Cd. No:42",
+                            "city": "Antalya",
+                            "district": "Alanya",
+                            "management_type": "professional",
+                            "management_type_display": "Profesyonel Yönetim",
+                            "annual_budget": "250000.00",
+                            "created_at": "2026-01-10T08:00:00Z",
+                            "updated_at": "2026-04-01T10:00:00Z",
+                        },
+                    ),
+                ],
+            ),
+        },
+    ),
+    create=extend_schema(
+        responses={
+            201: OpenApiResponse(
+                response=BuildingSerializer,
+                examples=[
+                    OpenApiExample(
+                        "Created building",
+                        value={
+                            "id": 1,
+                            "name": "Sunset Residences",
+                            "address": "Atatürk Cd. No:42",
+                            "city": "Antalya",
+                            "district": "Alanya",
+                            "management_type": "professional",
+                            "management_type_display": "Profesyonel Yönetim",
+                            "annual_budget": "250000.00",
+                            "created_at": "2026-05-03T08:00:00Z",
+                            "updated_at": "2026-05-03T08:00:00Z",
+                        },
+                    ),
+                ],
+            ),
+        },
+    ),
+)
 class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewSet[Building]):
     queryset = Building.objects.all()
     serializer_class = BuildingSerializer

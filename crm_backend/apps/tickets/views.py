@@ -6,6 +6,7 @@ import boto3
 from botocore.config import Config
 from django.conf import settings
 from django.db import models
+from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import permissions, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -26,6 +27,123 @@ from .serializers import (
 )
 
 
+@extend_schema_view(
+    list=extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response=TicketSerializer,
+                examples=[
+                    OpenApiExample(
+                        "Ticket list",
+                        value=[
+                            {
+                                "id": 1,
+                                "apartment": 1,
+                                "apartment_detail": {
+                                    "id": 1,
+                                    "building_name": "Sunset Residences",
+                                    "apartment_number": "101",
+                                    "block": "A",
+                                },
+                                "category": "plumbing",
+                                "category_display": "Tesisat",
+                                "priority": "high",
+                                "priority_display": "Yüksek",
+                                "status": "new",
+                                "status_display": "Yeni",
+                                "title": "Leaking pipe in bathroom",
+                                "description": "Water leak under the sink",
+                                "photo_urls": [],
+                                "assigned_worker": None,
+                                "assigned_worker_display": "",
+                                "created_by": 2,
+                                "created_at": "2026-05-01T10:30:00Z",
+                                "updated_at": "2026-05-01T10:30:00Z",
+                                "resolved_at": None,
+                            }
+                        ],
+                    ),
+                ],
+            ),
+        },
+    ),
+    retrieve=extend_schema(
+        responses={
+            200: OpenApiResponse(
+                response=TicketDetailSerializer,
+                examples=[
+                    OpenApiExample(
+                        "Ticket detail",
+                        value={
+                            "id": 1,
+                            "apartment": 1,
+                            "apartment_detail": {
+                                "id": 1,
+                                "building_name": "Sunset Residences",
+                                "apartment_number": "101",
+                                "block": "A",
+                            },
+                            "category": "plumbing",
+                            "category_display": "Tesisat",
+                            "priority": "high",
+                            "priority_display": "Yüksek",
+                            "status": "new",
+                            "status_display": "Yeni",
+                            "title": "Leaking pipe in bathroom",
+                            "description": "Water leak under the sink",
+                            "photo_urls": [],
+                            "assigned_worker": None,
+                            "assigned_worker_display": "",
+                            "created_by": 2,
+                            "created_at": "2026-05-01T10:30:00Z",
+                            "updated_at": "2026-05-01T10:30:00Z",
+                            "resolved_at": None,
+                            "comments": [],
+                            "attachments": [],
+                        },
+                    ),
+                ],
+            ),
+        },
+    ),
+    create=extend_schema(
+        responses={
+            201: OpenApiResponse(
+                response=TicketSerializer,
+                examples=[
+                    OpenApiExample(
+                        "Created ticket",
+                        value={
+                            "id": 1,
+                            "apartment": 1,
+                            "apartment_detail": {
+                                "id": 1,
+                                "building_name": "Sunset Residences",
+                                "apartment_number": "101",
+                                "block": "A",
+                            },
+                            "category": "plumbing",
+                            "category_display": "Tesisat",
+                            "priority": "high",
+                            "priority_display": "Yüksek",
+                            "status": "new",
+                            "status_display": "Yeni",
+                            "title": "Leaking pipe in bathroom",
+                            "description": "Water leak under the sink",
+                            "photo_urls": [],
+                            "assigned_worker": None,
+                            "assigned_worker_display": "",
+                            "created_by": 2,
+                            "created_at": "2026-05-01T10:30:00Z",
+                            "updated_at": "2026-05-01T10:30:00Z",
+                            "resolved_at": None,
+                        },
+                    ),
+                ],
+            ),
+        },
+    ),
+)
 class TicketViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Ticket]):
     queryset = Ticket.objects.select_related("apartment__building", "assigned_worker__user", "created_by").all()
     serializer_class = TicketSerializer
