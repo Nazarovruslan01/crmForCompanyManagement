@@ -4,8 +4,9 @@ import { api } from '../lib/api';
 import { useDetail } from '../hooks/useDetail';
 import { DetailPageLayout } from '../components/ui/DetailPageLayout';
 import { TicketStatusBadge, TicketPriorityBadge } from '../components/ui/Badge';
+import { TicketForm } from '../components/forms/TicketForm';
 import type { Ticket, TicketComment } from '../types';
-import { MessageSquare, Paperclip, User, Calendar, MapPin, Send, Inbox } from 'lucide-react';
+import { MessageSquare, Paperclip, User, Calendar, MapPin, Send, Inbox, Pencil } from 'lucide-react';
 
 function SectionCard({ children }: { children: React.ReactNode }) {
   return (
@@ -40,8 +41,8 @@ export function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const ticketId = id ? Number(id) : undefined;
 
-  const { data: ticket, loading, error } = useDetail<Ticket>(api.tickets.get, ticketId);
-
+  const { data: ticket, loading, error, refetch } = useDetail<Ticket>(api.tickets.get, ticketId);
+  const [editOpen, setEditOpen] = useState(false);
   const [localTicket, setLocalTicket] = useState<Ticket | null>(null);
   const [newComment, setNewComment] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
@@ -66,7 +67,38 @@ export function TicketDetailPage() {
     }
   };
 
+  const editBtn = (
+    <button
+      onClick={() => setEditOpen(true)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '7px 14px', borderRadius: 9, fontSize: 13, fontWeight: 500,
+        border: '1px solid var(--color-gray-3)', background: '#fff',
+        color: 'var(--color-gray-8)', cursor: 'pointer', transition: 'all 150ms ease',
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-brand)';
+        (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-brand)';
+        (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-brand-light)';
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-gray-3)';
+        (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-gray-8)';
+        (e.currentTarget as HTMLButtonElement).style.background = '#fff';
+      }}
+    >
+      <Pencil size={13} /> Редактировать
+    </button>
+  );
+
   return (
+    <>
+    <TicketForm
+      open={editOpen}
+      onClose={() => setEditOpen(false)}
+      onSaved={() => { setEditOpen(false); refetch(); setLocalTicket(null); }}
+      initial={currentTicket ?? undefined}
+    />
     <DetailPageLayout
       fallbackTitle={`Заявка #${ticketId ?? ''}`}
       data={currentTicket}
@@ -74,6 +106,7 @@ export function TicketDetailPage() {
       error={error}
       backPath="/tickets"
       backLabel="Назад к заявкам"
+      actions={editBtn}
       getTitle={(t: Ticket) => `Заявка #${t.id}`}
       headerRenderer={(t: Ticket) => (
         <>
@@ -222,5 +255,6 @@ export function TicketDetailPage() {
         </SectionCard>
       </>
     </DetailPageLayout>
+    </>
   );
 }

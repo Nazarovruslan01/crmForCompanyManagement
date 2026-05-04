@@ -24,6 +24,8 @@ export interface DetailPageLayoutProps<T> {
   infoRenderer: (item: T) => React.ReactNode;
   /** Optional extra sections after the main card */
   children?: React.ReactNode;
+  /** Optional action buttons rendered top-right (e.g. Edit button) */
+  actions?: React.ReactNode;
 }
 
 export function DetailPageLayout<T>({
@@ -37,6 +39,7 @@ export function DetailPageLayout<T>({
   headerRenderer,
   infoRenderer,
   children,
+  actions,
 }: DetailPageLayoutProps<T>) {
   const navigate = useNavigate();
   const [backHover, setBackHover] = useState(false);
@@ -101,8 +104,8 @@ export function DetailPageLayout<T>({
 
   return (
     <PageLayout title={title}>
-      {/* Back button */}
-      <div style={{ marginBottom: 16 }}>
+      {/* Back button + actions */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <button
           onClick={() => navigate(backPath)}
           onMouseEnter={() => setBackHover(true)}
@@ -125,6 +128,7 @@ export function DetailPageLayout<T>({
           <ArrowLeft size={15} />
           {backLabel}
         </button>
+        {actions && <div style={{ display: 'flex', gap: 8 }}>{actions}</div>}
       </div>
 
       <div style={{ display: 'grid', gap: 16 }}>

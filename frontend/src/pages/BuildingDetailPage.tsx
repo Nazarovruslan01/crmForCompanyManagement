@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
@@ -6,8 +7,9 @@ import { DetailPageLayout } from '../components/ui/DetailPageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { Pagination } from '../components/ui/Pagination';
 import { Badge } from '../components/ui/Badge';
+import { BuildingForm } from '../components/forms/BuildingForm';
 import type { Building, Apartment } from '../types';
-import { Building2, MapPin, Wallet, Calendar, Home, Grid3X3, Settings2, Wand2 } from 'lucide-react';
+import { Building2, MapPin, Wallet, Calendar, Home, Grid3X3, Settings2, Wand2, Pencil } from 'lucide-react';
 
 const aptColumns: Column<Apartment>[] = [
   {
@@ -56,11 +58,13 @@ const aptColumns: Column<Apartment>[] = [
 export function BuildingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [editOpen, setEditOpen] = useState(false);
 
   const {
     data: building,
     loading,
     error,
+    refetch,
   } = useDetail<Building>(api.buildings.get, id ? Number(id) : undefined);
 
   const {
@@ -77,6 +81,13 @@ export function BuildingDetailPage() {
   );
 
   return (
+    <>
+    <BuildingForm
+      open={editOpen}
+      onClose={() => setEditOpen(false)}
+      onSaved={() => { setEditOpen(false); refetch(); }}
+      initial={building ?? undefined}
+    />
     <DetailPageLayout
       fallbackTitle="Здание"
       data={building}
@@ -84,6 +95,30 @@ export function BuildingDetailPage() {
       error={error}
       backPath="/buildings"
       getTitle={(b: Building) => b.name}
+      actions={
+        <button
+          onClick={() => setEditOpen(true)}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '7px 14px', borderRadius: 9, fontSize: 13, fontWeight: 500,
+            border: '1px solid var(--color-gray-3)', background: '#fff',
+            color: 'var(--color-gray-8)', cursor: 'pointer',
+            transition: 'all 150ms ease',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-brand)';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-brand)';
+            (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-brand-light)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-gray-3)';
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-gray-8)';
+            (e.currentTarget as HTMLButtonElement).style.background = '#fff';
+          }}
+        >
+          <Pencil size={13} /> Редактировать
+        </button>
+      }
       headerRenderer={(b: Building) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
           <div style={{
@@ -216,5 +251,6 @@ export function BuildingDetailPage() {
         />
       </div>
     </DetailPageLayout>
+    </>
   );
 }

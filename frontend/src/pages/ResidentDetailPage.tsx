@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
@@ -5,8 +6,9 @@ import { useDetail } from '../hooks/useDetail';
 import { DetailPageLayout } from '../components/ui/DetailPageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
+import { ResidentForm } from '../components/forms/ResidentForm';
 import type { Resident, Ownership } from '../types';
-import { User, Phone, Mail, FileText, Globe, Key } from 'lucide-react';
+import { User, Phone, Mail, FileText, Globe, Key, Pencil } from 'lucide-react';
 
 const ownershipColumns: Column<Ownership>[] = [
   {
@@ -55,15 +57,47 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
 
 export function ResidentDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [editOpen, setEditOpen] = useState(false);
 
-  const { data: resident, loading, error } = useDetail<Resident>(api.residents.get, id ? Number(id) : undefined);
+  const { data: resident, loading, error, refetch } = useDetail<Resident>(api.residents.get, id ? Number(id) : undefined);
 
   const { data: ownerships, loading: ownLoading, error: ownError } = useList<Ownership>(
     p => api.ownerships.list(p),
     id ? { resident: id } : undefined,
   );
 
+  const editBtn = (
+    <button
+      onClick={() => setEditOpen(true)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '7px 14px', borderRadius: 9, fontSize: 13, fontWeight: 500,
+        border: '1px solid var(--color-gray-3)', background: '#fff',
+        color: 'var(--color-gray-8)', cursor: 'pointer', transition: 'all 150ms ease',
+      }}
+      onMouseEnter={e => {
+        (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-brand)';
+        (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-brand)';
+        (e.currentTarget as HTMLButtonElement).style.background = 'var(--color-brand-light)';
+      }}
+      onMouseLeave={e => {
+        (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--color-gray-3)';
+        (e.currentTarget as HTMLButtonElement).style.color = 'var(--color-gray-8)';
+        (e.currentTarget as HTMLButtonElement).style.background = '#fff';
+      }}
+    >
+      <Pencil size={13} /> Редактировать
+    </button>
+  );
+
   return (
+    <>
+    <ResidentForm
+      open={editOpen}
+      onClose={() => setEditOpen(false)}
+      onSaved={() => { setEditOpen(false); refetch(); }}
+      initial={resident ?? undefined}
+    />
     <DetailPageLayout
       fallbackTitle="Жилец"
       data={resident}
@@ -71,6 +105,7 @@ export function ResidentDetailPage() {
       error={error}
       backPath="/residents"
       backLabel="Назад к жильцам"
+      actions={editBtn}
       getTitle={(r: Resident) => r.full_name}
       headerRenderer={(r: Resident) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
@@ -133,5 +168,6 @@ export function ResidentDetailPage() {
         />
       </div>
     </DetailPageLayout>
+    </>
   );
 }
