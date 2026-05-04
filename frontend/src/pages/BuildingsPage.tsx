@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
@@ -7,8 +7,14 @@ import { DataTable, type Column } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
 import { SearchInput } from '../components/ui/SearchInput';
+import { FilterSelect } from '../components/ui/FilterSelect';
 import { BuildingForm } from '../components/forms/BuildingForm';
 import type { Building } from '../types';
+
+const MGMT_OPTIONS = [
+  { value: 'self_managed', label: 'Самоуправление' },
+  { value: 'external_company', label: 'Внешняя УК' },
+];
 
 const mgmtColor = (t: Building['management_type']) =>
   t === 'self_managed' ? 'green' : 'blue';
@@ -49,10 +55,18 @@ const columns: Column<Building>[] = [
 export function BuildingsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [mgmtFilter, setMgmtFilter] = useState('');
   const [formOpen, setFormOpen] = useState(false);
 
+  const params = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (search) p.search = search;
+    if (mgmtFilter) p.management_type = mgmtFilter;
+    return Object.keys(p).length ? p : undefined;
+  }, [search, mgmtFilter]);
+
   const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious, refetch } =
-    useList<Building>(params => api.buildings.list(params), search ? { search } : undefined);
+    useList<Building>(params => api.buildings.list(params), params);
 
   return (
     <PageLayout
@@ -67,7 +81,15 @@ export function BuildingsPage() {
         </button>
       }
     >
-      <SearchInput placeholder="Поиск по названию или адресу" onSearch={setSearch} />
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        <SearchInput placeholder="Поиск по названию или адресу" onSearch={setSearch} style={{ marginBottom: 0, flex: 1, minWidth: 220 }} />
+        <FilterSelect
+          value={mgmtFilter}
+          onChange={setMgmtFilter}
+          options={MGMT_OPTIONS}
+          placeholder="Тип управления"
+        />
+      </div>
       <DataTable
         columns={columns}
         rows={data}

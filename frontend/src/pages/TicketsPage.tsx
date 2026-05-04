@@ -7,9 +7,26 @@ import { DataTable, type Column } from '../components/ui/DataTable';
 import { TicketStatusBadge, TicketPriorityBadge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
 import { SearchInput } from '../components/ui/SearchInput';
+import { FilterSelect } from '../components/ui/FilterSelect';
 import { TabBar } from '../components/ui/TabBar';
 import { TicketForm } from '../components/forms/TicketForm';
 import type { Ticket, TicketStatus } from '../types';
+
+const PRIORITY_OPTIONS = [
+  { value: 'low', label: 'Низкий' },
+  { value: 'medium', label: 'Средний' },
+  { value: 'high', label: 'Высокий' },
+  { value: 'urgent', label: 'Срочный' },
+];
+
+const CATEGORY_OPTIONS = [
+  { value: 'plumbing', label: 'Сантехника' },
+  { value: 'electrical', label: 'Электрика' },
+  { value: 'cleaning', label: 'Уборка' },
+  { value: 'security', label: 'Безопасность' },
+  { value: 'noise', label: 'Шум' },
+  { value: 'general', label: 'Общее' },
+];
 
 const STATUS_TABS: { value: TicketStatus | ''; label: string }[] = [
   { value: '', label: 'Все' },
@@ -64,15 +81,19 @@ const columns: Column<Ticket>[] = [
 export function TicketsPage() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<TicketStatus | ''>('');
+  const [priorityFilter, setPriorityFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [search, setSearch] = useState('');
   const [formOpen, setFormOpen] = useState(false);
 
   const params = useMemo(() => {
     const p: Record<string, string> = {};
     if (statusFilter) p.status = statusFilter;
+    if (priorityFilter) p.priority = priorityFilter;
+    if (categoryFilter) p.category = categoryFilter;
     if (search) p.search = search;
     return Object.keys(p).length ? p : undefined;
-  }, [statusFilter, search]);
+  }, [statusFilter, priorityFilter, categoryFilter, search]);
 
   const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious, refetch } =
     useList<Ticket>(p => api.tickets.list(p), params);
@@ -90,7 +111,25 @@ export function TicketsPage() {
         </button>
       }
     >
-      <SearchInput placeholder="Поиск по заявке или квартире" onSearch={setSearch} />
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
+        <SearchInput
+          placeholder="Поиск по заявке или квартире"
+          onSearch={setSearch}
+          style={{ marginBottom: 0, flex: 1, minWidth: 220 }}
+        />
+        <FilterSelect
+          value={priorityFilter}
+          onChange={setPriorityFilter}
+          options={PRIORITY_OPTIONS}
+          placeholder="Приоритет"
+        />
+        <FilterSelect
+          value={categoryFilter}
+          onChange={setCategoryFilter}
+          options={CATEGORY_OPTIONS}
+          placeholder="Категория"
+        />
+      </div>
       <TabBar tabs={STATUS_TABS} value={statusFilter} onChange={setStatusFilter} />
 
       <DataTable

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
@@ -7,8 +7,20 @@ import { DataTable, type Column } from '../components/ui/DataTable';
 import { Badge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
 import { SearchInput } from '../components/ui/SearchInput';
+import { FilterSelect } from '../components/ui/FilterSelect';
 import { ResidentForm } from '../components/forms/ResidentForm';
 import type { Resident } from '../types';
+
+const OWNER_TYPE_OPTIONS = [
+  { value: 'owner', label: 'Владелец' },
+  { value: 'tenant', label: 'Арендатор' },
+  { value: 'resident', label: 'Жилец' },
+];
+
+const FOREIGN_OPTIONS = [
+  { value: 'true', label: 'Иностранец' },
+  { value: 'false', label: 'Местный' },
+];
 
 const columns: Column<Resident>[] = [
   {
@@ -51,10 +63,20 @@ const columns: Column<Resident>[] = [
 export function ResidentsPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [ownerTypeFilter, setOwnerTypeFilter] = useState('');
+  const [foreignFilter, setForeignFilter] = useState('');
   const [formOpen, setFormOpen] = useState(false);
 
+  const params = useMemo(() => {
+    const p: Record<string, string> = {};
+    if (search) p.search = search;
+    if (ownerTypeFilter) p.owner_type = ownerTypeFilter;
+    if (foreignFilter) p.is_foreign_owner = foreignFilter;
+    return Object.keys(p).length ? p : undefined;
+  }, [search, ownerTypeFilter, foreignFilter]);
+
   const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious, refetch } =
-    useList<Resident>(p => api.residents.list(p), search ? { search } : undefined);
+    useList<Resident>(p => api.residents.list(p), params);
 
   return (
     <PageLayout
@@ -69,7 +91,25 @@ export function ResidentsPage() {
         </button>
       }
     >
-      <SearchInput placeholder="Поиск по ФИО, ТС или паспорту" onSearch={setSearch} />
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
+        <SearchInput
+          placeholder="Поиск по ФИО, ТС или паспорту"
+          onSearch={setSearch}
+          style={{ marginBottom: 0, flex: 1, minWidth: 220 }}
+        />
+        <FilterSelect
+          value={ownerTypeFilter}
+          onChange={setOwnerTypeFilter}
+          options={OWNER_TYPE_OPTIONS}
+          placeholder="Тип жильца"
+        />
+        <FilterSelect
+          value={foreignFilter}
+          onChange={setForeignFilter}
+          options={FOREIGN_OPTIONS}
+          placeholder="Гражданство"
+        />
+      </div>
       <DataTable
         columns={columns}
         rows={data}

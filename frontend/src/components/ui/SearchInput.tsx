@@ -5,9 +5,10 @@ interface SearchInputProps {
   placeholder?: string;
   onSearch: (value: string) => void;
   debounceMs?: number;
+  style?: React.CSSProperties;
 }
 
-export function SearchInput({ placeholder = 'Поиск...', onSearch, debounceMs = 350 }: SearchInputProps) {
+export function SearchInput({ placeholder = 'Поиск...', onSearch, debounceMs = 350, style }: SearchInputProps) {
   const [value, setValue] = useState('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -18,7 +19,7 @@ export function SearchInput({ placeholder = 'Поиск...', onSearch, debounceM
   }, [value]);
 
   return (
-    <div style={{ position: 'relative', marginBottom: 16 }}>
+    <div style={{ position: 'relative', marginBottom: 16, ...style }}>
       <Search
         size={16}
         style={{
