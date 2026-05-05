@@ -134,6 +134,13 @@ class ApiClient {
     return this.request<User>('/accounts/me/');
   }
 
+  users = {
+    list:   (params?: Record<string, string>) => this.list<User>('/accounts/users/', params),
+    get:    (id: number)                      => this.request<User>(`/accounts/users/${id}/`),
+    create: (data: Record<string, unknown>)   => this.request<User>('/accounts/users/', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: number, data: Record<string, unknown>) => this.request<User>(`/accounts/users/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+  };
+
   async changePassword(old_password: string, new_password: string): Promise<{ detail: string }> {
     return this.request<{ detail: string }>('/accounts/password/change/', {
       method: 'POST',
