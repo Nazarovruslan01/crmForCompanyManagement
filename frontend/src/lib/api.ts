@@ -57,10 +57,10 @@ class ApiClient {
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE}${endpoint}`;
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
-    };
+    const isFormData = options.body instanceof FormData;
+    const headers: Record<string, string> = isFormData
+      ? { ...(options.headers as Record<string, string>) }
+      : { 'Content-Type': 'application/json', ...(options.headers as Record<string, string>) };
 
     const token = this.getAccessToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -225,7 +225,11 @@ class ApiClient {
 
   // ─── Documents ───────────────────────────────────────────────────────────────
 
-  documents = this.crud<Document>('/documents/documents');
+  documents = {
+    ...this.crud<Document>('/documents/documents'),
+    upload: (formData: FormData) =>
+      this.request<Document>('/documents/documents/', { method: 'POST', body: formData }),
+  };
 
   // ─── Meetings ─────────────────────────────────────────────────────────────────
 
