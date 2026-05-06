@@ -32,7 +32,7 @@ class Document(models.Model):
     # Optional links to domain objects
     building = models.ForeignKey(
         "properties.Building",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="documents",
@@ -40,7 +40,7 @@ class Document(models.Model):
     )
     apartment = models.ForeignKey(
         "properties.Apartment",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="documents",
@@ -48,7 +48,7 @@ class Document(models.Model):
     )
     resident = models.ForeignKey(
         "residents.Resident",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="documents",

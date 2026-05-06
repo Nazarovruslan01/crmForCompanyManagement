@@ -4,6 +4,7 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from .auth_views import (
+    CookieTokenRefreshView,
     LoginView,
     LogoutView,
     MFADisableView,
@@ -25,6 +26,7 @@ urlpatterns = [
     # Auth endpoints
     path("login/", LoginView.as_view(), name="auth-login"),
     path("logout/", LogoutView.as_view(), name="auth-logout"),
+    path("token/refresh/", CookieTokenRefreshView.as_view(), name="token-refresh"),
     path("password/reset/", PasswordResetRequestView.as_view(), name="password-reset-request"),
     path("password/reset/<str:token>/", PasswordResetConfirmView.as_view(), name="password-reset-confirm"),
     path("password/change/", PasswordChangeView.as_view(), name="password-change"),

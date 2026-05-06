@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "channels",
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "django_filters",
     "corsheaders",
     "drf_spectacular",
@@ -253,6 +254,7 @@ SIMPLE_JWT = {
 # Set CORS_ALLOW_ALL_ORIGINS=True explicitly in local.py for development only.
 CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "").lower() == "true"
 CORS_ALLOWED_ORIGINS = [x for x in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if x]
+CORS_ALLOW_CREDENTIALS = True
 
 # Cache (Redis)
 CACHES = {

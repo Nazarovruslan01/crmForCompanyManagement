@@ -61,9 +61,10 @@ class CacheListRetrieveMixin:
         return int(version)
 
     def _cache_key(self, request: Request, action: str) -> str:
-        """Build a cache key that includes the model version."""
+        """Build a cache key scoped to the model version and authenticated user."""
         version = self._cache_version()
-        return f"{self.__class__.__name__}:v{version}:{action}:{request.build_absolute_uri()}"
+        user_id = getattr(request.user, "id", "anon") if getattr(request.user, "is_authenticated", False) else "anon"
+        return f"{self.__class__.__name__}:v{version}:u{user_id}:{action}:{request.build_absolute_uri()}"
 
     def _bump_cache_version(self) -> None:
         """Invalidate all cached list/retrieve entries for this model."""

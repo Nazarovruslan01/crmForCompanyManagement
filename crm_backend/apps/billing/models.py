@@ -17,7 +17,7 @@ class AidatCharge(models.Model):
         OVERDUE = "overdue", "Gecikmiş"
         CANCELLED = "cancelled", "İptal Edildi"
 
-    apartment = models.ForeignKey("properties.Apartment", on_delete=models.CASCADE, related_name="aidat_charges")
+    apartment = models.ForeignKey("properties.Apartment", on_delete=models.PROTECT, related_name="aidat_charges")
     billing_period_start = models.DateField()
     billing_period_end = models.DateField()
     base_amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Base Amount (TRY)")
@@ -128,7 +128,7 @@ class Payment(models.Model):
         EXTRAORDINARY = "extraordinary", "Olağanüstü Aidat"
         OTHER = "other", "Diğer"
 
-    apartment = models.ForeignKey("properties.Apartment", on_delete=models.CASCADE, related_name="payments")
+    apartment = models.ForeignKey("properties.Apartment", on_delete=models.PROTECT, related_name="payments")
     charge_type = models.CharField(max_length=20, choices=ChargeType.choices, help_text="Type of charge being paid")
     charge_id = models.UUIDField(null=True, blank=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)

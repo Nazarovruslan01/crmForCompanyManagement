@@ -18,3 +18,11 @@ Thumbs.db
 *.swp
 *.swo
 .claude/
+
+# Secrets & environment
+.env
+.env.*
+!.env.example
+
+# Docker secrets
+docker/pgbouncer.userlist.txt
