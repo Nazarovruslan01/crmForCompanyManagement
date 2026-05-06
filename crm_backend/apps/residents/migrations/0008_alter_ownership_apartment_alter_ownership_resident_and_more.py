@@ -5,26 +5,31 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('properties', '0003_alter_apartment_id_alter_building_id'),
-        ('residents', '0007_alter_resident_tc_kimlik_no_and_more'),
+        ("properties", "0003_alter_apartment_id_alter_building_id"),
+        ("residents", "0007_alter_resident_tc_kimlik_no_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='ownership',
-            name='apartment',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='ownerships', to='properties.apartment'),
+            model_name="ownership",
+            name="apartment",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT, related_name="ownerships", to="properties.apartment"
+            ),
         ),
         migrations.AlterField(
-            model_name='ownership',
-            name='resident',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='ownerships', to='residents.resident'),
+            model_name="ownership",
+            name="resident",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT, related_name="ownerships", to="residents.resident"
+            ),
         ),
         migrations.AlterField(
-            model_name='personalaccount',
-            name='apartment',
-            field=models.OneToOneField(on_delete=django.db.models.deletion.PROTECT, related_name='personal_account', to='properties.apartment'),
+            model_name="personalaccount",
+            name="apartment",
+            field=models.OneToOneField(
+                on_delete=django.db.models.deletion.PROTECT, related_name="personal_account", to="properties.apartment"
+            ),
         ),
     ]

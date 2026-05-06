@@ -5,27 +5,47 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('documents', '0003_document_document_has_at_least_one_link'),
-        ('properties', '0003_alter_apartment_id_alter_building_id'),
-        ('residents', '0007_alter_resident_tc_kimlik_no_and_more'),
+        ("documents", "0003_document_document_has_at_least_one_link"),
+        ("properties", "0003_alter_apartment_id_alter_building_id"),
+        ("residents", "0007_alter_resident_tc_kimlik_no_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='document',
-            name='apartment',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='documents', to='properties.apartment', verbose_name='Квартира'),
+            model_name="document",
+            name="apartment",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="documents",
+                to="properties.apartment",
+                verbose_name="Квартира",
+            ),
         ),
         migrations.AlterField(
-            model_name='document',
-            name='building',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='documents', to='properties.building', verbose_name='Здание'),
+            model_name="document",
+            name="building",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="documents",
+                to="properties.building",
+                verbose_name="Здание",
+            ),
         ),
         migrations.AlterField(
-            model_name='document',
-            name='resident',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='documents', to='residents.resident', verbose_name='Жилец'),
+            model_name="document",
+            name="resident",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="documents",
+                to="residents.resident",
+                verbose_name="Жилец",
+            ),
         ),
     ]

@@ -152,7 +152,7 @@ class LogoutView(APIView):
         refresh_token = request.COOKIES.get("refresh_token")
         if refresh_token:
             try:
-                token = RefreshToken(refresh_token)  # type: ignore[reportArgumentType]
+                token = RefreshToken(refresh_token)  # type: ignore[arg-type]
                 token.blacklist()
             except Exception:
                 logger.warning("Failed to blacklist refresh token during logout", exc_info=True)

@@ -5,21 +5,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('billing', '0009_add_model_ordering'),
-        ('properties', '0003_alter_apartment_id_alter_building_id'),
+        ("billing", "0009_add_model_ordering"),
+        ("properties", "0003_alter_apartment_id_alter_building_id"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='aidatcharge',
-            name='apartment',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='aidat_charges', to='properties.apartment'),
+            model_name="aidatcharge",
+            name="apartment",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT, related_name="aidat_charges", to="properties.apartment"
+            ),
         ),
         migrations.AlterField(
-            model_name='payment',
-            name='apartment',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='payments', to='properties.apartment'),
+            model_name="payment",
+            name="apartment",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT, related_name="payments", to="properties.apartment"
+            ),
         ),
     ]
