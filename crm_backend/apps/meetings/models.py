@@ -41,6 +41,12 @@ class Meeting(models.Model):
         related_name="created_meetings",
         verbose_name="Создал",
     )
+    reminder_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Напоминание отправлено",
+        help_text="Время отправки напоминания жильцам",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

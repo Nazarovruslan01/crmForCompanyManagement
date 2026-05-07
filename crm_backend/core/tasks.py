@@ -824,3 +824,174 @@ def generate_receipt_pdf(payment_id: int) -> ReceiptGenerationResult:
 
     logger.info("generate_receipt_pdf: Receipt %s created for payment %s", receipt.pk, payment_id)
     return ReceiptGenerationResult(receipt_id=receipt.pk, success=True, error=None)
+
+
+class MeetingReminderResult(TypedDict):
+    meetings_found: int
+    emails_queued: int
+    telegrams_sent: int
+    failed: int
+
+
+@shared_task
+def send_meeting_reminders() -> MeetingReminderResult:
+    """Send email and Telegram reminders for upcoming meetings.
+
+    Finds meetings scheduled within the next 24 hours where reminders
+    have not yet been sent. Notifies all residents of the building
+    via email and Telegram (when linked).
+
+    Runs daily via Celery beat at 08:00.
+    """
+    from apps.meetings.models import Meeting
+    from apps.messenger.models import MessengerUser
+    from apps.messenger.telegram_client import send_telegram_message
+    from apps.notifications.models import NotificationLog, NotificationTemplate
+    from apps.residents.models import Ownership, Resident
+
+    now = timezone.now()
+    reminder_window_end = now + timedelta(hours=24)
+
+    meetings = Meeting.objects.filter(
+        status=Meeting.Status.SCHEDULED,
+        scheduled_date__gt=now,
+        scheduled_date__lte=reminder_window_end,
+        reminder_sent_at__isnull=True,
+    ).select_related("building")
+
+    if not meetings.exists():
+        logger.info("No upcoming meetings require reminders")
+        return MeetingReminderResult(meetings_found=0, emails_queued=0, telegrams_sent=0, failed=0)
+
+    # Fetch active meeting_reminder templates
+    templates = {
+        t.channel: t
+        for t in NotificationTemplate.objects.filter(
+            notification_type=NotificationTemplate.NotificationType.MEETING_REMINDER,
+            is_active=True,
+        )
+    }
+
+    emails_queued = 0
+    telegrams_sent = 0
+    failed = 0
+
+    for meeting in meetings:
+        building = meeting.building
+
+        # Gather all residents for this building
+        resident_ids = (
+            Ownership.objects.filter(
+                apartment__building=building,
+            )
+            .values_list("resident_id", flat=True)
+            .distinct()
+        )
+
+        residents = Resident.objects.filter(pk__in=resident_ids).select_related("user")
+
+        # Build recipient data
+        emails: list[str] = []
+
+        for resident in residents:
+            if resident.email:
+                emails.append(resident.email)
+
+        # Email notifications
+        email_template = templates.get("email")
+        if email_template and emails:
+            try:
+                body = email_template.body_template.format(
+                    meeting_title=meeting.title,
+                    building_name=building.name,
+                    scheduled_date=meeting.scheduled_date.strftime("%d.%m.%Y %H:%M"),
+                    description=meeting.description or "",
+                )
+                subject = email_template.subject or f"Toplantı Hatırlatma — {meeting.title}"
+
+                # Log and queue emails
+                logs: list[NotificationLog] = []
+                for resident in residents:
+                    if resident.email:
+                        logs.append(
+                            NotificationLog(
+                                template=email_template,
+                                recipient=resident,
+                                channel="email",
+                                subject=subject,
+                                body=body,
+                                status=NotificationLog.Status.PENDING,
+                            )
+                        )
+
+                if logs:
+                    NotificationLog.objects.bulk_create(logs, batch_size=500)
+
+                # Queue one email task per recipient
+                for email in emails:
+                    send_email_async.delay(subject=subject, message=body, recipient_list=[email])  # type: ignore
+                    emails_queued += 1
+            except Exception as exc:
+                logger.error("Failed to queue email reminders for meeting %s: %s", meeting.pk, exc)
+                failed += 1
+
+        # Telegram notifications
+        telegram_template = templates.get("telegram")
+        if telegram_template:
+            try:
+                messenger_users = MessengerUser.objects.filter(
+                    resident__pk__in=resident_ids,
+                    telegram_chat_id__isnull=False,
+                    is_active=True,
+                ).select_related("resident")
+
+                for mu in messenger_users:
+                    body = telegram_template.body_template.format(
+                        meeting_title=meeting.title,
+                        building_name=building.name,
+                        scheduled_date=meeting.scheduled_date.strftime("%d.%m.%Y %H:%M"),
+                        description=meeting.description or "",
+                    )
+
+                    result = send_telegram_message(mu.telegram_chat_id, body)
+                    if result:
+                        telegrams_sent += 1
+                        NotificationLog.objects.create(
+                            template=telegram_template,
+                            recipient=mu.resident,
+                            channel="telegram",
+                            subject="",
+                            body=body,
+                            status=NotificationLog.Status.SENT,
+                        )
+                    else:
+                        failed += 1
+                        NotificationLog.objects.create(
+                            template=telegram_template,
+                            recipient=mu.resident,
+                            channel="telegram",
+                            subject="",
+                            body=body,
+                            status=NotificationLog.Status.FAILED,
+                        )
+            except Exception as exc:
+                logger.error("Failed to send Telegram reminders for meeting %s: %s", meeting.pk, exc)
+                failed += 1
+
+        # Mark reminder as sent
+        meeting.reminder_sent_at = now
+        meeting.save(update_fields=["reminder_sent_at"])
+
+    logger.info(
+        "Meeting reminders: %d meetings, %d emails queued, %d telegrams sent, %d failed",
+        meetings.count(),
+        emails_queued,
+        telegrams_sent,
+        failed,
+    )
+    return MeetingReminderResult(
+        meetings_found=meetings.count(),
+        emails_queued=emails_queued,
+        telegrams_sent=telegrams_sent,
+        failed=failed,
+    )
