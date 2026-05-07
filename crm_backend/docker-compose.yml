@@ -1,5 +1,9 @@
 version: "3.9"
 
+# Local development only — copy .env.example to .env before running.
+# Docker Compose automatically loads variables from .env.
+# Never commit real credentials or use this file in production.
+
 services:
   db:
     image: postgres:16-alpine
@@ -8,7 +12,7 @@ services:
     environment:
       POSTGRES_DB: crm_db
       POSTGRES_USER: crm_user
-      POSTGRES_PASSWORD: changeme
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     healthcheck:
@@ -40,12 +44,12 @@ services:
       - "8000:8000"
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.base
-      DATABASE_URL: postgresql://crm_user:changeme@db:5432/crm_db
-      REDIS_URL: redis://redis:6379/0
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-docker-local-only}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DEBUG: "True"
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
     depends_on:
       db:
         condition: service_healthy
@@ -68,12 +72,12 @@ services:
       - media_volume:/app/media
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.base
-      DATABASE_URL: postgresql://crm_user:changeme@db:5432/crm_db
-      REDIS_URL: redis://redis:6379/0
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-docker-local-only}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DEBUG: "True"
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
     depends_on:
       db:
         condition: service_healthy
@@ -89,12 +93,12 @@ services:
       - .:/app
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.base
-      DATABASE_URL: postgresql://crm_user:changeme@db:5432/crm_db
-      REDIS_URL: redis://redis:6379/0
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-docker-local-only}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DEBUG: "True"
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
     depends_on:
       db:
         condition: service_healthy
@@ -111,12 +115,12 @@ services:
       - "5555:5555"
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.base
-      DATABASE_URL: postgresql://crm_user:changeme@db:5432/crm_db
-      REDIS_URL: redis://redis:6379/0
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-docker-local-only}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DEBUG: "True"
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND}
     depends_on:
       - redis
       - worker

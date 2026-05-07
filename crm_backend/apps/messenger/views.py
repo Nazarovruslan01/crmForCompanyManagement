@@ -25,7 +25,7 @@ class TelegramWebhookView(View):
     http_method_names = ["post", "head"]
 
     def post(self, request, *args, **kwargs):
-        # Verify Telegram secret token to prevent unauthorized requests
+        # H-9: Verify Telegram secret token to prevent unauthorized requests
         expected_token = getattr(settings, "TELEGRAM_WEBHOOK_SECRET", "")
         if expected_token:
             received_token = request.META.get("HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN", "")

@@ -149,12 +149,14 @@ class TestOwnershipViewSet:
         assert response.status_code == status.HTTP_200_OK
 
     def test_update_account(self, admin_client, personal_account):
-        """Admin can update a personal account."""
-        payload = {"balance": 100}
+        """Admin can update a personal account (balance is read-only)."""
+        original_balance = personal_account.balance
+        payload = {"is_active": False, "balance": 999}
         response = admin_client.patch(f"/api/v2/residents/accounts/{personal_account.id}/", payload, format="json")
         assert response.status_code == status.HTTP_200_OK
         personal_account.refresh_from_db()
-        assert float(personal_account.balance) == 100
+        assert personal_account.is_active is False
+        assert personal_account.balance == original_balance
 
     def test_delete_account(self, admin_client, personal_account):
         """Admin can delete a personal account."""

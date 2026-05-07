@@ -135,6 +135,53 @@ class TestTelegramWebhookView:
         )
         assert response.status_code == 400
 
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_webhook_wrong_secret_token_rejected(self, mock_send, api_client, settings):
+        """H-9: Requests with wrong X-Telegram-Bot-Api-Secret-Token are rejected."""
+        settings.TELEGRAM_WEBHOOK_SECRET = "correct-secret"
+        payload = {
+            "update_id": 3,
+            "message": {
+                "message_id": 3,
+                "from": {"id": 111, "is_bot": False, "first_name": "Test"},
+                "chat": {"id": 111, "type": "private"},
+                "date": 1234567890,
+                "text": "/start",
+            },
+        }
+        url = reverse("messenger:telegram-webhook")
+        response = api_client.post(
+            url,
+            data=json.dumps(payload),
+            content_type="application/json",
+            HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN="wrong-secret",
+        )
+        assert response.status_code == 403
+
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_webhook_correct_secret_token_accepted(self, mock_send, api_client, settings):
+        """H-9: Requests with correct secret token are accepted."""
+        settings.TELEGRAM_WEBHOOK_SECRET = "correct-secret"
+        payload = {
+            "update_id": 4,
+            "message": {
+                "message_id": 4,
+                "from": {"id": 112, "is_bot": False, "first_name": "Test"},
+                "chat": {"id": 112, "type": "private"},
+                "date": 1234567890,
+                "text": "/start",
+            },
+        }
+        url = reverse("messenger:telegram-webhook")
+        response = api_client.post(
+            url,
+            data=json.dumps(payload),
+            content_type="application/json",
+            HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN="correct-secret",
+        )
+        assert response.status_code == 200
+        assert response.json()["ok"] is True
+
 
 class TestTelegramRegistrationFlow:
     @patch("apps.messenger.telegram_client.send_telegram_message")

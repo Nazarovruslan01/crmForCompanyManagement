@@ -34,6 +34,11 @@ class EmployeeSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["created_at", "updated_at"]
 
+    def update(self, instance, validated_data):
+        # H-7: prevent reassignment of user FK via API
+        validated_data.pop("user", None)
+        return super().update(instance, validated_data)
+
 
 class TaskSerializer(serializers.ModelSerializer):
     assigned_to_display = serializers.CharField(source="assigned_to.__str__", read_only=True)
@@ -58,7 +63,7 @@ class TaskSerializer(serializers.ModelSerializer):
             "updated_at",
             "completed_at",
         ]
-        read_only_fields = ["created_at", "updated_at", "completed_at"]
+        read_only_fields = ["created_at", "updated_at", "completed_at", "created_by"]
 
 
 # pyright: reportIncompatibleVariableOverride=false

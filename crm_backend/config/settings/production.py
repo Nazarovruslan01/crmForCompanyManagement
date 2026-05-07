@@ -66,6 +66,9 @@ AWS_S3_FILE_OVERWRITE = False
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [x for x in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if x]
 
+# Telegram Bot — webhook secret is mandatory in production to prevent spoofing
+TELEGRAM_WEBHOOK_SECRET = os.environ["TELEGRAM_WEBHOOK_SECRET"]
+
 # Sentry — error tracking and performance monitoring
 _sentry_dsn = os.getenv("SENTRY_DSN", "")
 if _sentry_dsn:
