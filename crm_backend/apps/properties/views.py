@@ -265,7 +265,9 @@ class ApartmentViewSet(AuditLogMixin, CacheListRetrieveMixin, ResidentQuerySetMi
 
 
 class ApartmentMinimalViewSet(
+    AuditLogMixin,
     CacheListRetrieveMixin,
+    ResidentQuerySetMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet[Apartment],
@@ -274,5 +276,6 @@ class ApartmentMinimalViewSet(
 
     queryset = Apartment.objects.select_related("building").all()
     serializer_class = ApartmentMinimalSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     throttle_classes = [UserReadThrottle]
+    resident_lookup = "ownerships__resident__user"
