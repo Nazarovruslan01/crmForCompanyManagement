@@ -25,6 +25,9 @@ psycopg2-binary>=2.9,<3.0
 # PDF Generation
 reportlab>=4.0,<5.0
 
+# Excel Generation
+openpyxl>=3.1,<4.0
+
 # API Documentation
 drf-spectacular>=0.27,<1.0
 

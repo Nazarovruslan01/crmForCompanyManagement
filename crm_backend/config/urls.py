@@ -32,6 +32,7 @@ urlpatterns = [
                 path("documents/", include("apps.documents.urls")),
                 path("meetings/", include("apps.meetings.urls")),
                 path("dashboard/", include("apps.dashboard.urls")),
+                path("reports/", include("apps.reports.urls")),
             ]
         ),
     ),
