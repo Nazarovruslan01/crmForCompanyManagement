@@ -2,6 +2,7 @@
 
 """Meetings app views for REST API."""
 
+from django.db import transaction
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -48,40 +49,34 @@ class MeetingViewSet(
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrManager])
     def start(self, request: Request, pk: int) -> Response:
         """Transition meeting from scheduled to active."""
-
-        meeting = self.get_object()
-        if meeting.status != Meeting.Status.SCHEDULED:
-            return Response(
-                {"detail": "Meeting can only be started from scheduled state"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        meeting.status = Meeting.Status.ACTIVE
-        meeting.save(update_fields=["status"])
+        with transaction.atomic():
+            meeting = Meeting.objects.select_for_update().get(pk=pk)
+            if meeting.status != Meeting.Status.SCHEDULED:
+                return Response(
+                    {"detail": "Meeting can only be started from scheduled state"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            meeting.status = Meeting.Status.ACTIVE
+            meeting.save(update_fields=["status"])
         return Response(MeetingSerializer(meeting).data)
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminOrManager])
     def close(self, request: Request, pk: int) -> Response:
         """Transition meeting from active to completed."""
-        meeting = self.get_object()
-        if meeting.status != Meeting.Status.ACTIVE:
-            return Response(
-                {"detail": "Meeting can only be closed from active state"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        meeting.status = Meeting.Status.COMPLETED
-        meeting.save(update_fields=["status"])
+        with transaction.atomic():
+            meeting = Meeting.objects.select_for_update().get(pk=pk)
+            if meeting.status != Meeting.Status.ACTIVE:
+                return Response(
+                    {"detail": "Meeting can only be closed from active state"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            meeting.status = Meeting.Status.COMPLETED
+            meeting.save(update_fields=["status"])
         return Response(MeetingSerializer(meeting).data)
 
     @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
     def vote(self, request: Request, pk: int) -> Response:
         """Cast a vote on an agenda item. Only residents can vote."""
-        meeting = self.get_object()
-        if meeting.status != Meeting.Status.ACTIVE:
-            return Response(
-                {"detail": "Voting is only allowed while meeting is active"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
         agenda_item_id = request.data.get("agenda_item")
         vote_choice = request.data.get("vote_choice")
         if not agenda_item_id or not vote_choice:
@@ -90,26 +85,34 @@ class MeetingViewSet(
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        try:
-            agenda_item = meeting.agenda_items.get(id=agenda_item_id)  # type: ignore[attr-defined]
-        except AgendaItem.DoesNotExist:
-            return Response(
-                {"detail": "Agenda item not found in this meeting"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        with transaction.atomic():
+            meeting = Meeting.objects.select_for_update().get(pk=pk)
+            if meeting.status != Meeting.Status.ACTIVE:
+                return Response(
+                    {"detail": "Voting is only allowed while meeting is active"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        resident = getattr(request.user, "resident_profile", None)
-        if not resident:
-            return Response(
-                {"detail": "Only residents can vote"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+            try:
+                agenda_item = meeting.agenda_items.get(id=agenda_item_id)
+            except AgendaItem.DoesNotExist:
+                return Response(
+                    {"detail": "Agenda item not found in this meeting"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
-        vote, created = Vote.objects.update_or_create(
-            agenda_item=agenda_item,
-            resident=resident,
-            defaults={"vote_choice": vote_choice},
-        )
+            resident = getattr(request.user, "resident_profile", None)
+            if not resident:
+                return Response(
+                    {"detail": "Only residents can vote"},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            vote, created = Vote.objects.update_or_create(
+                agenda_item=agenda_item,
+                resident=resident,
+                defaults={"vote_choice": vote_choice},
+            )
         return Response(VoteSerializer(vote).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
 
