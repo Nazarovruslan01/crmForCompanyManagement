@@ -2,7 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
+import type { User } from './types';
 import { LoginPage } from './pages/LoginPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { DashboardLayout } from './components/DashboardLayout';
 import { DashboardPage } from './pages/DashboardPage';
 import { BuildingsPage } from './pages/BuildingsPage';
@@ -34,7 +36,21 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function AppRoutes() {
+function AuthorizeRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: User['role'][] }) {
+  const { isAuthenticated, isLoading, user } = useAuth();
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!user || !allowedRoles.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <>{children}</>;
+}
+
+export function AppRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
@@ -57,24 +73,24 @@ function AppRoutes() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard"     element={<DashboardPage />} />
-        <Route path="buildings"     element={<BuildingsPage />} />
-        <Route path="buildings/:id" element={<BuildingDetailPage />} />
-        <Route path="buildings/:id/chessboard" element={<ChessboardPage />} />
-        <Route path="buildings/:id/setup" element={<BuildingSetupPage />} />
-        <Route path="apartments/:id" element={<ApartmentDetailPage />} />
+        <Route path="buildings"     element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><BuildingsPage /></AuthorizeRoute>} />
+        <Route path="buildings/:id" element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><BuildingDetailPage /></AuthorizeRoute>} />
+        <Route path="buildings/:id/chessboard" element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><ChessboardPage /></AuthorizeRoute>} />
+        <Route path="buildings/:id/setup" element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><BuildingSetupPage /></AuthorizeRoute>} />
+        <Route path="apartments/:id" element={<ProtectedRoute><ApartmentDetailPage /></ProtectedRoute>} />
         <Route path="tickets"       element={<TicketsPage />} />
         <Route path="tickets/:id"    element={<TicketDetailPage />} />
-        <Route path="residents"     element={<ResidentsPage />} />
-        <Route path="residents/:id" element={<ResidentDetailPage />} />
-        <Route path="staff"         element={<StaffPage />} />
-        <Route path="billing"       element={<BillingPage />} />
-        <Route path="documents"     element={<DocumentsPage />} />
-        <Route path="meetings"      element={<MeetingsPage />} />
-        <Route path="meetings/:id"  element={<MeetingDetailPage />} />
-        <Route path="notifications" element={<NotificationsPage />} />
-        <Route path="settings"      element={<SettingsPage />} />
+        <Route path="residents"     element={<ProtectedRoute><ResidentsPage /></ProtectedRoute>} />
+        <Route path="residents/:id" element={<ProtectedRoute><ResidentDetailPage /></ProtectedRoute>} />
+        <Route path="staff"         element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><StaffPage /></AuthorizeRoute>} />
+        <Route path="billing"       element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><BillingPage /></AuthorizeRoute>} />
+        <Route path="documents"     element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><DocumentsPage /></AuthorizeRoute>} />
+        <Route path="meetings"      element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><MeetingsPage /></AuthorizeRoute>} />
+        <Route path="meetings/:id"  element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><MeetingDetailPage /></AuthorizeRoute>} />
+        <Route path="notifications" element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><NotificationsPage /></AuthorizeRoute>} />
+        <Route path="settings"      element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><SettingsPage /></AuthorizeRoute>} />
       </Route>
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

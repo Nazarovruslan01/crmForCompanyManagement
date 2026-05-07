@@ -32,20 +32,6 @@ export function MeetingForm({ open, onClose, onSaved, initial }: Props) {
     api.buildings.list().then(r => setBuildings(r.results)).catch(() => {});
   }, [open]);
 
-  useEffect(() => {
-    if (open && initial) {
-      setForm({
-        building: String(initial.building),
-        title: initial.title,
-        description: initial.description ?? '',
-        scheduled_date: initial.scheduled_date?.slice(0, 16) ?? '',
-        quorum_required: String(initial.quorum_required ?? 50),
-      });
-    } else if (open && !initial) {
-      setForm({ building: '', title: '', description: '', scheduled_date: '', quorum_required: '50' });
-    }
-  }, [open, initial]);
-
   const set = (field: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm(f => ({ ...f, [field]: e.target.value }));

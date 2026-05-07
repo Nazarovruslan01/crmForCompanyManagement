@@ -1,0 +1,4 @@
+# PgBouncer userlist — copy to docker/pgbouncer.userlist.txt (which is gitignored).
+# Format: "username" "password"
+# DO NOT commit real credentials to git.
+"crm_user" "your_secure_password_here"

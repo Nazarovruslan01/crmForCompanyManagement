@@ -69,8 +69,9 @@ class TestMFAVerify:
         )
         assert response.status_code == status.HTTP_200_OK
         assert "access" in response.data
-        assert "refresh" in response.data
+        assert "refresh" not in response.data
         assert "user" in response.data
+        assert "refresh_token" in response.cookies
 
     def test_verify_confirms_device(self, admin_client, admin_user):
         """First successful verification marks device as confirmed."""

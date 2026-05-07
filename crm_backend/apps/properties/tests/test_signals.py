@@ -139,8 +139,9 @@ class TestOwnershipSignals:
             role=Ownership.Role.OWNER,
             is_primary=True,
         )
-        # Delete apartment (cascades ownership) so the in-memory instance becomes stale
-        apartment.delete()
+        # Simulate stale instance where apartment no longer exists
+        # (ownership may have been deleted manually, leaving in-memory reference)
+        ownership.apartment_id = 999999  # non-existent
         with patch("apps.properties.signals.cache") as mock_cache:
             # Apartment is gone; signal should not crash and should not call cache.delete
             invalidate_ownership_chessboard_on_delete(Ownership, instance=ownership)
@@ -187,8 +188,8 @@ class TestAidatChargeSignals:
             due_date="2026-03-15",
             status=AidatCharge.Status.PENDING,
         )
-        # Delete apartment (cascades charge) so the in-memory instance becomes stale
-        apartment.delete()
+        # Simulate stale instance where apartment no longer exists
+        charge.apartment_id = 999999  # non-existent
         with patch("apps.properties.signals.cache") as mock_cache:
             # Apartment is gone; signal should not crash and should not call cache.delete
             invalidate_aidat_chessboard_on_delete(AidatCharge, instance=charge)

@@ -7,7 +7,9 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  mfaPending: boolean;
+  login: (username: string, password: string) => Promise<{ requiresMfa: boolean; tempToken?: string }>;
+  verifyMFA: (tempToken: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -16,30 +18,40 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mfaPending, setMfaPending] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      if (!api.getAccessToken()) {
-        setIsLoading(false);
-        return;
+    const initAuth = async () => {
+      const refreshed = await api.silentRefresh();
+      if (refreshed) {
+        try {
+          const userData = await api.getCurrentUser() as User;
+          setUser(userData);
+        } catch {
+          api.clearTokens();
+        }
       }
-
-      try {
-        const userData = await api.getCurrentUser() as User;
-        setUser(userData);
-      } catch {
-        api.clearTokens();
-      } finally {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     };
 
-    void checkAuth();
+    void initAuth();
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
     const response = await api.login(username, password);
+    if ('requires_mfa' in response) {
+      setMfaPending(true);
+      return { requiresMfa: true, tempToken: response.temp_token };
+    }
     setUser(response.user);
+    setMfaPending(false);
+    return { requiresMfa: false };
+  }, []);
+
+  const verifyMFA = useCallback(async (tempToken: string, code: string) => {
+    const response = await api.verifyMFA(tempToken, code);
+    setUser(response.user);
+    setMfaPending(false);
   }, []);
 
   const logout = useCallback(async () => {
@@ -50,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Always clear local state regardless.
     }
     setUser(null);
+    setMfaPending(false);
   }, []);
 
   return (
@@ -58,7 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isAuthenticated: !!user,
+        mfaPending,
         login,
+        verifyMFA,
         logout,
       }}
     >
