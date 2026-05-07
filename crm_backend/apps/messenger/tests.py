@@ -135,6 +135,53 @@ class TestTelegramWebhookView:
         )
         assert response.status_code == 400
 
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_webhook_wrong_secret_token_rejected(self, mock_send, api_client, settings):
+        """H-9: Requests with wrong X-Telegram-Bot-Api-Secret-Token are rejected."""
+        settings.TELEGRAM_WEBHOOK_SECRET = "correct-secret"
+        payload = {
+            "update_id": 3,
+            "message": {
+                "message_id": 3,
+                "from": {"id": 111, "is_bot": False, "first_name": "Test"},
+                "chat": {"id": 111, "type": "private"},
+                "date": 1234567890,
+                "text": "/start",
+            },
+        }
+        url = reverse("messenger:telegram-webhook")
+        response = api_client.post(
+            url,
+            data=json.dumps(payload),
+            content_type="application/json",
+            HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN="wrong-secret",
+        )
+        assert response.status_code == 403
+
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_webhook_correct_secret_token_accepted(self, mock_send, api_client, settings):
+        """H-9: Requests with correct secret token are accepted."""
+        settings.TELEGRAM_WEBHOOK_SECRET = "correct-secret"
+        payload = {
+            "update_id": 4,
+            "message": {
+                "message_id": 4,
+                "from": {"id": 112, "is_bot": False, "first_name": "Test"},
+                "chat": {"id": 112, "type": "private"},
+                "date": 1234567890,
+                "text": "/start",
+            },
+        }
+        url = reverse("messenger:telegram-webhook")
+        response = api_client.post(
+            url,
+            data=json.dumps(payload),
+            content_type="application/json",
+            HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN="correct-secret",
+        )
+        assert response.status_code == 200
+        assert response.json()["ok"] is True
+
 
 class TestTelegramRegistrationFlow:
     @patch("apps.messenger.telegram_client.send_telegram_message")
@@ -1106,12 +1153,13 @@ class TestMessengerConsumer:
     @pytest.mark.django_db(transaction=True)
     async def test_connect_without_permission(self, staff_user, ticket_with_resident):
         """Staff worker without permission on ticket cannot connect."""
+        from asgiref.sync import sync_to_async
         from channels.testing import WebsocketCommunicator
         from rest_framework_simplejwt.tokens import RefreshToken
 
         from config.asgi import application
 
-        refresh = RefreshToken.for_user(staff_user)
+        refresh = await sync_to_async(RefreshToken.for_user)(staff_user)
         staff_token = str(refresh.access_token)
 
         communicator = WebsocketCommunicator(
@@ -1265,12 +1313,13 @@ class TestMessengerConsumer:
     @pytest.mark.django_db(transaction=True)
     async def test_ticket_creator_can_connect(self, user, ticket_with_resident):
         """Ticket creator can connect without staff role."""
+        from asgiref.sync import sync_to_async
         from channels.testing import WebsocketCommunicator
         from rest_framework_simplejwt.tokens import RefreshToken
 
         from config.asgi import application
 
-        refresh = RefreshToken.for_user(user)
+        refresh = await sync_to_async(RefreshToken.for_user)(user)
         token = str(refresh.access_token)
 
         communicator = WebsocketCommunicator(
@@ -1294,7 +1343,7 @@ class TestMessengerConsumer:
 
         await sync_to_async(ticket_with_resident.save)()
 
-        refresh = RefreshToken.for_user(employee.user)
+        refresh = await sync_to_async(RefreshToken.for_user)(employee.user)
         token = str(refresh.access_token)
 
         communicator = WebsocketCommunicator(

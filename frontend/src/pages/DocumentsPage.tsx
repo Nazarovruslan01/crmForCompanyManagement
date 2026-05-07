@@ -143,6 +143,7 @@ export function DocumentsPage() {
       <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
 
       <DocumentForm
+        key={String(formOpen)}
         open={formOpen}
         onClose={() => setFormOpen(false)}
         onSaved={refetch}

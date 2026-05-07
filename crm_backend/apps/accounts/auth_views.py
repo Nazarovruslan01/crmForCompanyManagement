@@ -14,6 +14,8 @@ from rest_framework import permissions, status
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from common.throttles import LoginRateThrottle, MFAVerifyThrottle, PasswordResetRateThrottle
@@ -86,7 +88,7 @@ class LoginView(APIView):
 
         user = authenticate(username=username, password=password)
 
-        if not user:
+        if not user or not user.is_active:
             # Always return the same error regardless of whether the username
             # exists or the account is disabled — prevents account enumeration.
             return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -117,43 +119,47 @@ class LoginView(APIView):
 
         refresh = RefreshToken.for_user(user)
 
-        return Response(
+        response = Response(
             {
                 "access": str(refresh.access_token),
-                "refresh": str(refresh),
                 "user": UserSerializer(user).data,
             }
         )
+        response.set_cookie(
+            "refresh_token",
+            str(refresh),
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite="Lax",
+            max_age=int(timedelta(days=7).total_seconds()),
+        )
+        return response
 
 
 class LogoutView(APIView):
-    """Logout endpoint - blacklist refresh token."""
+    """Logout endpoint — blacklist refresh token and clear httpOnly cookie."""
 
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(
-        request={
-            "type": "object",
-            "properties": {
-                "refresh": {"type": "string"},
-            },
-        },
         responses={
             200: {"description": "Successfully logged out"},
             400: {"description": "Invalid token"},
         },
     )
     def post(self, request: Request) -> Response:
-        # Blacklisting requires rest_framework_simplejwt.token_blacklist in
-        # INSTALLED_APPS. Without it we still clear client-side tokens.
-        try:
-            refresh_token = request.data.get("refresh")
-            if refresh_token:
-                token = RefreshToken(refresh_token)
+        # Blacklist refresh token from httpOnly cookie.
+        refresh_token = request.COOKIES.get("refresh_token")
+        if refresh_token:
+            try:
+                token = RefreshToken(refresh_token)  # type: ignore[arg-type]
                 token.blacklist()
-        except Exception:
-            logger.warning("Failed to blacklist refresh token during logout", exc_info=True)
-        return Response({"detail": "Successfully logged out"}, status=status.HTTP_200_OK)
+            except Exception:
+                logger.warning("Failed to blacklist refresh token during logout", exc_info=True)
+
+        response = Response({"detail": "Successfully logged out"}, status=status.HTTP_200_OK)
+        response.delete_cookie("refresh_token")
+        return response
 
 
 class PasswordResetRequestView(APIView):
@@ -369,7 +375,6 @@ class MFASetupView(APIView):
 
         return Response(
             {
-                "secret": device.secret_key,
                 "qr_uri": qr_uri,
                 "message": "Scan the QR code with your authenticator app and verify with a code.",
             }
@@ -423,6 +428,9 @@ class MFAVerifyView(APIView):
             if not user_id:
                 return Response({"detail": "Invalid token: missing user_id"}, status=status.HTTP_401_UNAUTHORIZED)
             user = User.objects.get(id=user_id)
+            if not user.is_active:
+                logger.warning("MFA verify: user_id %s is deactivated", user_id)
+                return Response({"detail": "Account is deactivated"}, status=status.HTTP_401_UNAUTHORIZED)
         except User.DoesNotExist:
             logger.warning("MFA verify: user_id %s not found", token.payload.get("user_id"))
             return Response({"detail": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -448,13 +456,73 @@ class MFAVerifyView(APIView):
             device.save()
 
         refresh = RefreshToken.for_user(user)
-        return Response(
+        response = Response(
             {
                 "access": str(refresh.access_token),
-                "refresh": str(refresh),
                 "user": UserSerializer(user).data,
             }
         )
+        response.set_cookie(
+            "refresh_token",
+            str(refresh),
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite="Lax",
+            max_age=int(timedelta(days=7).total_seconds()),
+        )
+        return response
+
+
+class CookieTokenRefreshView(APIView):
+    """Refresh access token using the httpOnly refresh_token cookie."""
+
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [LoginRateThrottle]
+
+    @extend_schema(
+        request=None,
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "access": {"type": "string"},
+                },
+            },
+            401: {"description": "Refresh token cookie missing or invalid"},
+        },
+    )
+    def post(self, request: Request) -> Response:
+        refresh_token = request.COOKIES.get("refresh_token")
+        if not refresh_token:
+            return Response(
+                {"detail": "Refresh token cookie missing"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        serializer = TokenRefreshSerializer(data={"refresh": refresh_token})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        data = serializer.validated_data
+        response = Response({"access": data["access"]})
+
+        # If rotation is enabled, update the cookie with the new refresh token.
+        if "refresh" in data:
+            response.set_cookie(
+                "refresh_token",
+                data["refresh"],
+                httponly=True,
+                secure=not settings.DEBUG,
+                samesite="Lax",
+                max_age=int(timedelta(days=7).total_seconds()),
+            )
+
+        return response
 
 
 class MFADisableView(APIView):

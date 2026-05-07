@@ -3,6 +3,7 @@ Production settings - inherits from base
 """
 
 import os
+from typing import Any
 from urllib.parse import urlparse
 
 from .base import *  # noqa: F401, F403
@@ -16,7 +17,7 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
 # Database URL parsing
 _db_url = urlparse(os.getenv("DATABASE_URL", "postgresql://crm_user:changeme@localhost:5432/crm_db"))
-DATABASES = {
+DATABASES: dict[str, dict[str, Any]] = {  # type: ignore[no-redef]
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": _db_url.path[1:],
@@ -65,6 +66,9 @@ AWS_S3_FILE_OVERWRITE = False
 # CORS
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGINS = [x for x in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if x]
+
+# Telegram Bot — webhook secret is mandatory in production to prevent spoofing
+TELEGRAM_WEBHOOK_SECRET = os.environ["TELEGRAM_WEBHOOK_SECRET"]
 
 # Sentry — error tracking and performance monitoring
 _sentry_dsn = os.getenv("SENTRY_DSN", "")

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
 import type { User } from '../../types';
@@ -33,23 +33,6 @@ export function UserForm({ open, onClose, onSaved, initial }: Props) {
     password:   '',
     is_active:  String(initial?.is_active ?? true),
   });
-
-  useEffect(() => {
-    if (open && initial) {
-      setForm({
-        username:   initial.username,
-        email:      initial.email,
-        first_name: initial.first_name,
-        last_name:  initial.last_name,
-        role:       initial.role,
-        phone:      initial.phone ?? '',
-        password:   '',
-        is_active:  String(initial.is_active),
-      });
-    } else if (open && !initial) {
-      setForm({ username: '', email: '', first_name: '', last_name: '', role: 'worker', phone: '', password: '', is_active: 'true' });
-    }
-  }, [open, initial]);
 
   const set = (field: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>

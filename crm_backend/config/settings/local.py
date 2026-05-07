@@ -4,6 +4,12 @@ Local / CI settings — inherits from base.
 
 import os
 
+# Set fallback env vars before importing base so that local dev works
+# without an .env file. Production settings (base.py) require these to be
+# set explicitly and raise if missing.
+os.environ.setdefault("DJANGO_SECRET_KEY", "django-insecure-local-dev-only-do-not-use-in-production")
+os.environ.setdefault("DATABASE_URL", "sqlite:///db.sqlite3")
+
 from .base import *  # noqa: F401, F403
 
 DEBUG = True
@@ -34,7 +40,12 @@ CACHES = {
     }
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
+# CORS: credentials (httpOnly cookies) require explicit origins — wildcard is rejected by browsers.
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 # Disable throttling for load-test / CI runs.
 # We keep rates defined (ViewSets reference them by scope) but set them very high.

@@ -3,8 +3,8 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from apps.accounts.auth_views import CookieTokenRefreshView
 from core.health import HealthCheckView, ReadinessCheckView
 
 _admin_url = getattr(settings, "ADMIN_URL", "admin/")
@@ -36,8 +36,7 @@ urlpatterns = [
         ),
     ),
     # JWT Authentication (v2)
-    path("api/v2/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair_v2"),
-    path("api/v2/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh_v2"),
+    path("api/v2/auth/token/refresh/", CookieTokenRefreshView.as_view(), name="token_refresh_v2"),
     # OpenAPI / Swagger (v2 schema)
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

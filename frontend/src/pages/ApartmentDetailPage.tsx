@@ -66,11 +66,12 @@ function ResidentsTab({ aptId }: { aptId: number }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
     api.ownerships.byApartment(aptId)
-      .then(setOwnerships)
-      .catch(() => setOwnerships([]))
-      .finally(() => setLoading(false));
+      .then(data => { if (!cancelled) setOwnerships(data); })
+      .catch(() => { if (!cancelled) setOwnerships([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [aptId]);
 
   if (loading) {

@@ -46,6 +46,11 @@ class ResidentSerializer(serializers.ModelSerializer):
             return validate_tc_kimlik_no(value)
         return value
 
+    def update(self, instance, validated_data):
+        # H-7: prevent reassignment of user FK via API
+        validated_data.pop("user", None)
+        return super().update(instance, validated_data)
+
 
 class PersonalAccountSerializer(serializers.ModelSerializer):
     apartment_display = serializers.CharField(source="apartment.__str__", read_only=True)
@@ -62,7 +67,7 @@ class PersonalAccountSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["created_at", "updated_at"]
+        read_only_fields = ["created_at", "updated_at", "balance"]
 
 
 class OwnershipSerializer(serializers.ModelSerializer):

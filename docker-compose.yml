@@ -23,7 +23,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./docker/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
-      - ./docker/pgbouncer.userlist.txt:/etc/pgbouncer/userlist.txt:ro
+      - ./docker/pgbouncer.userlist.txt.example:/etc/pgbouncer/userlist.txt:ro
     ports:
       - "6432:6432"
     depends_on:

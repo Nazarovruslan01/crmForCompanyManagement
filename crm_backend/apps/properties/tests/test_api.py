@@ -186,6 +186,29 @@ class TestApartmentMinimalViewSet:
         response = admin_client.get(f"/api/v2/properties/apartments-minimal/{apartment.id}/")
         assert response.status_code == status.HTTP_200_OK
 
+    def test_resident_sees_only_own_apartments_minimal(self, resident_client, resident_with_profile, apartment):
+        """Resident can only see own apartments in minimal viewset."""
+        from apps.properties.models import Apartment
+
+        other_apt = Apartment.objects.create(
+            building=apartment.building, apartment_number="999", status=Apartment.Status.ACTIVE
+        )
+        response = resident_client.get("/api/v2/properties/apartments-minimal/")
+        assert response.status_code == status.HTTP_200_OK
+        ids = {a["id"] for a in response.data["results"]}
+        assert apartment.id in ids
+        assert other_apt.id not in ids
+
+    def test_worker_denied_apartments_minimal(self, staff_client):
+        """Worker cannot access minimal apartments."""
+        response = staff_client.get("/api/v2/properties/apartments-minimal/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_unauthenticated_denied_apartments_minimal(self, api_client):
+        """Unauthenticated request returns 401."""
+        response = api_client.get("/api/v2/properties/apartments-minimal/")
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
 
 class TestChessboardViewSet:
     """Tests for /api/v2/properties/buildings/{id}/chessboard/ endpoint."""

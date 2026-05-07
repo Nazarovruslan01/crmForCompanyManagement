@@ -1,5 +1,6 @@
 import type {
   AuthResponse,
+  MFARequiredResponse,
   PaginatedResponse,
   Building,
   Apartment,
@@ -25,34 +26,23 @@ const API_BASE = '/api/v2';
 
 class ApiClient {
   private accessToken: string | null = null;
-  private refreshToken: string | null = null;
+  private refreshPromise: Promise<boolean> | null = null;
 
-  setTokens(access: string, refresh: string) {
+  setTokens(access: string) {
     this.accessToken = access;
-    this.refreshToken = refresh;
-    localStorage.setItem('access_token', access);
-    localStorage.setItem('refresh_token', refresh);
   }
 
   clearTokens() {
     this.accessToken = null;
-    this.refreshToken = null;
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
   }
 
   getAccessToken(): string | null {
-    if (!this.accessToken) {
-      this.accessToken = localStorage.getItem('access_token');
-    }
     return this.accessToken;
   }
 
-  private getRefreshToken(): string | null {
-    if (!this.refreshToken) {
-      this.refreshToken = localStorage.getItem('refresh_token');
-    }
-    return this.refreshToken;
+  /** Silent refresh — called on app init to recover session from httpOnly cookie. */
+  async silentRefresh(): Promise<boolean> {
+    return this.refreshAccessToken();
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -65,13 +55,13 @@ class ApiClient {
     const token = this.getAccessToken();
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    let response = await fetch(url, { ...options, headers });
+    let response = await fetch(url, { ...options, headers, credentials: 'include' });
 
     if (response.status === 401) {
       const refreshed = await this.refreshAccessToken();
       if (refreshed) {
         headers['Authorization'] = `Bearer ${this.accessToken}`;
-        response = await fetch(url, { ...options, headers });
+        response = await fetch(url, { ...options, headers, credentials: 'include' });
       }
     }
 
@@ -85,22 +75,31 @@ class ApiClient {
     return response.json() as Promise<T>;
   }
 
+  /** Promise-based mutex — concurrent 401s share a single refresh request. */
   private async refreshAccessToken(): Promise<boolean> {
-    const refresh = this.getRefreshToken();
-    if (!refresh) return false;
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
 
+    this.refreshPromise = this._doRefresh();
+    try {
+      return await this.refreshPromise;
+    } finally {
+      this.refreshPromise = null;
+    }
+  }
+
+  private async _doRefresh(): Promise<boolean> {
     try {
       const response = await fetch(`${API_BASE}/auth/token/refresh/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh }),
+        credentials: 'include',
       });
 
       if (!response.ok) { this.clearTokens(); return false; }
 
       const data = await response.json() as { access: string };
       this.accessToken = data.access;
-      localStorage.setItem('access_token', data.access);
       return true;
     } catch {
       this.clearTokens();
@@ -110,21 +109,29 @@ class ApiClient {
 
   // ─── Auth ───────────────────────────────────────────────────────────────────
 
-  async login(username: string, password: string): Promise<AuthResponse> {
-    const data = await this.request<AuthResponse>('/accounts/login/', {
+  async login(username: string, password: string): Promise<AuthResponse | MFARequiredResponse> {
+    const data = await this.request<AuthResponse | MFARequiredResponse>('/accounts/login/', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     });
-    this.setTokens(data.access, data.refresh);
+    if ('access' in data) {
+      this.setTokens(data.access);
+    }
+    return data;
+  }
+
+  async verifyMFA(temp_token: string, code: string): Promise<AuthResponse> {
+    const data = await this.request<AuthResponse>('/accounts/mfa/verify/', {
+      method: 'POST',
+      body: JSON.stringify({ temp_token, code }),
+    });
+    this.setTokens(data.access);
     return data;
   }
 
   async logout(): Promise<void> {
     try {
-      await this.request('/accounts/logout/', {
-        method: 'POST',
-        body: JSON.stringify({ refresh: this.getRefreshToken() }),
-      });
+      await this.request('/accounts/logout/', { method: 'POST' });
     } finally {
       this.clearTokens();
     }
