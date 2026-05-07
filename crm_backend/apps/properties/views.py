@@ -1,7 +1,8 @@
 """Properties app views for REST API."""
 
 from django.core.cache import cache
-from django.db.models import Prefetch
+from django.db import transaction
+from django.db.models import Prefetch, ProtectedError
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -143,12 +144,19 @@ class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewS
         if clear_existing:
             apartment_ids = list(building.apartments.values_list("id", flat=True))  # type: ignore[reportAttributeAccessIssue]
             if apartment_ids:
-                Ownership.objects.filter(apartment_id__in=apartment_ids).delete()
-                PersonalAccount.objects.filter(apartment_id__in=apartment_ids).delete()
-                AidatCharge.objects.filter(apartment_id__in=apartment_ids).delete()
-                Payment.objects.filter(apartment_id__in=apartment_ids).delete()
-                Document.objects.filter(apartment_id__in=apartment_ids).delete()
-            building.apartments.all().delete()  # type: ignore[reportAttributeAccessIssue]
+                try:
+                    with transaction.atomic():
+                        Ownership.objects.filter(apartment_id__in=apartment_ids).delete()
+                        PersonalAccount.objects.filter(apartment_id__in=apartment_ids).delete()
+                        AidatCharge.objects.filter(apartment_id__in=apartment_ids).delete()
+                        Payment.objects.filter(apartment_id__in=apartment_ids).delete()
+                        Document.objects.filter(apartment_id__in=apartment_ids).delete()
+                        building.apartments.all().delete()  # type: ignore[reportAttributeAccessIssue]
+                except ProtectedError:
+                    return Response(
+                        {"detail": "Невозможно удалить существующие квартиры: есть связанные данные, которые нельзя удалить автоматически (например, активные платежи или документы). Удалите их вручную и повторите попытку."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
         created: list[Apartment] = []
         seq_counter = int(request.data.get("start_number", 1))
