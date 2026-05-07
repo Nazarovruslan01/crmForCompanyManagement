@@ -410,7 +410,7 @@ class IyzicoViewSet(viewsets.ViewSet):
         # Payment failed or pending
         return Response(
             {
-                "status": "failure" if payment_status == "FAILURE" else payment_status.lower(),
+                "status": "failure" if payment_status == "FAILURE" else (payment_status or "").lower(),
                 "payment_id": payment.pk,
                 "iyzico_payment_id": iyzico_payment_id,
                 "error_message": result.get("errorMessage"),
