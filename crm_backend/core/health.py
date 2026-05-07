@@ -79,7 +79,7 @@ class ReadinessCheckView(APIView):
         try:
             from celery import current_app
 
-            celery_inspect = current_app.control.inspect(timeout=2.0)
+            celery_inspect = current_app.control.inspect(timeout=2.0)  # type: ignore[attr-defined]
             result = celery_inspect.ping()
             if result:
                 return {"status": "ok"}

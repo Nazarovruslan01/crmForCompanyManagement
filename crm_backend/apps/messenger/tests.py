@@ -1106,12 +1106,13 @@ class TestMessengerConsumer:
     @pytest.mark.django_db(transaction=True)
     async def test_connect_without_permission(self, staff_user, ticket_with_resident):
         """Staff worker without permission on ticket cannot connect."""
+        from asgiref.sync import sync_to_async
         from channels.testing import WebsocketCommunicator
         from rest_framework_simplejwt.tokens import RefreshToken
 
         from config.asgi import application
 
-        refresh = RefreshToken.for_user(staff_user)
+        refresh = await sync_to_async(RefreshToken.for_user)(staff_user)
         staff_token = str(refresh.access_token)
 
         communicator = WebsocketCommunicator(
@@ -1265,12 +1266,13 @@ class TestMessengerConsumer:
     @pytest.mark.django_db(transaction=True)
     async def test_ticket_creator_can_connect(self, user, ticket_with_resident):
         """Ticket creator can connect without staff role."""
+        from asgiref.sync import sync_to_async
         from channels.testing import WebsocketCommunicator
         from rest_framework_simplejwt.tokens import RefreshToken
 
         from config.asgi import application
 
-        refresh = RefreshToken.for_user(user)
+        refresh = await sync_to_async(RefreshToken.for_user)(user)
         token = str(refresh.access_token)
 
         communicator = WebsocketCommunicator(
@@ -1294,7 +1296,7 @@ class TestMessengerConsumer:
 
         await sync_to_async(ticket_with_resident.save)()
 
-        refresh = RefreshToken.for_user(employee.user)
+        refresh = await sync_to_async(RefreshToken.for_user)(employee.user)
         token = str(refresh.access_token)
 
         communicator = WebsocketCommunicator(

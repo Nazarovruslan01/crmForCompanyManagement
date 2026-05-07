@@ -568,7 +568,8 @@ jobs:
           cache-dependency-path: ${{ env.WORKING_DIRECTORY }}/requirements/base.txt
       - run: pip install pip-audit
       - name: Audit dependencies
-        run: pip-audit -r ${{ env.WORKING_DIRECTORY }}/requirements/base.txt
+        # Ignore CVE-2026-42304 in twisted: fix (26.4.0rc2) not yet on PyPI as stable release.
+        run: pip-audit -r ${{ env.WORKING_DIRECTORY }}/requirements/base.txt --ignore-vuln CVE-2026-42304
 
   security-secrets:
     name: Secret scanning (detect-secrets)

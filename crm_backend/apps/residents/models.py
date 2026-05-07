@@ -74,7 +74,7 @@ class Resident(SoftDeleteMixin, models.Model):
 class PersonalAccount(models.Model):
     """Лицевой счёт (Adi hesap)"""
 
-    apartment = models.OneToOneField("properties.Apartment", on_delete=models.CASCADE, related_name="personal_account")
+    apartment = models.OneToOneField("properties.Apartment", on_delete=models.PROTECT, related_name="personal_account")
     account_number = models.CharField(max_length=50, unique=True)
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Balance (TRY)")
     is_active = models.BooleanField(default=True)
@@ -98,8 +98,8 @@ class Ownership(models.Model):
         TENANT = "tenant", "Kiracı"
         RESIDENT = "resident", "İkamet Eden"
 
-    resident = models.ForeignKey(Resident, on_delete=models.CASCADE, related_name="ownerships")
-    apartment = models.ForeignKey("properties.Apartment", on_delete=models.CASCADE, related_name="ownerships")
+    resident = models.ForeignKey(Resident, on_delete=models.PROTECT, related_name="ownerships")
+    apartment = models.ForeignKey("properties.Apartment", on_delete=models.PROTECT, related_name="ownerships")
     role = models.CharField(max_length=20, choices=Role.choices)
     share_ratio_num = models.PositiveIntegerField(default=1, help_text="Ownership share numerator")
     share_ratio_denom = models.PositiveIntegerField(default=1, help_text="Ownership share denominator")

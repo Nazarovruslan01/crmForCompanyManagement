@@ -29,9 +29,10 @@ class TestLogin:
         )
         assert response.status_code == status.HTTP_200_OK
         assert "access" in response.data
-        assert "refresh" in response.data
+        assert "refresh" not in response.data
         assert "user" in response.data
         assert response.data["user"]["username"] == "logintestuser"
+        assert "refresh_token" in response.cookies
 
     def test_login_invalid_credentials(self, db):
         """Login with wrong password returns 401."""
@@ -278,32 +279,28 @@ class TestTokenRefresh:
     """Tests for POST /api/v2/auth/token/refresh/"""
 
     def test_token_refresh_success(self, user):
-        """Valid refresh token returns new access token."""
+        """Valid refresh token cookie returns new access token."""
         from rest_framework.test import APIClient
 
         client = APIClient()
         refresh = RefreshToken.for_user(user)
-        response = client.post(
-            "/api/v2/auth/token/refresh/",
-            {"refresh": str(refresh)},
-            format="json",
-        )
+        client.cookies.load({"refresh_token": str(refresh)})
+        response = client.post("/api/v2/auth/token/refresh/", format="json")
         assert response.status_code == status.HTTP_200_OK
         assert "access" in response.data
+        assert "refresh" not in response.data
+        assert "refresh_token" in response.cookies
 
     def test_token_refresh_invalid_token(self, api_client):
-        """Invalid refresh token returns 401."""
-        response = api_client.post(
-            "/api/v2/auth/token/refresh/",
-            {"refresh": "invalid-token"},
-            format="json",
-        )
+        """Invalid refresh token cookie returns 401."""
+        api_client.cookies.load({"refresh_token": "invalid-token"})
+        response = api_client.post("/api/v2/auth/token/refresh/", format="json")
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_token_refresh_missing_token(self, api_client):
-        """Missing refresh token returns 400."""
+        """Missing refresh token cookie returns 401."""
         response = api_client.post("/api/v2/auth/token/refresh/", {}, format="json")
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 class TestAuth404:

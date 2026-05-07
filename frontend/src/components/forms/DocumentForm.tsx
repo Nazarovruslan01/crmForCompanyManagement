@@ -35,8 +35,6 @@ export function DocumentForm({ open, onClose, onSaved }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    setForm({ title: '', document_type: 'other', description: '', building: '' });
-    setFile(null);
     api.buildings.list().then(r => setBuildings(r.results)).catch(() => {});
   }, [open]);
 
