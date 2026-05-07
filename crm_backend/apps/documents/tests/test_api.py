@@ -167,6 +167,37 @@ class TestDocumentPermissions:
         assert response.status_code == 401
 
 
+class TestDocumentFileValidation:
+    def test_upload_valid_pdf(self, api_client, building):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        url = reverse("document-list")
+        file = SimpleUploadedFile("contract.pdf", b"%PDF-1.4 fake content", content_type="application/pdf")
+        data = {"title": "Contract", "document_type": "contract", "building": building.id, "file": file}
+        response = api_client.post(url, data, format="multipart")
+        assert response.status_code == 201
+
+    def test_upload_invalid_extension(self, api_client, building):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        url = reverse("document-list")
+        file = SimpleUploadedFile("malicious.exe", b"<html>evil</html>", content_type="text/html")
+        data = {"title": "Evil", "document_type": "other", "building": building.id, "file": file}
+        response = api_client.post(url, data, format="multipart")
+        assert response.status_code == 400
+        assert "exe" in str(response.content).lower() or "not allowed" in str(response.content).lower()
+
+    def test_upload_too_large(self, api_client, building):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        url = reverse("document-list")
+        file = SimpleUploadedFile("large.pdf", b"x" * (11 * 1024 * 1024), content_type="application/pdf")
+        data = {"title": "Large", "document_type": "other", "building": building.id, "file": file}
+        response = api_client.post(url, data, format="multipart")
+        assert response.status_code == 400
+        assert "10 MB" in str(response.content)
+
+
 class TestDocumentFilters:
     def test_filter_by_document_type(self, api_client, building):
         Document.objects.create(
