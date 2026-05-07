@@ -126,6 +126,7 @@ export function MeetingsPage() {
       <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
 
       <MeetingForm
+        key={String(formOpen)}
         open={formOpen}
         onClose={() => setFormOpen(false)}
         onSaved={refetch}

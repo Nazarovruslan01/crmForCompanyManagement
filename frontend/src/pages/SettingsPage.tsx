@@ -319,6 +319,7 @@ function UsersTab() {
       />
       <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
       <UserForm
+        key={String(formOpen) + '-' + (editing?.id ?? 'new')}
         open={formOpen}
         onClose={() => setFormOpen(false)}
         onSaved={refetch}

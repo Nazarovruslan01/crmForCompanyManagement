@@ -7,7 +7,7 @@ interface Tab<T extends string> {
 }
 
 interface TabBarProps<T extends string> {
-  tabs: Tab<T>[];
+  tabs: readonly Tab<T>[];
   value: T;
   onChange: (value: T) => void;
   style?: React.CSSProperties;
