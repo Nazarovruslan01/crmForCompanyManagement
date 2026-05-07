@@ -27,7 +27,6 @@ export interface User {
 
 export interface AuthResponse {
   access: string;
-  refresh: string;
   user: User;
 }
 
