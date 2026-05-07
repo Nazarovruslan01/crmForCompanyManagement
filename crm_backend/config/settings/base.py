@@ -8,6 +8,7 @@ import os
 from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 from celery.schedules import crontab  # type: ignore[import-untyped]
@@ -107,6 +108,7 @@ if not _db_url_str:
     raise RuntimeError("DATABASE_URL environment variable is required")
 _db_url = urlparse(_db_url_str)
 
+DATABASES: dict[str, dict[str, Any]]
 if _db_url.scheme in ("sqlite", "sqlite3"):
     DATABASES = {
         "default": {

@@ -3,6 +3,7 @@ Production settings - inherits from base
 """
 
 import os
+from typing import Any
 from urllib.parse import urlparse
 
 from .base import *  # noqa: F401, F403
@@ -16,7 +17,7 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
 
 # Database URL parsing
 _db_url = urlparse(os.getenv("DATABASE_URL", "postgresql://crm_user:changeme@localhost:5432/crm_db"))
-DATABASES = {
+DATABASES: dict[str, dict[str, Any]] = {  # type: ignore[no-redef]
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": _db_url.path[1:],
