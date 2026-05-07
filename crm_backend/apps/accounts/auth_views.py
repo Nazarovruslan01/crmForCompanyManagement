@@ -88,7 +88,7 @@ class LoginView(APIView):
 
         user = authenticate(username=username, password=password)
 
-        if not user:
+        if not user or not user.is_active:
             # Always return the same error regardless of whether the username
             # exists or the account is disabled — prevents account enumeration.
             return Response({"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
@@ -375,7 +375,6 @@ class MFASetupView(APIView):
 
         return Response(
             {
-                "secret": device.secret_key,
                 "qr_uri": qr_uri,
                 "message": "Scan the QR code with your authenticator app and verify with a code.",
             }
@@ -429,6 +428,9 @@ class MFAVerifyView(APIView):
             if not user_id:
                 return Response({"detail": "Invalid token: missing user_id"}, status=status.HTTP_401_UNAUTHORIZED)
             user = User.objects.get(id=user_id)
+            if not user.is_active:
+                logger.warning("MFA verify: user_id %s is deactivated", user_id)
+                return Response({"detail": "Account is deactivated"}, status=status.HTTP_401_UNAUTHORIZED)
         except User.DoesNotExist:
             logger.warning("MFA verify: user_id %s not found", token.payload.get("user_id"))
             return Response({"detail": "Invalid or expired token"}, status=status.HTTP_401_UNAUTHORIZED)

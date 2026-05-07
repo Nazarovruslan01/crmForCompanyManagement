@@ -12,11 +12,11 @@ pytestmark = pytest.mark.django_db
 class TestMFASetup:
     """Tests for MFA setup endpoint."""
 
-    def test_setup_returns_secret_and_qr_uri(self, admin_client, admin_user):
-        """Admin can initiate MFA setup."""
+    def test_setup_returns_qr_uri_without_secret(self, admin_client, admin_user):
+        """Admin can initiate MFA setup. Secret is never exposed in API response."""
         response = admin_client.post("/api/v2/accounts/mfa/setup/")
         assert response.status_code == status.HTTP_200_OK
-        assert "secret" in response.data
+        assert "secret" not in response.data
         assert "qr_uri" in response.data
         assert "message" in response.data
 
@@ -28,12 +28,12 @@ class TestMFASetup:
         assert device.confirmed is False
 
     def test_setup_regenerates_secret_on_second_call(self, admin_client, admin_user):
-        """Second setup call regenerates the secret."""
+        """Second setup call regenerates the secret (observed via QR URI change)."""
         r1 = admin_client.post("/api/v2/accounts/mfa/setup/")
-        secret1 = r1.data["secret"]
+        qr1 = r1.data["qr_uri"]
         r2 = admin_client.post("/api/v2/accounts/mfa/setup/")
-        secret2 = r2.data["secret"]
-        assert secret1 != secret2
+        qr2 = r2.data["qr_uri"]
+        assert qr1 != qr2
 
     def test_setup_forbidden_for_resident(self, authenticated_client, user):
         """Residents cannot setup MFA."""
@@ -129,6 +129,41 @@ class TestMFAVerify:
             {"temp_token": "invalid.token.here", "totp_code": "123456"},
             format="json",
         )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_verify_inactive_user(self, admin_user):
+        """Deactivated user cannot verify MFA and get JWT tokens."""
+        from datetime import timedelta
+        from rest_framework.test import APIClient
+        from rest_framework_simplejwt.tokens import AccessToken
+
+        secret = pyotp.random_base32()
+        TOTPDevice.objects.create(user=admin_user, secret_key=secret, confirmed=True)
+        totp = pyotp.TOTP(secret)
+
+        # Generate temp token directly (avoid login throttle)
+        access = AccessToken.for_user(admin_user)
+        access.payload["type"] = "mfa"
+        access.set_exp(lifetime=timedelta(minutes=5))
+        temp_token = str(access)
+
+        # Deactivate user
+        admin_user.is_active = False
+        admin_user.save()
+
+        # Disable throttling for this request to avoid 429 in tests
+        from apps.accounts.auth_views import MFAVerifyView
+        original_throttles = MFAVerifyView.throttle_classes
+        MFAVerifyView.throttle_classes = []
+        try:
+            client = APIClient()
+            response = client.post(
+                "/api/v2/accounts/mfa/verify/",
+                {"temp_token": temp_token, "totp_code": totp.now()},
+                format="json",
+            )
+        finally:
+            MFAVerifyView.throttle_classes = original_throttles
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
