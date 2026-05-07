@@ -134,6 +134,7 @@ class TestMFAVerify:
     def test_verify_inactive_user(self, admin_user):
         """Deactivated user cannot verify MFA and get JWT tokens."""
         from datetime import timedelta
+
         from rest_framework.test import APIClient
         from rest_framework_simplejwt.tokens import AccessToken
 
@@ -153,6 +154,7 @@ class TestMFAVerify:
 
         # Disable throttling for this request to avoid 429 in tests
         from apps.accounts.auth_views import MFAVerifyView
+
         original_throttles = MFAVerifyView.throttle_classes
         MFAVerifyView.throttle_classes = []
         try:

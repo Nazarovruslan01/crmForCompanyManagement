@@ -154,7 +154,9 @@ class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewS
                         building.apartments.all().delete()  # type: ignore[reportAttributeAccessIssue]
                 except ProtectedError:
                     return Response(
-                        {"detail": "Невозможно удалить существующие квартиры: есть связанные данные, которые нельзя удалить автоматически (например, активные платежи или документы). Удалите их вручную и повторите попытку."},
+                        {
+                            "detail": "Невозможно удалить существующие квартиры: есть связанные данные, которые нельзя удалить автоматически (например, активные платежи или документы). Удалите их вручную и повторите попытку."
+                        },
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 

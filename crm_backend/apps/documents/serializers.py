@@ -46,9 +46,7 @@ class DocumentSerializer(serializers.ModelSerializer):
 
         # Size check
         if value.size > _MAX_FILE_SIZE_BYTES:
-            raise serializers.ValidationError(
-                f"File size exceeds {_MAX_FILE_SIZE_MB} MB limit."
-            )
+            raise serializers.ValidationError(f"File size exceeds {_MAX_FILE_SIZE_MB} MB limit.")
 
         # Extension check
         ext = os.path.splitext(value.name)[1].lower().lstrip(".")
