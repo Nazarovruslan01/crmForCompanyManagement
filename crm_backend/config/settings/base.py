@@ -335,6 +335,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "core.tasks.alert_deactivated_users",
         "schedule": crontab(hour=8, minute=10),
     },
+    "send-meeting-reminders": {
+        "task": "core.tasks.send_meeting_reminders",
+        "schedule": crontab(hour=8, minute=0),
+    },
 }
 
 # Frontend URL (used for password-reset links)
