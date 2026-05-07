@@ -280,6 +280,50 @@ class TestReceiptViewSetFull:
         response = admin_client.get("/api/v2/billing/receipts/99999/")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
+    def test_download_receipt(self, admin_client, payment):
+        """Admin can download a receipt PDF."""
+        from unittest.mock import patch
+
+        from apps.billing.models import Receipt
+
+        receipt = Receipt.objects.create(payment=payment, pdf_url="")
+
+        with patch("apps.billing.receipt_pdf.generate_payment_receipt", return_value=b"%PDF-1.4 test") as mock_gen:
+            with patch("django.core.files.storage.default_storage") as mock_storage:
+                mock_storage.exists.return_value = False
+                mock_storage.save.return_value = "receipts/payment_1_20260101_120000.pdf"
+                mock_storage.url.return_value = "/media/receipts/payment_1_20260101_120000.pdf"
+                mock_storage.open.return_value.__enter__ = lambda s: s
+                mock_storage.open.return_value.__exit__ = lambda *a: None
+                mock_storage.open.return_value.read = lambda: b"%PDF-1.4 test"
+
+                response = admin_client.get(f"/api/v2/billing/receipts/{receipt.id}/download/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"] == "application/pdf"
+        mock_gen.assert_called_once_with(payment)
+
+    def test_download_receipt_existing_file(self, admin_client, payment):
+        """Download returns existing PDF without regenerating."""
+        from unittest.mock import patch
+
+        from apps.billing.models import Receipt
+
+        receipt = Receipt.objects.create(payment=payment, pdf_url="/media/receipts/existing.pdf")
+
+        with patch("apps.billing.receipt_pdf.generate_payment_receipt") as mock_gen:
+            with patch("django.core.files.storage.default_storage") as mock_storage:
+                mock_storage.exists.return_value = True
+                mock_storage.open.return_value.__enter__ = lambda s: s
+                mock_storage.open.return_value.__exit__ = lambda *a: None
+                mock_storage.open.return_value.read = lambda: b"%PDF-1.4 existing"
+
+                response = admin_client.get(f"/api/v2/billing/receipts/{receipt.id}/download/")
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response["Content-Type"] == "application/pdf"
+        mock_gen.assert_not_called()
+
 
 class TestPaymentIdempotency:
     """Tests for payment idempotency."""
