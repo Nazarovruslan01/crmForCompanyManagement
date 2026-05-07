@@ -22,7 +22,7 @@ import type {
   DashboardSummary,
 } from '../types';
 
-const API_BASE = '/api/v2';
+const API_BASE = import.meta.env.VITE_API_BASE || '/api/v2';
 
 class ApiClient {
   private accessToken: string | null = null;
