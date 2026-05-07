@@ -38,6 +38,50 @@ class TestAidatCharge:
         fee = aidat_charge.calculate_late_fee(-5)
         assert fee == Decimal("0")
 
+    def test_late_fee_rate_bounds_reject_negative(self, apartment):
+        with pytest.raises(Exception):  # IntegrityError or ValidationError
+            AidatCharge.objects.create(
+                apartment=apartment,
+                billing_period_start=date(2026, 1, 1),
+                billing_period_end=date(2026, 1, 31),
+                base_amount=Decimal("500"),
+                late_fee_rate=Decimal("-0.001"),
+                due_date=date(2026, 2, 15),
+            )
+
+    def test_late_fee_rate_bounds_reject_over_max(self, apartment):
+        with pytest.raises(Exception):
+            AidatCharge.objects.create(
+                apartment=apartment,
+                billing_period_start=date(2026, 1, 1),
+                billing_period_end=date(2026, 1, 31),
+                base_amount=Decimal("500"),
+                late_fee_rate=Decimal("0.6"),
+                due_date=date(2026, 2, 15),
+            )
+
+    def test_late_fee_rate_bounds_accept_zero(self, apartment):
+        charge = AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=date(2026, 2, 1),
+            billing_period_end=date(2026, 2, 28),
+            base_amount=Decimal("500"),
+            late_fee_rate=Decimal("0"),
+            due_date=date(2026, 3, 15),
+        )
+        assert charge.late_fee_rate == Decimal("0")
+
+    def test_late_fee_rate_bounds_accept_max(self, apartment):
+        charge = AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=date(2026, 3, 1),
+            billing_period_end=date(2026, 3, 31),
+            base_amount=Decimal("500"),
+            late_fee_rate=Decimal("0.5"),
+            due_date=date(2026, 4, 15),
+        )
+        assert charge.late_fee_rate == Decimal("0.5")
+
     def test_aidat_status_choices(self):
         assert AidatCharge.Status.PENDING == "pending"
         assert AidatCharge.Status.PAID == "paid"

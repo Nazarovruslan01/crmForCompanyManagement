@@ -46,6 +46,11 @@ class AidatCharge(models.Model):
                 fields=["apartment", "billing_period_start"],
                 name="unique_aidat_per_apartment_period",
             ),
+            models.CheckConstraint(
+                condition=models.Q(late_fee_rate__gte=0, late_fee_rate__lte=0.5),
+                name="late_fee_rate_bounds",
+                violation_error_message="Late fee rate must be between 0 and 0.5 (50%).",
+            ),
         ]
         indexes = [
             # Reversed so billing_period_start alone (used by generate_monthly_invoices)
