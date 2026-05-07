@@ -3,13 +3,20 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import AidatChargeViewSet, ExtraordinaryChargeViewSet, PaymentViewSet, ReceiptViewSet
+from .views import (
+    AidatChargeViewSet,
+    ExtraordinaryChargeViewSet,
+    IyzicoViewSet,
+    PaymentViewSet,
+    ReceiptViewSet,
+)
 
 router = DefaultRouter()
 router.register(r"aidat-charges", AidatChargeViewSet)
 router.register(r"extraordinary-charges", ExtraordinaryChargeViewSet)
 router.register(r"payments", PaymentViewSet)
 router.register(r"receipts", ReceiptViewSet)
+router.register(r"iyzico", IyzicoViewSet, basename="iyzico")
 
 urlpatterns = [
     path("", include(router.urls)),

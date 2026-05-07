@@ -7,7 +7,7 @@ from apps.messenger.handlers._send import send_telegram_message
 from apps.messenger.models import BotMessage, MessengerUser
 
 from .broadcast import broadcast_to_ticket_group
-from .commands import send_help, send_unknown_command, send_welcome
+from .commands import send_balance, send_help, send_unknown_command, send_welcome
 from .registration import cancel_registration, process_role, start_registration
 from .tickets import (
     cancel_ticket_creation,
@@ -73,6 +73,8 @@ def handle_command(messenger_user: MessengerUser, text: str, message: dict[str, 
         cancel_registration(messenger_user)
     elif command == "/ticket":
         start_ticket(messenger_user)
+    elif command == "/balance":
+        send_balance(messenger_user)
     else:
         send_unknown_command(messenger_user)
 

@@ -1,5 +1,10 @@
 """Billing app views for REST API."""
 
+import logging
+
+from django.conf import settings
+from django.db import transaction
+from django.utils import timezone
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
@@ -11,6 +16,7 @@ from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadO
 from common.throttles import UserReadThrottle, UserWriteThrottle
 from core.mixins import ResidentQuerySetMixin
 
+from .iyzico_client import IyzicoError, checkout_form_initialize, retrieve_checkout_form
 from .models import AidatCharge, ExtraordinaryCharge, Payment, Receipt
 from .serializers import (
     AidatChargeSerializer,
@@ -18,6 +24,8 @@ from .serializers import (
     PaymentSerializer,
     ReceiptSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @extend_schema_view(
@@ -188,3 +196,266 @@ class ReceiptViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
     resident_lookup = "payment__apartment__ownerships__resident__user"
+
+
+class IyzicoViewSet(viewsets.ViewSet):
+    """Iyzico payment gateway integration endpoints."""
+
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [UserReadThrottle, UserWriteThrottle]
+
+    @action(detail=False, methods=["post"], url_path="checkout")
+    def checkout(self, request: Request) -> Response:
+        """Initialize Iyzico Checkout Form for an AidatCharge.
+
+        Request body:
+            {
+                "charge_id": 1,          // AidatCharge ID to pay
+                "callback_url": "..."    // Optional; defaults to settings.FRONTEND_URL
+            }
+
+        Returns:
+            {
+                "payment_page_url": "...",
+                "conversation_id": "...",
+                "token": "...",
+                "payment_id": 1          // Local Payment record ID
+            }
+        """
+        charge_id = request.data.get("charge_id")
+        if not charge_id:
+            return Response({"detail": "charge_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            charge = AidatCharge.objects.select_related("apartment__building").get(pk=charge_id)
+        except AidatCharge.DoesNotExist:
+            return Response({"detail": "AidatCharge not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Authorization: residents can only pay their own charges
+        user = request.user
+        if getattr(user, "role", None) == "resident":
+            from apps.residents.models import Ownership
+
+            has_ownership = Ownership.objects.filter(
+                resident__user=user,
+                apartment=charge.apartment,
+            ).exists()
+            if not has_ownership:
+                return Response(
+                    {"detail": "You can only pay charges for your own apartments."}, status=status.HTTP_403_FORBIDDEN
+                )
+
+        if charge.status == AidatCharge.Status.PAID:
+            return Response({"detail": "This charge has already been paid."}, status=status.HTTP_409_CONFLICT)
+
+        apartment = charge.apartment
+        building = apartment.building
+
+        # Get resident info for buyer
+        from apps.residents.models import Ownership
+
+        ownership = Ownership.objects.filter(apartment=apartment, is_primary=True).select_related("resident").first()
+
+        resident = ownership.resident if ownership else None
+        buyer_name = resident.full_name if resident else "Resident"
+        buyer_email = resident.email if resident and resident.email else "resident@example.com"
+        buyer_phone = resident.phone if resident and resident.phone else "+905555555555"
+
+        # Generate idempotency key to prevent duplicate payments
+        import uuid
+
+        idempotency_key = str(uuid.uuid4())
+        conversation_id = str(uuid.uuid4())
+
+        # Create a pending Payment record
+        with transaction.atomic():
+            payment = Payment.objects.create(
+                apartment=apartment,
+                charge_type=Payment.ChargeType.AIDAT,
+                charge_id=charge.pk,  # type: ignore[arg-type]
+                amount=charge.total_due,
+                currency="TRY",
+                payment_method=Payment.PaymentMethod.ONLINE,
+                idempotency_key=idempotency_key,
+                iyzico_conversation_id=conversation_id,
+            )
+
+        price = str(charge.base_amount)
+        paid_price = str(charge.total_due)
+        callback_url = request.data.get("callback_url") or f"{settings.FRONTEND_URL}/payment/callback"
+
+        buyer_payload = {
+            "id": str(resident.pk) if resident else "0",
+            "name": resident.name if resident else "Resident",
+            "surname": resident.surname if resident else "User",
+            "gsmNumber": buyer_phone,
+            "email": buyer_email,
+            "identityNumber": resident.tc_kimlik_no if resident and resident.tc_kimlik_no else "11111111111",
+            "lastLoginDate": timezone.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "registrationDate": (
+                resident.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                if resident
+                else timezone.now().strftime("%Y-%m-%d %H:%M:%S")
+            ),
+            "registrationAddress": building.address or "Istanbul",
+            "ip": self._get_client_ip(request),
+            "city": building.city or "Istanbul",
+            "country": "Turkey",
+            "zipCode": "34000",
+        }
+
+        address_payload = {
+            "contactName": buyer_name,
+            "city": building.city or "Istanbul",
+            "country": "Turkey",
+            "address": building.address or "Istanbul",
+            "zipCode": "34000",
+        }
+
+        basket_items = [
+            {
+                "id": str(charge.pk),
+                "name": f"Aidat {charge.billing_period_start.strftime('%B %Y')}",
+                "category1": "Aidat",
+                "itemType": "VIRTUAL",
+                "price": price,
+            }
+        ]
+
+        try:
+            result = checkout_form_initialize(
+                price=price,
+                paid_price=paid_price,
+                currency="TRY",
+                conversation_id=conversation_id,
+                callback_url=callback_url,
+                buyer=buyer_payload,
+                shipping_address=address_payload,
+                billing_address=address_payload,
+                basket_items=basket_items,
+            )
+        except IyzicoError as exc:
+            logger.error("Iyzico checkout failed: %s", exc)
+            return Response(
+                {"detail": "Payment gateway error.", "error": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        # Store token for later retrieval
+        payment.iyzico_token = result.get("token")
+        payment.save(update_fields=["iyzico_token"])
+
+        return Response(
+            {
+                "payment_page_url": result.get("paymentPageUrl"),
+                "conversation_id": conversation_id,
+                "token": result.get("token"),
+                "payment_id": payment.pk,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=False, methods=["post"], url_path="callback", permission_classes=[permissions.AllowAny])
+    def callback(self, request: Request) -> Response:
+        """Handle Iyzico callback after user completes payment.
+
+        Iyzico sends a POST with form data containing ``token``.
+        We retrieve the payment result and update the database.
+        """
+        token = request.data.get("token") or request.query_params.get("token")
+        if not token:
+            return Response({"detail": "token is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        payment = Payment.objects.filter(iyzico_token=token).first()
+        if not payment:
+            logger.warning("Iyzico callback with unknown token: %s", token)
+            return Response({"detail": "Payment session not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            result = retrieve_checkout_form(token=token, conversation_id=payment.iyzico_conversation_id or "")
+        except IyzicoError as exc:
+            logger.error("Iyzico retrieve failed for token %s: %s", token, exc)
+            return Response(
+                {"detail": "Payment gateway error.", "error": str(exc)},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        iyzico_payment_id = result.get("paymentId")
+        payment_status = result.get("paymentStatus")  # SUCCESS, FAILURE, INIT_THREEDS, etc.
+
+        payment.iyzico_payment_id = iyzico_payment_id
+        payment.save(update_fields=["iyzico_payment_id"])
+
+        if payment_status == "SUCCESS":
+            with transaction.atomic():
+                # Update linked AidatCharge
+                if payment.charge_id:
+                    AidatCharge.objects.filter(pk=payment.charge_id).update(
+                        status=AidatCharge.Status.PAID,
+                        paid_at=timezone.now(),
+                        paid_amount=payment.amount,
+                        payment=payment,
+                    )
+
+            return Response(
+                {
+                    "status": "success",
+                    "payment_id": payment.pk,
+                    "iyzico_payment_id": iyzico_payment_id,
+                    "amount": str(payment.amount),
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        # Payment failed or pending
+        return Response(
+            {
+                "status": "failure" if payment_status == "FAILURE" else payment_status.lower(),
+                "payment_id": payment.pk,
+                "iyzico_payment_id": iyzico_payment_id,
+                "error_message": result.get("errorMessage"),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["get"], url_path="status")
+    def status_check(self, request: Request) -> Response:
+        """Check payment status by conversation_id or payment_id.
+
+        Query params:
+            conversation_id (str) or payment_id (int)
+        """
+        conversation_id = request.query_params.get("conversation_id")
+        payment_id = request.query_params.get("payment_id")
+
+        payment = None
+        if conversation_id:
+            payment = Payment.objects.filter(iyzico_conversation_id=conversation_id).first()
+        elif payment_id:
+            payment = Payment.objects.filter(pk=payment_id).first()
+
+        if not payment:
+            return Response({"detail": "Payment not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Authorization check
+        user = request.user
+        if getattr(user, "role", None) == "resident":
+            from apps.residents.models import Ownership
+
+            has_ownership = Ownership.objects.filter(
+                resident__user=user,
+                apartment=payment.apartment,
+            ).exists()
+            if not has_ownership:
+                return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = PaymentSerializer(payment)
+        return Response(serializer.data)
+
+    @staticmethod
+    def _get_client_ip(request: Request) -> str:
+        """Extract client IP from request headers."""
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+        if x_forwarded_for:
+            return x_forwarded_for.split(",")[0].strip()
+        return request.META.get("REMOTE_ADDR", "127.0.0.1")

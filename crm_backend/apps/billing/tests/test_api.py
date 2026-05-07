@@ -1,6 +1,7 @@
 """Tests for billing endpoints."""
 
 from datetime import date, timedelta
+from unittest.mock import patch
 
 import pytest
 from rest_framework import status
@@ -478,3 +479,140 @@ class TestReceiptViewSet:
         }
         response = admin_client.post("/api/v2/billing/receipts/", payload, format="json")
         assert response.status_code == status.HTTP_201_CREATED
+
+
+class TestIyzicoViewSet:
+    """Tests for /api/v2/billing/iyzico/ endpoints."""
+
+    @patch("apps.billing.views.checkout_form_initialize")
+    def test_checkout_success(self, mock_init, resident_client, aidat_charge, resident_with_profile):
+        """Resident can initialize Iyzico checkout for their charge."""
+        from apps.residents.models import Ownership
+
+        Ownership.objects.filter(resident=resident_with_profile).delete()
+        Ownership.objects.create(
+            resident=resident_with_profile,
+            apartment=aidat_charge.apartment,
+            role="owner",
+            is_primary=True,
+        )
+
+        mock_init.return_value = {
+            "status": "success",
+            "paymentPageUrl": "https://sandbox.iyzipay.com/payment/abc123",
+            "token": "test-token-123",
+            "conversationId": "test-conv-123",
+        }
+
+        payload = {"charge_id": aidat_charge.id, "callback_url": "https://example.com/callback"}
+        response = resident_client.post("/api/v2/billing/iyzico/checkout/", payload, format="json")
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["payment_page_url"] == "https://sandbox.iyzipay.com/payment/abc123"
+        assert response.data["token"] == "test-token-123"
+        assert response.data["payment_id"] is not None
+
+        payment = Payment.objects.get(pk=response.data["payment_id"])
+        assert payment.iyzico_conversation_id is not None
+        assert payment.iyzico_token == "test-token-123"
+        assert payment.payment_method == Payment.PaymentMethod.ONLINE
+
+    def test_checkout_missing_charge_id(self, resident_client):
+        response = resident_client.post("/api/v2/billing/iyzico/checkout/", {}, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_checkout_charge_not_found(self, resident_client):
+        response = resident_client.post("/api/v2/billing/iyzico/checkout/", {"charge_id": 99999}, format="json")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_checkout_already_paid(self, admin_client, paid_aidat_charge):
+        payload = {"charge_id": paid_aidat_charge.id}
+        response = admin_client.post("/api/v2/billing/iyzico/checkout/", payload, format="json")
+        assert response.status_code == status.HTTP_409_CONFLICT
+
+    @patch("apps.billing.views.checkout_form_initialize")
+    def test_checkout_resident_cannot_pay_other_apartment(
+        self, mock_init, resident_client, aidat_charge, other_apartment
+    ):
+        """Resident cannot pay charges for apartments they don't own."""
+        # Ensure aidat_charge is for a different apartment
+        aidat_charge.apartment = other_apartment
+        aidat_charge.save()
+
+        payload = {"charge_id": aidat_charge.id}
+        response = resident_client.post("/api/v2/billing/iyzico/checkout/", payload, format="json")
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    @patch("apps.billing.views.retrieve_checkout_form")
+    def test_callback_success(self, mock_retrieve, admin_client, apartment):
+        """Iyzico callback updates payment and charge on SUCCESS."""
+        payment = Payment.objects.create(
+            apartment=apartment,
+            charge_type=Payment.ChargeType.AIDAT,
+            charge_id=None,
+            amount=500,
+            currency="TRY",
+            payment_method=Payment.PaymentMethod.ONLINE,
+            iyzico_conversation_id="conv-123",
+            iyzico_token="token-123",
+        )
+
+        mock_retrieve.return_value = {
+            "status": "success",
+            "paymentStatus": "SUCCESS",
+            "paymentId": "iyzico-pay-123",
+            "conversationId": "conv-123",
+        }
+
+        response = admin_client.post("/api/v2/billing/iyzico/callback/", {"token": "token-123"}, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "success"
+
+        payment.refresh_from_db()
+        assert payment.iyzico_payment_id == "iyzico-pay-123"
+
+    @patch("apps.billing.views.retrieve_checkout_form")
+    def test_callback_failure(self, mock_retrieve, admin_client, apartment):
+        """Iyzico callback returns failure status."""
+        Payment.objects.create(
+            apartment=apartment,
+            charge_type=Payment.ChargeType.AIDAT,
+            amount=500,
+            currency="TRY",
+            payment_method=Payment.PaymentMethod.ONLINE,
+            iyzico_conversation_id="conv-456",
+            iyzico_token="token-456",
+        )
+
+        mock_retrieve.return_value = {
+            "status": "success",
+            "paymentStatus": "FAILURE",
+            "paymentId": "iyzico-pay-456",
+            "errorMessage": "Card declined",
+        }
+
+        response = admin_client.post("/api/v2/billing/iyzico/callback/", {"token": "token-456"}, format="json")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["status"] == "failure"
+        assert response.data["error_message"] == "Card declined"
+
+    def test_callback_missing_token(self, api_client):
+        response = api_client.post("/api/v2/billing/iyzico/callback/", {}, format="json")
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+    def test_callback_unknown_token(self, api_client):
+        response = api_client.post("/api/v2/billing/iyzico/callback/", {"token": "unknown"}, format="json")
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_status_check_by_conversation_id(self, admin_client, apartment):
+        Payment.objects.create(
+            apartment=apartment,
+            charge_type=Payment.ChargeType.AIDAT,
+            amount=250,
+            currency="TRY",
+            payment_method=Payment.PaymentMethod.ONLINE,
+            iyzico_conversation_id="conv-status-1",
+        )
+        response = admin_client.get("/api/v2/billing/iyzico/status/", {"conversation_id": "conv-status-1"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["iyzico_conversation_id"] == "conv-status-1"

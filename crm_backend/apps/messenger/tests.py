@@ -1383,3 +1383,126 @@ class TestMessengerUserValidation:
         )
         with pytest.raises(ValidationError):
             mu.full_clean()
+
+
+class TestBalanceCommand:
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_balance_unregistered_user(self, mock_send, api_client):
+        MessengerUser.objects.create(telegram_chat_id=300000)
+        payload = {
+            "update_id": 300,
+            "message": {
+                "message_id": 300,
+                "from": {"id": 300000, "is_bot": False, "first_name": "Test"},
+                "chat": {"id": 300000, "type": "private"},
+                "date": 1234567890,
+                "text": "/balance",
+            },
+        }
+        url = reverse("messenger:telegram-webhook")
+        api_client.post(url, data=json.dumps(payload), content_type="application/json")
+
+        mock_send.assert_called_once()
+        args = mock_send.call_args[0]
+        assert "Please complete registration" in args[1]
+
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_balance_no_charges(self, mock_send, api_client, user):
+        from apps.residents.models import Resident
+
+        building = Building.objects.create(
+            name="Sunset Tower",
+            address="Test Address",
+            city="Antalya",
+            district="Alanya",
+        )
+        apartment = Apartment.objects.create(building=building, apartment_number="42B")
+        resident = Resident.objects.create(user=user, name="Test", surname="User", tc_kimlik_no="70000000010")
+        Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
+        MessengerUser.objects.create(telegram_chat_id=300001, resident=resident)
+
+        payload = {
+            "update_id": 301,
+            "message": {
+                "message_id": 301,
+                "from": {"id": 300001, "is_bot": False, "first_name": "Test"},
+                "chat": {"id": 300001, "type": "private"},
+                "date": 1234567890,
+                "text": "/balance",
+            },
+        }
+        url = reverse("messenger:telegram-webhook")
+        api_client.post(url, data=json.dumps(payload), content_type="application/json")
+
+        mock_send.assert_called_once()
+        args = mock_send.call_args[0]
+        assert "no outstanding payments" in args[1]
+
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_balance_with_pending_charges(self, mock_send, api_client, user):
+        from datetime import date, timedelta
+
+        from apps.billing.models import AidatCharge
+        from apps.residents.models import Resident
+
+        building = Building.objects.create(
+            name="Sunset Tower",
+            address="Test Address",
+            city="Antalya",
+            district="Alanya",
+        )
+        apartment = Apartment.objects.create(building=building, apartment_number="42B")
+        resident = Resident.objects.create(user=user, name="Test", surname="User", tc_kimlik_no="70000000010")
+        Ownership.objects.create(resident=resident, apartment=apartment, role="owner", is_primary=True)
+        MessengerUser.objects.create(telegram_chat_id=300002, resident=resident)
+
+        # Create a pending charge with future due date (no late fees)
+        AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=date(2026, 4, 1),
+            billing_period_end=date(2026, 4, 30),
+            base_amount=500,
+            late_fee_rate=0.001,
+            due_date=date.today() + timedelta(days=30),
+            status=AidatCharge.Status.PENDING,
+        )
+
+        payload = {
+            "update_id": 302,
+            "message": {
+                "message_id": 302,
+                "from": {"id": 300002, "is_bot": False, "first_name": "Test"},
+                "chat": {"id": 300002, "type": "private"},
+                "date": 1234567890,
+                "text": "/balance",
+            },
+        }
+        url = reverse("messenger:telegram-webhook")
+        api_client.post(url, data=json.dumps(payload), content_type="application/json")
+
+        mock_send.assert_called_once()
+        args = mock_send.call_args[0]
+        text = args[1]
+        assert "Total Due" in text
+        assert "500.00" in text
+        assert "Unpaid months: 1" in text
+
+    @patch("apps.messenger.telegram_client.send_telegram_message")
+    def test_help_includes_balance(self, mock_send, api_client):
+        MessengerUser.objects.create(telegram_chat_id=300003)
+        payload = {
+            "update_id": 303,
+            "message": {
+                "message_id": 303,
+                "from": {"id": 300003, "is_bot": False, "first_name": "Test"},
+                "chat": {"id": 300003, "type": "private"},
+                "date": 1234567890,
+                "text": "/help",
+            },
+        }
+        url = reverse("messenger:telegram-webhook")
+        api_client.post(url, data=json.dumps(payload), content_type="application/json")
+
+        mock_send.assert_called_once()
+        args = mock_send.call_args[0]
+        assert "/balance" in args[1]

@@ -146,6 +146,26 @@ class Payment(models.Model):
         db_index=True,
         help_text="Client-generated key to prevent duplicate payments on retries.",
     )
+    # Iyzico integration fields
+    iyzico_payment_id = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="Iyzico Payment ID",
+    )
+    iyzico_conversation_id = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name="Iyzico Conversation ID",
+    )
+    iyzico_token = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        verbose_name="Iyzico Checkout Token",
+    )
     paid_at = models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

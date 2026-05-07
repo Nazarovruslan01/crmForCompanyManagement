@@ -72,10 +72,20 @@ class PaymentSerializer(serializers.ModelSerializer):
             "bank_reference",
             "receipt_number",
             "idempotency_key",
+            "iyzico_payment_id",
+            "iyzico_conversation_id",
+            "iyzico_token",
             "paid_at",
             "created_at",
         ]
-        read_only_fields = ["receipt_number", "created_at", "idempotency_key"]
+        read_only_fields = [
+            "receipt_number",
+            "created_at",
+            "idempotency_key",
+            "iyzico_payment_id",
+            "iyzico_conversation_id",
+            "iyzico_token",
+        ]
 
 
 class ReceiptSerializer(serializers.ModelSerializer):
