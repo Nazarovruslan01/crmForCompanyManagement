@@ -4,6 +4,12 @@ Local / CI settings — inherits from base.
 
 import os
 
+# Set fallback env vars before importing base so that local dev works
+# without an .env file. Production settings (base.py) require these to be
+# set explicitly and raise if missing.
+os.environ.setdefault("DJANGO_SECRET_KEY", "django-insecure-local-dev-only-do-not-use-in-production")
+os.environ.setdefault("DATABASE_URL", "sqlite:///db.sqlite3")
+
 from .base import *  # noqa: F401, F403
 
 DEBUG = True

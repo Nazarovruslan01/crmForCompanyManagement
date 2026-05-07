@@ -14,7 +14,9 @@ from celery.schedules import crontab  # type: ignore[import-untyped]
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-in-production")
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("DJANGO_SECRET_KEY environment variable is required")
 
 DEBUG = os.getenv("DEBUG", "False") == "True"
 
@@ -100,17 +102,29 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 # Database
-_db_url = urlparse(os.getenv("DATABASE_URL", "postgresql://crm_user:changeme@localhost:5432/crm_db"))
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": _db_url.path[1:],
-        "USER": _db_url.username,
-        "PASSWORD": _db_url.password,
-        "HOST": _db_url.hostname,
-        "PORT": _db_url.port or 5432,
+_db_url_str = os.getenv("DATABASE_URL")
+if not _db_url_str:
+    raise RuntimeError("DATABASE_URL environment variable is required")
+_db_url = urlparse(_db_url_str)
+
+if _db_url.scheme in ("sqlite", "sqlite3"):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": _db_url.path,
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": _db_url.path[1:],
+            "USER": _db_url.username,
+            "PASSWORD": _db_url.password,
+            "HOST": _db_url.hostname,
+            "PORT": _db_url.port or 5432,
+        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
