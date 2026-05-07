@@ -776,3 +776,51 @@ def alert_deactivated_users() -> SentryAlertResult:
     )
     logger.info("Sentry business alert sent: %d deactivated users", deactivated_count)
     return SentryAlertResult(alerts_sent=1)
+
+
+class ReceiptGenerationResult(TypedDict):
+    receipt_id: int
+    success: bool
+    error: str | None
+
+
+@shared_task
+def generate_receipt_pdf(payment_id: int) -> ReceiptGenerationResult:
+    """Generate a PDF receipt for a Payment and store it in MEDIA_ROOT.
+
+    Creates or updates the linked Receipt record with the PDF file path.
+    """
+    from django.core.files.base import ContentFile
+    from django.core.files.storage import default_storage
+
+    from apps.billing.models import Payment, Receipt
+    from apps.billing.receipt_pdf import generate_payment_receipt
+
+    try:
+        payment = Payment.objects.select_related("apartment__building").get(pk=payment_id)
+    except Payment.DoesNotExist:
+        logger.error("generate_receipt_pdf: Payment %s not found", payment_id)
+        return ReceiptGenerationResult(receipt_id=0, success=False, error="Payment not found")
+
+    try:
+        pdf_bytes = generate_payment_receipt(payment)
+    except Exception as exc:
+        logger.error("generate_receipt_pdf: PDF generation failed for payment %s: %s", payment_id, exc)
+        return ReceiptGenerationResult(receipt_id=0, success=False, error=f"PDF generation failed: {exc}")
+
+    filename = f"receipts/payment_{payment_id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+
+    try:
+        path = default_storage.save(filename, ContentFile(pdf_bytes))
+        pdf_url = default_storage.url(path)
+    except Exception as exc:
+        logger.error("generate_receipt_pdf: Storage failed for payment %s: %s", payment_id, exc)
+        return ReceiptGenerationResult(receipt_id=0, success=False, error=f"Storage failed: {exc}")
+
+    receipt, _created = Receipt.objects.update_or_create(
+        payment=payment,
+        defaults={"pdf_url": pdf_url},
+    )
+
+    logger.info("generate_receipt_pdf: Receipt %s created for payment %s", receipt.pk, payment_id)
+    return ReceiptGenerationResult(receipt_id=receipt.pk, success=True, error=None)

@@ -4,6 +4,7 @@ import logging
 
 from django.conf import settings
 from django.db import transaction
+from django.http import FileResponse
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import permissions, status, viewsets
@@ -196,6 +197,72 @@ class ReceiptViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
     resident_lookup = "payment__apartment__ownerships__resident__user"
+
+    @action(detail=True, methods=["get"], url_path="download")
+    def download(self, request: Request, pk: int | None = None) -> FileResponse | Response:
+        """Download the PDF receipt for a payment.
+
+        If the receipt PDF has not been generated yet, it is created on the fly.
+        """
+        from django.core.files.base import ContentFile
+        from django.core.files.storage import default_storage
+
+        from apps.billing.receipt_pdf import generate_payment_receipt
+
+        receipt = self.get_object()
+        payment = receipt.payment
+
+        # Determine the file path from pdf_url
+        pdf_url = receipt.pdf_url
+        file_path = None
+        if pdf_url:
+            # pdf_url is a URL like /media/receipts/...; strip MEDIA_URL to get storage path
+            media_url = getattr(settings, "MEDIA_URL", "/media/")
+            if pdf_url.startswith(media_url):
+                file_path = pdf_url[len(media_url) :]
+            elif pdf_url.startswith("http"):
+                # For absolute URLs, try to extract path after media
+                file_path = pdf_url.split(media_url)[-1] if media_url in pdf_url else None
+
+        # If we have a valid file path and the file exists, serve it
+        if file_path and default_storage.exists(file_path):
+            file_obj = default_storage.open(file_path)
+            return FileResponse(
+                file_obj,
+                as_attachment=True,
+                filename=f"Makbuz_{payment.receipt_number or payment.id}.pdf",
+                content_type="application/pdf",
+            )
+
+        # Otherwise generate synchronously
+        try:
+            pdf_bytes = generate_payment_receipt(payment)
+        except Exception as exc:
+            logger.error("Receipt download: PDF generation failed for payment %s: %s", payment.id, exc)
+            return Response(
+                {"detail": "PDF generation failed."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        filename = f"receipts/payment_{payment.id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        try:
+            path = default_storage.save(filename, ContentFile(pdf_bytes))
+            receipt.pdf_url = default_storage.url(path)
+            receipt.save(update_fields=["pdf_url"])
+        except Exception as exc:
+            logger.error("Receipt download: Storage failed for payment %s: %s", payment.id, exc)
+            return Response(
+                {"detail": "PDF storage failed."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        file_obj = default_storage.open(path)
+        return FileResponse(
+            file_obj,
+            as_attachment=True,
+            filename=f"Makbuz_{payment.receipt_number or payment.id}.pdf",
+            content_type="application/pdf",
+        )
 
 
 class IyzicoViewSet(viewsets.ViewSet):
@@ -410,7 +477,7 @@ class IyzicoViewSet(viewsets.ViewSet):
         # Payment failed or pending
         return Response(
             {
-                "status": "failure" if payment_status == "FAILURE" else payment_status.lower(),
+                "status": "failure" if payment_status == "FAILURE" else (payment_status or "").lower(),
                 "payment_id": payment.pk,
                 "iyzico_payment_id": iyzico_payment_id,
                 "error_message": result.get("errorMessage"),

@@ -80,7 +80,7 @@ def _post(uri_path: str, payload: dict[str, Any]) -> dict[str, Any]:
         raise IyzicoError(f"Iyzico request failed: {exc}") from exc
 
     try:
-        data = response.json()
+        data: dict[str, Any] = response.json()
     except json.JSONDecodeError as exc:
         logger.error("Iyzico non-JSON response: %s", response.text[:200])
         raise IyzicoError(f"Iyzico non-JSON response: {exc}") from exc
