@@ -31,6 +31,11 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface MFARequiredResponse {
+  requires_mfa: true;
+  temp_token: string;
+}
+
 // ─── Properties ───────────────────────────────────────────────────────────────
 export interface Building {
   id: number;

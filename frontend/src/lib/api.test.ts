@@ -32,8 +32,8 @@ describe('ApiClient', () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
-    localStorage.clear();
     (api as unknown as { accessToken: string | null }).accessToken = null;
+    (api as unknown as { refreshPromise: Promise<boolean> | null }).refreshPromise = null;
     global.fetch = vi.fn();
   });
 
@@ -42,7 +42,7 @@ describe('ApiClient', () => {
   });
 
   describe('login', () => {
-    it('sets access token in localStorage on success', async () => {
+    it('sets access token on success', async () => {
       const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
       fetchMock.mockResolvedValueOnce(
         mockResponse({ access: 'access1', user: mockUser }),
@@ -50,9 +50,8 @@ describe('ApiClient', () => {
 
       const result = await api.login('testuser', 'password');
 
-      expect(result.user).toEqual(mockUser);
-      expect(localStorage.getItem('access_token')).toBe('access1');
-      expect(localStorage.getItem('refresh_token')).toBeNull();
+      expect('access' in result && result.user).toEqual(mockUser);
+      expect(api.getAccessToken()).toBe('access1');
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/v2/accounts/login/',
         expect.objectContaining({
@@ -62,6 +61,19 @@ describe('ApiClient', () => {
       );
     });
 
+    it('returns MFA requirement when requires_mfa is true', async () => {
+      const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({ requires_mfa: true, temp_token: 'temp123' }),
+      );
+
+      const result = await api.login('testuser', 'password');
+
+      expect('requires_mfa' in result).toBe(true);
+      expect(result).toMatchObject({ requires_mfa: true, temp_token: 'temp123' });
+      expect(api.getAccessToken()).toBeNull();
+    });
+
     it('throws on failure and does not set tokens', async () => {
       const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
       fetchMock.mockResolvedValueOnce(
@@ -69,7 +81,38 @@ describe('ApiClient', () => {
       );
 
       await expect(api.login('bad', 'bad')).rejects.toThrow('Invalid credentials');
-      expect(localStorage.getItem('access_token')).toBeNull();
+      expect(api.getAccessToken()).toBeNull();
+    });
+  });
+
+  describe('verifyMFA', () => {
+    it('sets access token on success', async () => {
+      const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({ access: 'mfa_access', user: mockUser }),
+      );
+
+      const result = await api.verifyMFA('temp123', '123456');
+
+      expect(result.user).toEqual(mockUser);
+      expect(api.getAccessToken()).toBe('mfa_access');
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/v2/accounts/mfa/verify/',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ temp_token: 'temp123', code: '123456' }),
+        }),
+      );
+    });
+
+    it('throws on failure and does not set tokens', async () => {
+      const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+      fetchMock.mockResolvedValueOnce(
+        mockResponse({ detail: 'Invalid MFA code' }, 401, false),
+      );
+
+      await expect(api.verifyMFA('temp123', '000000')).rejects.toThrow('Invalid MFA code');
+      expect(api.getAccessToken()).toBeNull();
     });
   });
 
@@ -88,7 +131,7 @@ describe('ApiClient', () => {
           credentials: 'include',
         }),
       );
-      expect(localStorage.getItem('access_token')).toBeNull();
+      expect(api.getAccessToken()).toBeNull();
     });
   });
 
@@ -122,7 +165,7 @@ describe('ApiClient', () => {
       const result = await api.getCurrentUser();
 
       expect(result).toEqual(mockUser);
-      expect(localStorage.getItem('access_token')).toBe('new_access');
+      expect(api.getAccessToken()).toBe('new_access');
       expect(fetchMock).toHaveBeenCalledTimes(3);
 
       const retryCall = fetchMock.mock.calls[2];
@@ -140,7 +183,31 @@ describe('ApiClient', () => {
         .mockResolvedValueOnce(mockResponse({ detail: 'Token invalid' }, 401, false)); // refresh fails
 
       await expect(api.getCurrentUser()).rejects.toThrow('HTTP 401');
-      expect(localStorage.getItem('access_token')).toBeNull();
+      expect(api.getAccessToken()).toBeNull();
+    });
+
+    it('shares a single refresh request for concurrent 401s (mutex)', async () => {
+      const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+      api.setTokens('old_access');
+
+      // Both requests return 401, then one refresh succeeds, then both retries succeed
+      fetchMock
+        .mockResolvedValueOnce(mockResponse({}, 401, false)) // request A 401
+        .mockResolvedValueOnce(mockResponse({}, 401, false)) // request B 401
+        .mockResolvedValueOnce(mockResponse({ access: 'new_access' })) // single refresh
+        .mockResolvedValueOnce(mockResponse(mockUser)) // retry A
+        .mockResolvedValueOnce(mockResponse(mockUser)); // retry B
+
+      const [resultA, resultB] = await Promise.all([
+        api.getCurrentUser(),
+        api.getCurrentUser(),
+      ]);
+
+      expect(resultA).toEqual(mockUser);
+      expect(resultB).toEqual(mockUser);
+      // 5 total calls: 2 original + 1 refresh + 2 retries
+      expect(fetchMock).toHaveBeenCalledTimes(5);
+      expect(api.getAccessToken()).toBe('new_access');
     });
   });
 
