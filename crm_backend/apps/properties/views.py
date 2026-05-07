@@ -9,8 +9,9 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from apps.accounts.audit import AuditLogMixin
-from apps.billing.models import AidatCharge
-from apps.residents.models import Ownership
+from apps.billing.models import AidatCharge, Payment
+from apps.documents.models import Document
+from apps.residents.models import Ownership, PersonalAccount
 from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
 from core.mixins import CacheListRetrieveMixin, ResidentQuerySetMixin
@@ -140,7 +141,14 @@ class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewS
             return Response({"detail": "blocks is required"}, status=status.HTTP_400_BAD_REQUEST)
 
         if clear_existing:
-            building.apartments.all().delete()  # type: ignore[attr-defined]
+            apartment_ids = list(building.apartments.values_list("id", flat=True))  # type: ignore[reportAttributeAccessIssue]
+            if apartment_ids:
+                Ownership.objects.filter(apartment_id__in=apartment_ids).delete()
+                PersonalAccount.objects.filter(apartment_id__in=apartment_ids).delete()
+                AidatCharge.objects.filter(apartment_id__in=apartment_ids).delete()
+                Payment.objects.filter(apartment_id__in=apartment_ids).delete()
+                Document.objects.filter(apartment_id__in=apartment_ids).delete()
+            building.apartments.all().delete()  # type: ignore[reportAttributeAccessIssue]
 
         created: list[Apartment] = []
         seq_counter = int(request.data.get("start_number", 1))

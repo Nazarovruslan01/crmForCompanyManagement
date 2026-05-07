@@ -141,6 +141,8 @@ make docker-up      # Full Docker stack
 make check          # CI-like full check (lint + format + typecheck + test)
 ```
 
+> **Deployment note:** After upgrading to a version that includes `rest_framework_simplejwt.token_blacklist` in `INSTALLED_APPS`, run `python manage.py migrate` to create the `OutstandingToken` / `BlacklistedToken` tables. Without this step, logout will raise a database error.
+
 ---
 
 ## Testing
