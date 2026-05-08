@@ -1,9 +1,9 @@
 """Concurrency tests for tickets critical operations."""
 
 import threading
-from django.db import connection
 
 import pytest
+from django.db import connection
 from rest_framework import status
 
 from apps.tickets.models import Ticket
