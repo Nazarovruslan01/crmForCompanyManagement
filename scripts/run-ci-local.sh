@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
-# Local CI runner — runs all CI checks locally.
-# Mirrors .github/workflows/ci.yml gates.
+# Local CI runner — mirrors .github/workflows/ci.yml.
 # Fails fast per-step but continues to show all results.
+#
+# Usage:
+#   ./scripts/run-ci-local.sh                  # SQLite (fast)
+#   WITH_POSTGRES=1 ./scripts/run-ci-local.sh  # Postgres (thorough, mirrors CI)
 
 set -euo pipefail
 
@@ -14,6 +17,9 @@ PY="python3"
 if command -v python >/dev/null 2>&1; then
     PY="python"
 fi
+
+USE_POSTGRES="${WITH_POSTGRES:-0}"
+DOCKER_STARTED=0
 
 run_step() {
     local name="$1"
@@ -31,6 +37,35 @@ run_step() {
     fi
 }
 
+cleanup() {
+    if [ "$USE_POSTGRES" -eq 1 ] && [ "$DOCKER_STARTED" -eq 1 ]; then
+        echo ""
+        echo "Stopping Postgres container..."
+        docker compose -f "$CRM_DIR/crm_backend/docker-compose.yml" down -v 2>/dev/null || true
+    fi
+}
+trap cleanup EXIT
+
+# ─── Postgres setup (optional) ──────────────────────────────────────────────
+if [ "$USE_POSTGRES" -eq 1 ]; then
+    echo "Starting Postgres container for CI..."
+    docker compose -f "$CRM_DIR/crm_backend/docker-compose.yml" up -d db
+
+    echo "Waiting for Postgres to be ready..."
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+        if docker compose -f "$CRM_DIR/crm_backend/docker-compose.yml" exec -T db pg_isready -U crm_user -d crm_db >/dev/null 2>&1; then
+            echo "✅  Postgres is ready"
+            break
+        fi
+        echo "  Waiting... ($i/10)"
+        sleep 1
+    done
+
+    DOCKER_STARTED=1
+    export DATABASE_URL="postgresql://crm_user:changeme@localhost:5432/crm_db"
+    export REDIS_URL="redis://localhost:6379/0"
+fi
+
 # ─── 1. Backend style ───────────────────────────────────────────────────────
 run_step "Lint (ruff check)" \
     bash -c "cd '$BACKEND_DIR' && ruff check ."
@@ -42,30 +77,46 @@ run_step "Format (ruff format --check)" \
 run_step "Type check (mypy --strict)" \
     bash -c "cd '$BACKEND_DIR' && mypy . --config-file mypy.ini"
 
-# ─── 3. Migrations (needs a SQLite db file for JSONField checks) ──────────────
-TEMP_DB="$BACKEND_DIR/db_ci_check.sqlite3"
-export DATABASE_URL="sqlite:///$TEMP_DB"
-run_step "Migrations check" bash -c "
-    cd '$BACKEND_DIR'
-    $PY manage.py migrate --noinput >/dev/null 2>&1 || true
-    $PY manage.py makemigrations --check --dry-run
-"
-rm -f "$TEMP_DB"
-unset DATABASE_URL
+# ─── 3. Migrations ─────────────────────────────────────────────────────────────
+if [ "$USE_POSTGRES" -eq 1 ]; then
+    run_step "Migrations check (Postgres)" bash -c "
+        cd '$BACKEND_DIR'
+        $PY manage.py makemigrations --check --dry-run
+    "
+else
+    TEMP_DB="$BACKEND_DIR/db_ci_check.sqlite3"
+    export DATABASE_URL="sqlite:///$TEMP_DB"
+    run_step "Migrations check (SQLite)" bash -c "
+        cd '$BACKEND_DIR'
+        $PY manage.py migrate --noinput >/dev/null 2>&1 || true
+        $PY manage.py makemigrations --check --dry-run
+    "
+    rm -f "$TEMP_DB"
+    unset DATABASE_URL
+fi
 
-# ─── 4. Django deploy check ───────────────────────────────────────────────────
+# ─── 4. Django deploy check (needs STATIC_ROOT) ──────────────────────────────
+run_step "Collect static files" \
+    bash -c "cd '$BACKEND_DIR' && mkdir -p static && $PY manage.py collectstatic --noinput >/dev/null 2>&1 || true"
+
 run_step "Production readiness" \
-    bash -c "cd '$BACKEND_DIR' && $PY manage.py check --deploy"
+    bash -c "cd '$BACKEND_DIR' && $PY manage.py check --deploy --fail-level=ERROR"
 
 # ─── 5. Tests ───────────────────────────────────────────────────────────────────
-run_step "Test (pytest)" \
-    bash -c "cd '$BACKEND_DIR' && $PY -m pytest --tb=short -q"
+if [ "$USE_POSTGRES" -eq 1 ]; then
+    run_step "Test (pytest, Postgres)" \
+        bash -c "cd '$BACKEND_DIR' && $PY -m pytest --reuse-db -v --tb=short"
+else
+    run_step "Test (pytest)" \
+        bash -c "cd '$BACKEND_DIR' && $PY -m pytest --tb=short -q"
+fi
 
 # ─── 6. Security ────────────────────────────────────────────────────────────────
 run_step "Security SAST (bandit)" bash -c "
     cd '$BACKEND_DIR'
     bandit -r apps core common \
         -ll -iii \
+        -c .bandit \
         -f json -o bandit-results.json
 "
 

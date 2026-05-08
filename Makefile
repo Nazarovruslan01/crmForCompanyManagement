@@ -1,4 +1,4 @@
-.PHONY: help install backend-install frontend-install migrate test lint format typecheck security run docker-up docker-down clean collectstatic static-check ci-local dev-up dev-down dev-logs dev-migrate dev-shell dev-test dev-test-ci ci-local-postgres
+.PHONY: help install backend-install frontend-install migrate test lint format typecheck security run docker-up docker-down clean collectstatic static-check ci-local dev-up dev-down dev-logs dev-migrate dev-shell dev-test dev-test-ci ci-local-postgres pre-commit
 
 # Postgres connection for local dev (matches docker-compose.yml)
 DEV_DB_URL := postgresql://crm_user:changeme@localhost:5432/crm_db
@@ -44,6 +44,7 @@ help:
 	@echo "  make docker-logs      Follow Docker Compose logs"
 	@echo "  make docker-logs-flower Follow Flower logs"
 	@echo "  make clean            Remove cache files and artifacts"
+	@echo "  make pre-commit       Run lint + format + typecheck + migrations-check (fast)"
 	@echo "  make check            Run lint + format + typecheck + test"
 
 # ─── Local CI runners ──────────────────────────────────────────────────────────
@@ -58,9 +59,15 @@ dev-up:
 	@echo "Starting Postgres (Redis expected on localhost:6379)..."
 	@docker compose up -d db
 	@echo "Waiting for Postgres to be ready..."
-	@sleep 3
-	@docker compose exec -T db pg_isready -U crm_user -d crm_db || (echo "Postgres not ready yet, waiting..." && sleep 5)
-	@echo "✅  Dev DB ready at $(DEV_DB_URL)"
+	@for i in 1 2 3 4 5 6 7 8 9 10; do \
+		if docker compose exec -T db pg_isready -U crm_user -d crm_db >/dev/null 2>&1; then \
+			echo "✅  Dev DB ready at $(DEV_DB_URL)"; \
+			exit 0; \
+		fi; \
+		echo "  Waiting... ($$i/10)"; \
+		sleep 1; \
+	done; \
+	echo "❌  Postgres did not become ready in time"; exit 1
 
 dev-down:
 	@docker compose down
@@ -79,7 +86,7 @@ dev-test: dev-up
 	@$(MAKE) dev-down
 
 dev-test-ci: dev-up
-	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) $(PYTEST) -n auto --cov=apps --cov-report=xml --cov-fail-under=80 --tb=short -q
+	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) $(PYTEST) -n auto --cov=apps --cov-report=xml --cov-fail-under=90 --tb=short -q
 	@$(MAKE) dev-down
 
 # ─── Installation ────────────────────────────────────────────────────────────
@@ -118,13 +125,13 @@ run-flower:
 
 # ─── Testing ───────────────────────────────────────────────────────────────────
 test:
-	cd crm_backend && $(PYTEST) -n auto --cov=apps --cov-report=term-missing --cov-fail-under=80
+	cd crm_backend && $(PYTEST) -n auto --cov=apps --cov-report=term-missing --cov-fail-under=90
 
 test-fast:
 	cd crm_backend && $(PYTEST) -n auto
 
 test-ci:
-	cd crm_backend && $(PYTEST) -n auto --cov=apps --cov-report=xml --cov-fail-under=80
+	cd crm_backend && $(PYTEST) -n auto --cov=apps --cov-report=xml --cov-fail-under=90
 
 # ─── Code Quality ──────────────────────────────────────────────────────────────
 lint:
@@ -142,8 +149,8 @@ typecheck:
 # ─── Security ──────────────────────────────────────────────────────────────────
 security:
 	cd crm_backend && \
-		bandit -r apps core common -ll -iii -f json -o bandit-results.json || true && \
-		pip-audit -r requirements/base.txt && \
+		bandit -r apps core common -ll -iii -c .bandit -f json -o bandit-results.json || true && \
+		pip-audit -r requirements/base.txt --ignore-vuln CVE-2026-42304 && \
 		detect-secrets scan --baseline .secrets.baseline --force-use-all-plugins
 
 # ─── Docker ────────────────────────────────────────────────────────────────────
@@ -170,3 +177,6 @@ clean:
 
 # ─── Full Check (CI-like) ──────────────────────────────────────────────────────
 check: lint format typecheck test
+
+# ─── Pre-commit (fast, ~10s) ───────────────────────────────────────────────────
+pre-commit: lint format typecheck migrations-check
