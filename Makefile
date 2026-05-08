@@ -1,4 +1,8 @@
-.PHONY: help install backend-install frontend-install migrate test lint format typecheck security run docker-up docker-down clean collectstatic static-check
+.PHONY: help install backend-install frontend-install migrate test lint format typecheck security run docker-up docker-down clean collectstatic static-check ci-local dev-up dev-down dev-logs dev-migrate dev-shell dev-test dev-test-ci ci-local-postgres
+
+# Postgres connection for local dev (matches docker-compose.yml)
+DEV_DB_URL := postgresql://crm_user:changeme@localhost:5432/crm_db
+DEV_REDIS_URL := redis://localhost:6379/0
 
 # Default target
 help:
@@ -19,12 +23,60 @@ help:
 	@echo "  make run              Start Django dev server"
 	@echo "  make run-celery       Start Celery worker"
 	@echo "  make run-flower       Start Flower monitoring UI"
-	@echo "  make docker-up        Start Docker Compose stack"
-	@echo "  make docker-down      Stop Docker Compose stack"
+	@echo ""
+	@echo "  make dev-up           Start Postgres + Redis for local dev"
+	@echo "  make dev-down           Stop Postgres + Redis"
+	@echo "  make dev-logs           Follow Postgres + Redis logs"
+	@echo "  make dev-migrate        Run migrations on dev Postgres"
+	@echo "  make dev-shell          Django shell with dev Postgres"
+	@echo "  make dev-test           Run pytest on dev Postgres (auto up/down)"
+	@echo "  make dev-test-ci        Run full pytest + coverage on dev Postgres"
+	@echo ""
+	@echo "  make ci-local         Run all CI checks locally (SQLite, fast)"
+	@echo "  make ci-local-postgres  Run all CI checks locally (Postgres, thorough)"
+	@echo ""
+	@echo "  make docker-up        Start full Docker Compose stack"
+	@echo "  make docker-down        Stop full Docker Compose stack"
 	@echo "  make docker-logs      Follow Docker Compose logs"
 	@echo "  make docker-logs-flower Follow Flower logs"
 	@echo "  make clean            Remove cache files and artifacts"
 	@echo "  make check            Run lint + format + typecheck + test"
+
+# ─── Local CI runners ──────────────────────────────────────────────────────────
+ci-local:
+	@./scripts/run-ci-local.sh
+
+ci-local-postgres:
+	@WITH_POSTGRES=1 ./scripts/run-ci-local.sh
+
+# ─── Dev environment (Postgres + Redis only) ────────────────────────────────────
+dev-up:
+	@echo "Starting Postgres + Redis..."
+	@docker compose up -d db redis
+	@echo "Waiting for Postgres to be ready..."
+	@sleep 3
+	@docker compose exec -T db pg_isready -U crm_user -d crm_db || (echo "Postgres not ready yet, waiting..." && sleep 5)
+	@echo "✅  Dev DB ready at $(DEV_DB_URL)"
+
+dev-down:
+	@docker compose down
+
+dev-logs:
+	@docker compose logs -f db redis
+
+dev-migrate:
+	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) python manage.py migrate
+
+dev-shell:
+	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) python manage.py shell
+
+dev-test: dev-up
+	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) pytest -n auto --tb=short -q
+	@$(MAKE) dev-down
+
+dev-test-ci: dev-up
+	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) pytest -n auto --cov=apps --cov-report=xml --cov-fail-under=80 --tb=short -q
+	@$(MAKE) dev-down
 
 # ─── Installation ────────────────────────────────────────────────────────────
 install: backend-install frontend-install
@@ -86,7 +138,7 @@ typecheck:
 # ─── Security ──────────────────────────────────────────────────────────────────
 security:
 	cd crm_backend && \
-		bandit -r . -ll -iii -f json -o bandit-results.json || true && \
+		bandit -r apps core common -ll -iii -f json -o bandit-results.json || true && \
 		pip-audit -r requirements/base.txt && \
 		detect-secrets scan --baseline .secrets.baseline --force-use-all-plugins
 
