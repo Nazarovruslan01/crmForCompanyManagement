@@ -36,3 +36,4 @@ htmlcov/
 
 # Playwright auth/session files
 playwright/.auth/
+bandit-results.json

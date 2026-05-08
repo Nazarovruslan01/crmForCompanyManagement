@@ -4,6 +4,10 @@
 DEV_DB_URL := postgresql://crm_user:changeme@localhost:5432/crm_db
 DEV_REDIS_URL := redis://localhost:6379/0
 
+# Python interpreter (uses project venv)
+PYTHON := ./.venv/bin/python
+PYTEST := ./.venv/bin/pytest
+
 # Default target
 help:
 	@echo "CRM for Company Management — Available commands"
@@ -51,8 +55,8 @@ ci-local-postgres:
 
 # ─── Dev environment (Postgres + Redis only) ────────────────────────────────────
 dev-up:
-	@echo "Starting Postgres + Redis..."
-	@docker compose up -d db redis
+	@echo "Starting Postgres (Redis expected on localhost:6379)..."
+	@docker compose up -d db
 	@echo "Waiting for Postgres to be ready..."
 	@sleep 3
 	@docker compose exec -T db pg_isready -U crm_user -d crm_db || (echo "Postgres not ready yet, waiting..." && sleep 5)
@@ -62,65 +66,65 @@ dev-down:
 	@docker compose down
 
 dev-logs:
-	@docker compose logs -f db redis
+	@docker compose logs -f db
 
 dev-migrate:
-	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) python manage.py migrate
+	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) $(PYTHON) manage.py migrate
 
 dev-shell:
-	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) python manage.py shell
+	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) $(PYTHON) manage.py shell
 
 dev-test: dev-up
-	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) pytest -n auto --tb=short -q
+	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) $(PYTEST) -n auto --tb=short -q
 	@$(MAKE) dev-down
 
 dev-test-ci: dev-up
-	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) pytest -n auto --cov=apps --cov-report=xml --cov-fail-under=80 --tb=short -q
+	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) $(PYTEST) -n auto --cov=apps --cov-report=xml --cov-fail-under=80 --tb=short -q
 	@$(MAKE) dev-down
 
 # ─── Installation ────────────────────────────────────────────────────────────
 install: backend-install frontend-install
 
 backend-install:
-	cd crm_backend && pip install -r requirements/local.txt
+	cd crm_backend && $(PYTHON) -m pip install -r requirements/local.txt
 
 frontend-install:
 	cd frontend && npm install
 
 # ─── Django ────────────────────────────────────────────────────────────────────
 migrate:
-	cd crm_backend && python manage.py migrate
+	cd crm_backend && $(PYTHON) manage.py migrate
 
 migrations-check:
-	cd crm_backend && python manage.py makemigrations --check --dry-run
+	cd crm_backend && $(PYTHON) manage.py makemigrations --check --dry-run
 
 shell:
-	cd crm_backend && python manage.py shell
+	cd crm_backend && $(PYTHON) manage.py shell
 
 createsuperuser:
-	cd crm_backend && python manage.py createsuperuser
+	cd crm_backend && $(PYTHON) manage.py createsuperuser
 
 collectstatic:
-	cd crm_backend && python manage.py collectstatic --noinput
+	cd crm_backend && $(PYTHON) manage.py collectstatic --noinput
 
 run:
-	cd crm_backend && python manage.py runserver
+	cd crm_backend && $(PYTHON) manage.py runserver
 
 run-celery:
-	cd crm_backend && celery -A config.celery worker --loglevel=info
+	cd crm_backend && $(PYTHON) -m celery -A config.celery worker --loglevel=info
 
 run-flower:
-	cd crm_backend && celery -A config.celery flower --port=5555
+	cd crm_backend && $(PYTHON) -m celery -A config.celery flower --port=5555
 
 # ─── Testing ───────────────────────────────────────────────────────────────────
 test:
-	cd crm_backend && pytest -n auto --cov=apps --cov-report=term-missing --cov-fail-under=80
+	cd crm_backend && $(PYTEST) -n auto --cov=apps --cov-report=term-missing --cov-fail-under=80
 
 test-fast:
-	cd crm_backend && pytest -n auto
+	cd crm_backend && $(PYTEST) -n auto
 
 test-ci:
-	cd crm_backend && pytest -n auto --cov=apps --cov-report=xml --cov-fail-under=80
+	cd crm_backend && $(PYTEST) -n auto --cov=apps --cov-report=xml --cov-fail-under=80
 
 # ─── Code Quality ──────────────────────────────────────────────────────────────
 lint:
