@@ -27,7 +27,7 @@ class AidatChargeSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["created_at", "updated_at"]
+        read_only_fields = ["created_at", "updated_at", "status", "paid_at", "paid_amount"]
 
 
 class ExtraordinaryChargeSerializer(serializers.ModelSerializer):

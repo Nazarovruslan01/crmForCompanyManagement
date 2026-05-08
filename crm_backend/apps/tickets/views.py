@@ -154,6 +154,9 @@ class TicketViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
     resident_lookup = "apartment__ownerships__resident__user"
 
+    def perform_create(self, serializer: serializers.BaseSerializer) -> None:  # type: ignore[override]
+        serializer.save(created_by=self.request.user)
+
     def get_queryset(self) -> "models.QuerySet[Ticket]":
         qs = super().get_queryset()
         if self.action == "retrieve":
@@ -194,6 +197,9 @@ class TicketCommentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelV
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
     resident_lookup = "ticket__apartment__ownerships__resident__user"
 
+    def perform_create(self, serializer: serializers.BaseSerializer) -> None:  # type: ignore[override]
+        serializer.save(author=self.request.user)
+
 
 class TicketAttachmentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[TicketAttachment]):
     queryset = TicketAttachment.objects.select_related("uploaded_by", "ticket").all()
@@ -202,6 +208,9 @@ class TicketAttachmentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.Mod
     filterset_fields = ["ticket", "file_type"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
     resident_lookup = "ticket__apartment__ownerships__resident__user"
+
+    def perform_create(self, serializer: serializers.BaseSerializer) -> None:  # type: ignore[override]
+        serializer.save(uploaded_by=self.request.user)
 
 
 class PresignedUploadSerializer(serializers.Serializer):

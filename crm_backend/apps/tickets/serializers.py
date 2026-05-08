@@ -30,7 +30,7 @@ class TicketCommentSerializer(serializers.ModelSerializer):
             "photo_urls",
             "created_at",
         ]
-        read_only_fields = ["created_at"]
+        read_only_fields = ["created_at", "author"]
 
 
 class TicketAttachmentSerializer(serializers.ModelSerializer):
@@ -48,7 +48,7 @@ class TicketAttachmentSerializer(serializers.ModelSerializer):
             "uploaded_by_display",
             "uploaded_at",
         ]
-        read_only_fields = ["uploaded_at"]
+        read_only_fields = ["uploaded_at", "uploaded_by"]
 
 
 class TicketSerializer(serializers.ModelSerializer):
@@ -80,7 +80,7 @@ class TicketSerializer(serializers.ModelSerializer):
             "updated_at",
             "resolved_at",
         ]
-        read_only_fields = ["created_at", "updated_at", "resolved_at"]
+        read_only_fields = ["created_at", "updated_at", "resolved_at", "created_by", "status"]
 
 
 class TicketDetailSerializer(TicketSerializer):

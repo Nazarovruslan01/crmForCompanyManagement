@@ -156,8 +156,8 @@ class TestNotificationLogViewSet:
         response = admin_client.get("/api/v2/notifications/logs/", {"channel": "email"})
         assert response.status_code == status.HTTP_200_OK
 
-    def test_update_notification_log(self, admin_client, notification_template, resident):
-        """Admin can update a notification log."""
+    def test_update_notification_log_read_only_fields_ignored(self, admin_client, notification_template, resident):
+        """Admin cannot mutate read-only fields of a notification log."""
         from apps.notifications.models import NotificationLog
 
         log = NotificationLog.objects.create(
@@ -170,7 +170,7 @@ class TestNotificationLogViewSet:
         response = admin_client.patch(f"/api/v2/notifications/logs/{log.pk}/", payload, format="json")
         assert response.status_code == status.HTTP_200_OK
         log.refresh_from_db()
-        assert log.status == "sent"
+        assert log.status == "pending"  # read-only, ignored
 
     def test_delete_notification_log(self, admin_client, notification_template, resident):
         """Admin can delete a notification log."""
