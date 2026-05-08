@@ -46,7 +46,7 @@ class NotificationLogSerializer(serializers.ModelSerializer):
             "delivered_at",
             "created_at",
         ]
-        read_only_fields = ["created_at"]
+        read_only_fields = ["created_at", "recipient", "status", "sent_at", "delivered_at", "external_id", "error_message"]
 
 
 # pyright: reportIncompatibleVariableOverride=false
