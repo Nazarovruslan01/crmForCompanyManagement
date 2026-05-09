@@ -23,7 +23,7 @@ const columns: Column<Building>[] = [
   {
     key: 'name',
     label: 'Название',
-    render: b => <span style={{ fontWeight: 500 }}>{b.name}</span>,
+    render: b => <span className="text-semi">{b.name}</span>,
   },
   {
     key: 'address',
@@ -73,16 +73,17 @@ export function BuildingsPage() {
       title="Здания"
       actions={
         <button
-          className="btn-primary"
+          className="btn-primary btn-sm"
           onClick={() => setFormOpen(true)}
-          style={{ padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
         >
           + Добавить здание
         </button>
       }
     >
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-        <SearchInput placeholder="Поиск по названию или адресу" onSearch={setSearch} style={{ marginBottom: 0, flex: 1, minWidth: 220 }} />
+      <div className="filter-row">
+        <div className="search-wrap">
+          <SearchInput placeholder="Поиск по названию или адресу" onSearch={setSearch} />
+        </div>
         <FilterSelect
           value={mgmtFilter}
           onChange={setMgmtFilter}

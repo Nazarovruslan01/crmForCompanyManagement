@@ -17,11 +17,7 @@ import toast from 'react-hot-toast';
 
 function SectionCard({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      background: '#fff', borderRadius: 14,
-      border: '1px solid var(--color-gray-3)',
-      padding: 24, boxShadow: 'var(--shadow-card)',
-    }}>
+    <div className="card">
       {children}
     </div>
   );
@@ -37,7 +33,7 @@ function SectionTitle({ icon: Icon, children }: { icon: React.ElementType; child
       }}>
         <Icon size={15} color="var(--color-brand)" />
       </div>
-      <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{children}</h2>
+      <h2 className="heading-md">{children}</h2>
     </div>
   );
 }
@@ -126,7 +122,7 @@ function ManagementCard({
     <SectionCard>
       <SectionTitle icon={Settings}>Управление</SectionTitle>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      <div className="grid-2col" style={{ gap: 24 }}>
 
         {/* Status actions */}
         <div>
@@ -162,7 +158,7 @@ function ManagementCard({
                   }}
                 >
                   {actionLoading === tr.status
-                    ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                    ? <Loader2 size={13} className="spinner" />
                     : null}
                   {tr.label}
                 </button>
@@ -195,9 +191,9 @@ function ManagementCard({
             {actionLoading === 'assignee' && (
               <Loader2
                 size={14}
+                className="spinner"
                 style={{
                   position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-                  animation: 'spin 1s linear infinite', color: 'var(--color-brand)',
                 }}
               />
             )}
@@ -412,7 +408,7 @@ export function TicketDetailPage() {
             </div>
 
             {commentError && (
-              <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: '#fff2f0', border: '1px solid #ffccc7', color: '#ff4d4f', fontSize: 13 }}>
+              <div className="alert-error" style={{ marginBottom: 12 }}>
                 {commentError}
               </div>
             )}

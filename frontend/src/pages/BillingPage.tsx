@@ -36,7 +36,7 @@ const aidatColumns: Column<AidatCharge>[] = [
   {
     key: 'apartment',
     label: 'Квартира',
-    render: a => <span style={{ fontWeight: 500 }}>{a.apartment_display}</span>,
+    render: a => <span className="text-semi">{a.apartment_display}</span>,
   },
   {
     key: 'period',
@@ -51,7 +51,7 @@ const aidatColumns: Column<AidatCharge>[] = [
     key: 'amount',
     label: 'Сумма',
     render: a => (
-      <span style={{ fontWeight: 600, color: a.status === 'overdue' ? '#ef4444' : undefined }}>
+      <span className="text-bold" style={{ color: a.status === 'overdue' ? '#ef4444' : undefined }}>
         ₺{Number(a.base_amount).toLocaleString('ru-RU')}
       </span>
     ),
@@ -62,7 +62,7 @@ const aidatColumns: Column<AidatCharge>[] = [
     render: a => {
       const overdue = a.status === 'overdue';
       return (
-        <span style={{ color: overdue ? '#ef4444' : undefined, fontWeight: overdue ? 600 : undefined }}>
+        <span style={{ color: overdue ? '#ef4444' : undefined }} className={overdue ? 'text-bold' : undefined}>
           {new Date(a.due_date).toLocaleDateString('ru-RU')}
         </span>
       );
@@ -85,7 +85,7 @@ const paymentColumns: Column<Payment>[] = [
     key: 'receipt',
     label: '№ квитанции',
     render: p => (
-      <span style={{ fontWeight: 500, fontFamily: 'monospace', fontSize: 12.5 }}>{p.receipt_number}</span>
+      <span className="text-semi text-mono" style={{ fontSize: 12.5 }}>{p.receipt_number}</span>
     ),
   },
   {
@@ -102,7 +102,7 @@ const paymentColumns: Column<Payment>[] = [
     key: 'amount',
     label: 'Сумма',
     render: p => (
-      <span style={{ fontWeight: 600, color: '#10b981' }}>
+      <span className="text-bold" style={{ color: '#10b981' }}>
         {p.currency} {Number(p.amount).toLocaleString('ru-RU')}
       </span>
     ),
@@ -152,12 +152,13 @@ export function BillingPage() {
 
       {tab === 'aidat' && (
         <>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-            <SearchInput
-              placeholder="Поиск по квартире"
-              onSearch={setAidatSearch}
-              style={{ marginBottom: 0, flex: 1, minWidth: 220 }}
-            />
+          <div className="filter-row">
+            <div className="search-wrap">
+              <SearchInput
+                placeholder="Поиск по квартире"
+                onSearch={setAidatSearch}
+              />
+            </div>
             <FilterSelect
               value={aidatStatus}
               onChange={setAidatStatus}
@@ -184,12 +185,13 @@ export function BillingPage() {
 
       {tab === 'payments' && (
         <>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-            <SearchInput
-              placeholder="Поиск по квитанции"
-              onSearch={setPaySearch}
-              style={{ marginBottom: 0, flex: 1, minWidth: 220 }}
-            />
+          <div className="filter-row">
+            <div className="search-wrap">
+              <SearchInput
+                placeholder="Поиск по квитанции"
+                onSearch={setPaySearch}
+              />
+            </div>
             <FilterSelect
               value={payMethod}
               onChange={setPayMethod}

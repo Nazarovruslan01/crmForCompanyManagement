@@ -71,7 +71,7 @@ export function DataTable<T>({
             <tr>
               <td colSpan={columns.length} style={{ padding: '48px 20px', textAlign: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, color: 'var(--color-gray-6)' }}>
-                  <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
+                  <Loader2 size={24} className="spinner" />
                   <span style={{ fontSize: 13 }}>Загрузка...</span>
                 </div>
               </td>
@@ -87,8 +87,8 @@ export function DataTable<T>({
             </tr>
           ) : rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} style={{ padding: '56px 20px', textAlign: 'center' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, color: 'var(--color-gray-6)' }}>
+              <td colSpan={columns.length} className="empty-state">
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
                   <Inbox size={28} strokeWidth={1.5} />
                   <span style={{ fontSize: 13 }}>{emptyText}</span>
                 </div>
@@ -115,7 +115,6 @@ export function DataTable<T>({
           )}
         </tbody>
       </table>
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

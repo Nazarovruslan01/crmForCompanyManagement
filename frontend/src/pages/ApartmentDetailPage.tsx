@@ -24,23 +24,17 @@ type TabKey = 'residents' | 'tickets' | 'billing';
 
 function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <Icon size={15} style={{ color: 'var(--color-gray-6)', flexShrink: 0 }} />
-      <span style={{ color: 'var(--color-gray-7)', minWidth: 90 }}>{label}:</span>
-      <span style={{ fontWeight: 500, color: 'var(--color-black)' }}>{value}</span>
+    <div className="info-row">
+      <Icon size={15} className="info-icon" />
+      <span className="info-label" style={{ minWidth: 90 }}>{label}:</span>
+      <span className="info-value">{value}</span>
     </div>
   );
 }
 
 function SectionCard({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      background: '#fff',
-      borderRadius: 14,
-      border: '1px solid var(--color-gray-3)',
-      padding: 24,
-      boxShadow: 'var(--shadow-card)',
-    }}>
+    <div className="card">
       {children}
     </div>
   );
@@ -76,8 +70,8 @@ function ResidentsTab({ aptId }: { aptId: number }) {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: 8, color: 'var(--color-gray-6)' }}>
-        <Loader2 size={20} style={{ animation: 'spin 1s linear infinite', color: 'var(--color-brand)' }} />
+      <div className="loading-center">
+        <Loader2 size={20} className="spinner" />
         <span style={{ fontSize: 13 }}>Загрузка…</span>
       </div>
     );
@@ -172,8 +166,8 @@ function TicketsTab({ aptId }: { aptId: number }) {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: 8, color: 'var(--color-gray-6)' }}>
-        <Loader2 size={20} style={{ animation: 'spin 1s linear infinite', color: 'var(--color-brand)' }} />
+      <div className="loading-center">
+        <Loader2 size={20} className="spinner" />
         <span style={{ fontSize: 13 }}>Загрузка…</span>
       </div>
     );
@@ -277,8 +271,8 @@ function BillingTab({ aptId }: { aptId: number }) {
       {/* Charges */}
       {subTab === 'charges' && (
         chargesLoading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: 8 }}>
-            <Loader2 size={20} style={{ animation: 'spin 1s linear infinite', color: 'var(--color-brand)' }} />
+          <div className="loading-center">
+            <Loader2 size={20} className="spinner" />
           </div>
         ) : chargesError ? (
           <EmptyState icon={Wallet} text={`Ошибка: ${chargesError}`} />
@@ -321,8 +315,8 @@ function BillingTab({ aptId }: { aptId: number }) {
       {/* Payments */}
       {subTab === 'payments' && (
         paymentsLoading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: 8 }}>
-            <Loader2 size={20} style={{ animation: 'spin 1s linear infinite', color: 'var(--color-brand)' }} />
+          <div className="loading-center">
+            <Loader2 size={20} className="spinner" />
           </div>
         ) : paymentsError ? (
           <EmptyState icon={CreditCard} text={`Ошибка: ${paymentsError}`} />
@@ -390,7 +384,7 @@ export function ApartmentDetailPage() {
     return (
       <PageLayout title="Квартира">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0', gap: 10 }}>
-          <Loader2 size={28} style={{ animation: 'spin 1s linear infinite', color: 'var(--color-brand)' }} />
+          <Loader2 size={28} className="spinner" />
           <span style={{ fontSize: 14, color: 'var(--color-gray-6)' }}>Загрузка…</span>
         </div>
         <style>{`@keyframes spin { from { transform:rotate(0deg) } to { transform:rotate(360deg) } }`}</style>

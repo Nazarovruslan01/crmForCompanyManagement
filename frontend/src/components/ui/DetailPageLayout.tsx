@@ -58,7 +58,7 @@ export function DetailPageLayout<T>({
         }}>
           <Loader2
             size={32}
-            style={{ animation: 'spin 1s linear infinite', color: 'var(--color-brand)' }}
+            className="spinner"
           />
           <span style={{ fontSize: 14 }}>Загрузка...</span>
         </div>
@@ -133,13 +133,7 @@ export function DetailPageLayout<T>({
 
       <div style={{ display: 'grid', gap: 16 }}>
         {/* Main info card */}
-        <div style={{
-          background: '#fff',
-          borderRadius: 14,
-          border: '1px solid var(--color-gray-3)',
-          padding: 24,
-          boxShadow: 'var(--shadow-card)',
-        }}>
+        <div className="card">
           {headerRenderer(data)}
           <div style={{
             display: 'grid',
