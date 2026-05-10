@@ -20,30 +20,22 @@ BASE_PROTOCOL = "/api/v2/meetings/protocols/"
 
 @pytest.fixture
 def admin_user():
-    return User.objects.create_user(
-        username="admin", password="testpass123", role=User.Role.ADMIN
-    )
+    return User.objects.create_user(username="admin", password="testpass123", role=User.Role.ADMIN)
 
 
 @pytest.fixture
 def manager_user():
-    return User.objects.create_user(
-        username="manager", password="testpass123", role=User.Role.MANAGER
-    )
+    return User.objects.create_user(username="manager", password="testpass123", role=User.Role.MANAGER)
 
 
 @pytest.fixture
 def resident_user():
-    return User.objects.create_user(
-        username="resident", password="testpass123", role=User.Role.RESIDENT
-    )
+    return User.objects.create_user(username="resident", password="testpass123", role=User.Role.RESIDENT)
 
 
 @pytest.fixture
 def staff_user():
-    return User.objects.create_user(
-        username="worker", password="testpass123", role=User.Role.WORKER
-    )
+    return User.objects.create_user(username="worker", password="testpass123", role=User.Role.WORKER)
 
 
 @pytest.fixture
@@ -96,9 +88,7 @@ def agenda_item(meeting):
 
 @pytest.fixture
 def protocol(meeting):
-    return MeetingProtocol.objects.create(
-        meeting=meeting, content="Meeting minutes here"
-    )
+    return MeetingProtocol.objects.create(meeting=meeting, content="Meeting minutes here")
 
 
 @pytest.fixture
@@ -117,9 +107,7 @@ def manager_client(manager_user):
 
 @pytest.fixture
 def resident_client(resident_user, apartment):
-    resident = Resident.objects.create(
-        user=resident_user, name="Test", surname="Resident", tc_kimlik_no="60000000010"
-    )
+    resident = Resident.objects.create(user=resident_user, name="Test", surname="Resident", tc_kimlik_no="60000000010")
     Ownership.objects.create(
         resident=resident,
         apartment=apartment,
@@ -172,9 +160,7 @@ class TestAgendaItemCRUD:
         assert response.data["title"] == "Approve budget"
 
     def test_update_agenda_item(self, admin_client, agenda_item):
-        response = admin_client.patch(
-            f"{BASE_AGENDA}{agenda_item.id}/", {"title": "Updated item"}, format="json"
-        )
+        response = admin_client.patch(f"{BASE_AGENDA}{agenda_item.id}/", {"title": "Updated item"}, format="json")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["title"] == "Updated item"
 
@@ -220,9 +206,7 @@ class TestAgendaItemFiltering:
         assert "Item A" in titles
         assert "Item B" not in titles
 
-    def test_filter_returns_empty_for_other_meeting(
-        self, admin_client, meeting, second_meeting
-    ):
+    def test_filter_returns_empty_for_other_meeting(self, admin_client, meeting, second_meeting):
         AgendaItem.objects.create(meeting=meeting, title="Only item", order=1)
 
         response = admin_client.get(BASE_AGENDA, {"meeting": second_meeting.id})
@@ -252,9 +236,7 @@ class TestMeetingProtocolCRUD:
         assert response.data["content"] == "Meeting minutes here"
 
     def test_update_protocol(self, admin_client, protocol):
-        response = admin_client.patch(
-            f"{BASE_PROTOCOL}{protocol.id}/", {"content": "Updated minutes"}, format="json"
-        )
+        response = admin_client.patch(f"{BASE_PROTOCOL}{protocol.id}/", {"content": "Updated minutes"}, format="json")
         assert response.status_code == status.HTTP_200_OK
         assert response.data["content"] == "Updated minutes"
 
@@ -305,9 +287,7 @@ class TestMeetingProtocolFiltering:
 
 
 class TestMeetingProtocolConstraints:
-    def test_cannot_create_duplicate_protocol_for_same_meeting(
-        self, admin_client, meeting
-    ):
+    def test_cannot_create_duplicate_protocol_for_same_meeting(self, admin_client, meeting):
         data = {"meeting": meeting.id, "content": "First protocol"}
         admin_client.post(BASE_PROTOCOL, data, format="json")
 
