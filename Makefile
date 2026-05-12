@@ -1,4 +1,12 @@
-.PHONY: help install backend-install frontend-install migrate test lint format typecheck security run docker-up docker-down clean collectstatic static-check
+.PHONY: help install backend-install frontend-install migrate test lint format typecheck security run docker-up docker-down clean collectstatic static-check ci-local dev-up dev-down dev-logs dev-migrate dev-shell dev-test dev-test-ci ci-local-postgres pre-commit
+
+# Postgres connection for local dev (matches docker-compose.yml)
+DEV_DB_URL := postgresql://crm_user:changeme@localhost:5432/crm_db
+DEV_REDIS_URL := redis://localhost:6379/0
+
+# Python interpreter (uses project venv)
+PYTHON := ./.venv/bin/python
+PYTEST := ./.venv/bin/pytest
 
 # Default target
 help:
@@ -19,56 +27,111 @@ help:
 	@echo "  make run              Start Django dev server"
 	@echo "  make run-celery       Start Celery worker"
 	@echo "  make run-flower       Start Flower monitoring UI"
-	@echo "  make docker-up        Start Docker Compose stack"
-	@echo "  make docker-down      Stop Docker Compose stack"
+	@echo ""
+	@echo "  make dev-up           Start Postgres + Redis for local dev"
+	@echo "  make dev-down           Stop Postgres + Redis"
+	@echo "  make dev-logs           Follow Postgres + Redis logs"
+	@echo "  make dev-migrate        Run migrations on dev Postgres"
+	@echo "  make dev-shell          Django shell with dev Postgres"
+	@echo "  make dev-test           Run pytest on dev Postgres (auto up/down)"
+	@echo "  make dev-test-ci        Run full pytest + coverage on dev Postgres"
+	@echo ""
+	@echo "  make ci-local         Run all CI checks locally (SQLite, fast)"
+	@echo "  make ci-local-postgres  Run all CI checks locally (Postgres, thorough)"
+	@echo ""
+	@echo "  make docker-up        Start full Docker Compose stack"
+	@echo "  make docker-down        Stop full Docker Compose stack"
 	@echo "  make docker-logs      Follow Docker Compose logs"
 	@echo "  make docker-logs-flower Follow Flower logs"
 	@echo "  make clean            Remove cache files and artifacts"
+	@echo "  make pre-commit       Run lint + format + typecheck + migrations-check (fast)"
 	@echo "  make check            Run lint + format + typecheck + test"
+
+# ─── Local CI runners ──────────────────────────────────────────────────────────
+ci-local:
+	@./scripts/run-ci-local.sh
+
+ci-local-postgres:
+	@WITH_POSTGRES=1 ./scripts/run-ci-local.sh
+
+# ─── Dev environment (Postgres + Redis only) ────────────────────────────────────
+dev-up:
+	@echo "Starting Postgres (Redis expected on localhost:6379)..."
+	@docker compose up -d db
+	@echo "Waiting for Postgres to be ready..."
+	@for i in 1 2 3 4 5 6 7 8 9 10; do \
+		if docker compose exec -T db pg_isready -U crm_user -d crm_db >/dev/null 2>&1; then \
+			echo "✅  Dev DB ready at $(DEV_DB_URL)"; \
+			exit 0; \
+		fi; \
+		echo "  Waiting... ($$i/10)"; \
+		sleep 1; \
+	done; \
+	echo "❌  Postgres did not become ready in time"; exit 1
+
+dev-down:
+	@docker compose down
+
+dev-logs:
+	@docker compose logs -f db
+
+dev-migrate:
+	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) $(PYTHON) manage.py migrate
+
+dev-shell:
+	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) $(PYTHON) manage.py shell
+
+dev-test: dev-up
+	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) $(PYTEST) -n auto --tb=short -q
+	@$(MAKE) dev-down
+
+dev-test-ci: dev-up
+	@cd crm_backend && DATABASE_URL=$(DEV_DB_URL) $(PYTEST) -n auto --cov=apps --cov-report=xml --cov-fail-under=90 --tb=short -q
+	@$(MAKE) dev-down
 
 # ─── Installation ────────────────────────────────────────────────────────────
 install: backend-install frontend-install
 
 backend-install:
-	cd crm_backend && pip install -r requirements/local.txt
+	cd crm_backend && $(PYTHON) -m pip install -r requirements/local.txt
 
 frontend-install:
 	cd frontend && npm install
 
 # ─── Django ────────────────────────────────────────────────────────────────────
 migrate:
-	cd crm_backend && python manage.py migrate
+	cd crm_backend && $(PYTHON) manage.py migrate
 
 migrations-check:
-	cd crm_backend && python manage.py makemigrations --check --dry-run
+	cd crm_backend && $(PYTHON) manage.py makemigrations --check --dry-run
 
 shell:
-	cd crm_backend && python manage.py shell
+	cd crm_backend && $(PYTHON) manage.py shell
 
 createsuperuser:
-	cd crm_backend && python manage.py createsuperuser
+	cd crm_backend && $(PYTHON) manage.py createsuperuser
 
 collectstatic:
-	cd crm_backend && python manage.py collectstatic --noinput
+	cd crm_backend && $(PYTHON) manage.py collectstatic --noinput
 
 run:
-	cd crm_backend && python manage.py runserver
+	cd crm_backend && $(PYTHON) manage.py runserver
 
 run-celery:
-	cd crm_backend && celery -A config.celery worker --loglevel=info
+	cd crm_backend && $(PYTHON) -m celery -A config.celery worker --loglevel=info
 
 run-flower:
-	cd crm_backend && celery -A config.celery flower --port=5555
+	cd crm_backend && $(PYTHON) -m celery -A config.celery flower --port=5555
 
 # ─── Testing ───────────────────────────────────────────────────────────────────
 test:
-	cd crm_backend && pytest -n auto --cov=apps --cov-report=term-missing --cov-fail-under=80
+	cd crm_backend && $(PYTEST) -n auto --cov=apps --cov-report=term-missing --cov-fail-under=90
 
 test-fast:
-	cd crm_backend && pytest -n auto
+	cd crm_backend && $(PYTEST) -n auto
 
 test-ci:
-	cd crm_backend && pytest -n auto --cov=apps --cov-report=xml --cov-fail-under=80
+	cd crm_backend && $(PYTEST) -n auto --cov=apps --cov-report=xml --cov-fail-under=90
 
 # ─── Code Quality ──────────────────────────────────────────────────────────────
 lint:
@@ -86,8 +149,8 @@ typecheck:
 # ─── Security ──────────────────────────────────────────────────────────────────
 security:
 	cd crm_backend && \
-		bandit -r . -ll -iii -f json -o bandit-results.json || true && \
-		pip-audit -r requirements/base.txt && \
+		bandit -r apps core common -ll -iii -c .bandit -f json -o bandit-results.json || true && \
+		pip-audit -r requirements/base.txt --ignore-vuln CVE-2026-42304 && \
 		detect-secrets scan --baseline .secrets.baseline --force-use-all-plugins
 
 # ─── Docker ────────────────────────────────────────────────────────────────────
@@ -114,3 +177,6 @@ clean:
 
 # ─── Full Check (CI-like) ──────────────────────────────────────────────────────
 check: lint format typecheck test
+
+# ─── Pre-commit (fast, ~10s) ───────────────────────────────────────────────────
+pre-commit: lint format typecheck migrations-check

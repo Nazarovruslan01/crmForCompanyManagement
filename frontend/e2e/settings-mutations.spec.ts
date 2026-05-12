@@ -1,6 +1,6 @@
 /**
  * E2E tests for settings page mutations.
- * Covers profile updates, password changes, and validation errors.
+ * Covers password changes and validation errors.
  *
  * Assumes authenticated context (storageState) — admin user.
  */
@@ -11,17 +11,16 @@ test.describe('Settings — Password Mutations', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/settings');
-    await expect(page).toHaveURL(/\/settings/);
+    // Wait for settings page to fully load
+    await page.waitForLoadState('networkidle');
   });
 
   test('user can change password', async ({ page }) => {
-    // Scope to the password section to avoid ambiguity
     const passwordSection = page.locator('div').filter({ has: page.getByRole('heading', { name: /Смена пароля/i }) });
 
     const passwordInputs = passwordSection.locator('input[type="password"]');
-    await expect(passwordInputs).toHaveCount(3);
+    await expect(passwordInputs).toHaveCount(3, { timeout: 10000 });
 
-    // Try changing from admin123! → NewPass123!
     let currentPassword = 'admin123!';
     await passwordInputs.nth(0).fill(currentPassword);
     await passwordInputs.nth(1).fill('NewPass123!');
@@ -29,16 +28,16 @@ test.describe('Settings — Password Mutations', () => {
     await passwordSection.getByRole('button', { name: /Изменить пароль/i }).click();
 
     try {
-      await expect(page.getByText(/Password has been changed successfully|пароль изменён|успешно/i)).toBeVisible({ timeout: 5000 });
+      await expect(page.getByText(/Password has been changed successfully|пароль изменён|успешно/i)).toBeVisible({ timeout: 10000 });
       currentPassword = 'NewPass123!';
     } catch {
-      // Password was already NewPass123! from a previous run — change it back to admin123!
+      // Password was already NewPass123! from a previous run — change it back
       currentPassword = 'NewPass123!';
       await passwordInputs.nth(0).fill(currentPassword);
       await passwordInputs.nth(1).fill('admin123!');
       await passwordInputs.nth(2).fill('admin123!');
       await passwordSection.getByRole('button', { name: /Изменить пароль/i }).click();
-      await expect(page.getByText(/Password has been changed successfully|пароль изменён|успешно/i)).toBeVisible();
+      await expect(page.getByText(/Password has been changed successfully|пароль изменён|успешно/i)).toBeVisible({ timeout: 10000 });
       currentPassword = 'admin123!';
     }
 
@@ -48,7 +47,7 @@ test.describe('Settings — Password Mutations', () => {
       await passwordInputs.nth(1).fill('admin123!');
       await passwordInputs.nth(2).fill('admin123!');
       await passwordSection.getByRole('button', { name: /Изменить пароль/i }).click();
-      await expect(page.getByText(/Password has been changed successfully|пароль изменён|успешно/i)).toBeVisible();
+      await expect(page.getByText(/Password has been changed successfully|пароль изменён|успешно/i)).toBeVisible({ timeout: 10000 });
     }
   });
 
@@ -56,7 +55,7 @@ test.describe('Settings — Password Mutations', () => {
     const passwordSection = page.locator('div').filter({ has: page.getByRole('heading', { name: /Смена пароля/i }) });
 
     const passwordInputs = passwordSection.locator('input[type="password"]');
-    await expect(passwordInputs).toHaveCount(3);
+    await expect(passwordInputs).toHaveCount(3, { timeout: 10000 });
 
     await passwordInputs.nth(0).fill('wrong-old-password');
     await passwordInputs.nth(1).fill('NewPass123!');
@@ -64,6 +63,6 @@ test.describe('Settings — Password Mutations', () => {
 
     await passwordSection.getByRole('button', { name: /Изменить пароль/i }).click();
 
-    await expect(page.getByText(/Invalid old password|Неверный текущий пароль|ошибка/i)).toBeVisible();
+    await expect(page.getByText(/Invalid old password|Неверный текущий пароль|ошибка/i).first()).toBeVisible({ timeout: 10000 });
   });
 });

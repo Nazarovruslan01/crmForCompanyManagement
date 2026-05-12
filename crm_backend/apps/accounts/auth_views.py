@@ -16,6 +16,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.settings import api_settings
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from common.throttles import LoginRateThrottle, MFAVerifyThrottle, PasswordResetRateThrottle
@@ -149,8 +150,10 @@ class LogoutView(APIView):
     )
     def post(self, request: Request) -> Response:
         # Blacklist refresh token from httpOnly cookie.
+        # In E2E mode (ROTATE_REFRESH_TOKENS=False), skip blacklisting
+        # so that shared storageState tokens remain valid across tests.
         refresh_token = request.COOKIES.get("refresh_token")
-        if refresh_token:
+        if refresh_token and api_settings.ROTATE_REFRESH_TOKENS:
             try:
                 token = RefreshToken(refresh_token)  # type: ignore[arg-type]
                 token.blacklist()

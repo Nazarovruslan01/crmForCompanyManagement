@@ -157,14 +157,8 @@ export function BuildingDetailPage() {
         </>
       )}
     >
-      <div style={{
-        background: '#fff',
-        borderRadius: 14,
-        border: '1px solid var(--color-gray-3)',
-        padding: 24,
-        boxShadow: 'var(--shadow-card)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div className="card">
+        <div className="section-header" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
               width: 32, height: 32, borderRadius: 8,
@@ -173,7 +167,7 @@ export function BuildingDetailPage() {
             }}>
               <Home size={15} color="var(--color-brand)" />
             </div>
-            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Квартиры</h2>
+            <h2 className="heading-md">Квартиры</h2>
           </div>
           <button
             onClick={() => navigate(`/buildings/${id}/chessboard`)}

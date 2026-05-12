@@ -35,9 +35,9 @@ const columns: Column<Document>[] = [
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <FileText size={15} color="#F26522" style={{ flexShrink: 0 }} />
         <div>
-          <p style={{ margin: 0, fontWeight: 500, fontSize: 13 }}>{d.title}</p>
+          <p className="heading-sm">{d.title}</p>
           {d.description && (
-            <p style={{ margin: 0, fontSize: 11.5, color: 'var(--color-gray-6)' }}>
+            <p className="text-muted-sm">
               {d.description.slice(0, 60)}{d.description.length > 60 ? '…' : ''}
             </p>
           )}
@@ -109,20 +109,20 @@ export function DocumentsPage() {
       title="Документы"
       actions={
         <button
-          className="btn-primary"
+          className="btn-primary btn-sm"
           onClick={() => setFormOpen(true)}
-          style={{ padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
         >
           + Загрузить документ
         </button>
       }
     >
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-        <SearchInput
-          placeholder="Поиск по названию или описанию"
-          onSearch={setSearch}
-          style={{ marginBottom: 0, flex: 1, minWidth: 220 }}
-        />
+      <div className="filter-row">
+        <div className="search-wrap">
+          <SearchInput
+            placeholder="Поиск по названию или описанию"
+            onSearch={setSearch}
+          />
+        </div>
         <FilterSelect
           value={typeFilter}
           onChange={setTypeFilter}

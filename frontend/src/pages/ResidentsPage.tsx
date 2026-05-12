@@ -26,7 +26,7 @@ const columns: Column<Resident>[] = [
   {
     key: 'name',
     label: 'ФИО',
-    render: r => <span style={{ fontWeight: 500 }}>{r.full_name}</span>,
+    render: r => <span className="text-semi">{r.full_name}</span>,
   },
   {
     key: 'phone',
@@ -83,20 +83,20 @@ export function ResidentsPage() {
       title="Жильцы"
       actions={
         <button
-          className="btn-primary"
+          className="btn-primary btn-sm"
           onClick={() => setFormOpen(true)}
-          style={{ padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
         >
           + Добавить жильца
         </button>
       }
     >
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-        <SearchInput
-          placeholder="Поиск по ФИО, ТС или паспорту"
-          onSearch={setSearch}
-          style={{ marginBottom: 0, flex: 1, minWidth: 220 }}
-        />
+      <div className="filter-row">
+        <div className="search-wrap">
+          <SearchInput
+            placeholder="Поиск по ФИО, ТС или паспорту"
+            onSearch={setSearch}
+          />
+        </div>
         <FilterSelect
           value={ownerTypeFilter}
           onChange={setOwnerTypeFilter}

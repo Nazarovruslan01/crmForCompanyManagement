@@ -33,7 +33,7 @@ const columns: Column<Meeting>[] = [
     render: m => (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <CalendarDays size={15} color="#F26522" style={{ flexShrink: 0 }} />
-        <span style={{ fontWeight: 500 }}>{m.title}</span>
+        <span className="text-semi">{m.title}</span>
       </div>
     ),
   },
@@ -92,20 +92,20 @@ export function MeetingsPage() {
       title="Собрания"
       actions={
         <button
-          className="btn-primary"
+          className="btn-primary btn-sm"
           onClick={() => setFormOpen(true)}
-          style={{ padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
         >
           + Создать собрание
         </button>
       }
     >
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-        <SearchInput
-          placeholder="Поиск по названию или зданию"
-          onSearch={setSearch}
-          style={{ marginBottom: 0, flex: 1, minWidth: 220 }}
-        />
+      <div className="filter-row">
+        <div className="search-wrap">
+          <SearchInput
+            placeholder="Поиск по названию или зданию"
+            onSearch={setSearch}
+          />
+        </div>
         <FilterSelect
           value={statusFilter}
           onChange={setStatusFilter}

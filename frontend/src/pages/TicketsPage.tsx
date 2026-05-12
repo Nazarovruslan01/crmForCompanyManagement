@@ -44,7 +44,7 @@ const columns: Column<Ticket>[] = [
     label: 'Заявка',
     render: t => (
       <div>
-        <p style={{ margin: 0, fontWeight: 500 }}>{t.title}</p>
+        <p className="text-semi">{t.title}</p>
         <p style={{ margin: 0, fontSize: 12, color: 'var(--color-gray-7)' }}>
           {t.apartment_detail.building_name} · кв. {t.apartment_detail.apartment_number}
         </p>
@@ -103,20 +103,20 @@ export function TicketsPage() {
       title="Заявки"
       actions={
         <button
-          className="btn-primary"
+          className="btn-primary btn-sm"
           onClick={() => setFormOpen(true)}
-          style={{ padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
         >
           + Новая заявка
         </button>
       }
     >
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-        <SearchInput
-          placeholder="Поиск по заявке или квартире"
-          onSearch={setSearch}
-          style={{ marginBottom: 0, flex: 1, minWidth: 220 }}
-        />
+      <div className="filter-row" style={{ marginBottom: 12 }}>
+        <div className="search-wrap">
+          <SearchInput
+            placeholder="Поиск по заявке или квартире"
+            onSearch={setSearch}
+          />
+        </div>
         <FilterSelect
           value={priorityFilter}
           onChange={setPriorityFilter}

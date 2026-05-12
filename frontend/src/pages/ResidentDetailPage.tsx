@@ -47,10 +47,10 @@ const ownershipColumns: Column<Ownership>[] = [
 
 function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <Icon size={15} style={{ color: 'var(--color-gray-6)', flexShrink: 0 }} />
-      <span style={{ color: 'var(--color-gray-7)', minWidth: 110 }}>{label}:</span>
-      <span style={{ fontWeight: 500, color: 'var(--color-black)' }}>{value}</span>
+    <div className="info-row">
+      <Icon size={15} className="info-icon" />
+      <span className="info-label">{label}:</span>
+      <span className="info-value">{value}</span>
     </div>
   );
 }
@@ -140,13 +140,7 @@ export function ResidentDetailPage() {
       )}
     >
       {/* Ownerships */}
-      <div style={{
-        background: '#fff',
-        borderRadius: 14,
-        border: '1px solid var(--color-gray-3)',
-        padding: 24,
-        boxShadow: 'var(--shadow-card)',
-      }}>
+      <div className="card">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
           <div style={{
             width: 32, height: 32, borderRadius: 8,
@@ -155,7 +149,7 @@ export function ResidentDetailPage() {
           }}>
             <Key size={15} color="var(--color-brand)" />
           </div>
-          <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Квартиры</h2>
+          <h2 className="heading-md">Квартиры</h2>
         </div>
 
         <DataTable

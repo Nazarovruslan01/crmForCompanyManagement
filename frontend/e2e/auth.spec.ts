@@ -2,7 +2,7 @@
  * E2E tests for authentication UI flows.
  * Tests the browser experience: login form, redirects, logout.
  *
- * Test user is seeded by `python manage.py create_test_users` before E2E runs.
+ * Test user is seeded by `python manage.py e2e_reset` before E2E runs.
  */
 import { test, expect } from '@playwright/test';
 
@@ -27,7 +27,7 @@ test('invalid credentials show error message', async ({ page }) => {
   await page.fill('#username', 'nonexistent_xyz');
   await page.fill('#password', 'wrongpassword');
   await page.click('button[type="submit"]');
-  await expect(page.getByText('Неверный логин или пароль')).toBeVisible();
+  await expect(page.getByText(/Invalid credentials|Неверный логин или пароль/i)).toBeVisible();
   // Stays on login page
   await expect(page).toHaveURL(/\/login/);
 });

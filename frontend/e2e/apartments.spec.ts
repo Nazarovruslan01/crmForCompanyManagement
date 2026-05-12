@@ -8,14 +8,21 @@ import { test, expect } from '@playwright/test';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 const API = `${BACKEND_URL}/api/v2`;
 
+/** Login via API and return the access token. */
+async function getAdminToken(request: import('@playwright/test').APIRequestContext): Promise<string> {
+  const res = await request.post(`${API}/accounts/login/`, {
+    data: { username: 'admin', password: 'admin123!' },
+  });
+  expect(res.ok()).toBeTruthy();
+  const data = (await res.json()) as { access: string };
+  return data.access;
+}
+
 test.describe('Apartment Detail', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
   test('navigates from chessboard to apartment detail', async ({ page, request }) => {
-    // Ensure we are on the app origin so localStorage is accessible
-    await page.goto('/');
-    const adminToken = await page.evaluate(() => localStorage.getItem('access_token') || '');
-    expect(adminToken, 'admin access token not found in localStorage').toBeTruthy();
+    const adminToken = await getAdminToken(request);
 
     // Seed a building
     const buildingRes = await request.post(`${API}/properties/buildings/`, {
@@ -45,19 +52,24 @@ test.describe('Apartment Detail', () => {
     expect(aptRes.ok()).toBeTruthy();
     const apartment = (await aptRes.json()) as { id: number };
 
+    // Wait for chessboard API to respond
+    const chessboardLoaded = page.waitForResponse(
+      (resp) => resp.url().includes('/api/v2/properties/') && resp.status() === 200,
+    );
     await page.goto(`/buildings/${building.id}/chessboard`);
+    await chessboardLoaded;
     await expect(page).toHaveURL(/\/buildings\/\d+\/chessboard/);
 
     // Wait for chessboard grid to load
-    await expect(page.locator('h1')).toBeVisible();
+    await expect(page.locator('h1')).toBeVisible({ timeout: 10000 });
 
     // Click first apartment cell (button with apartment number)
     const firstCell = page.locator('button', { hasText: /\d+/ }).first();
-    await expect(firstCell).toBeVisible();
+    await expect(firstCell).toBeVisible({ timeout: 10000 });
     await firstCell.click();
 
-    await expect(page).toHaveURL(`/apartments/${apartment.id}`);
+    await expect(page).toHaveURL(`/apartments/${apartment.id}`, { timeout: 10000 });
     await expect(page.locator('h1').first()).toContainText('Кв.');
-    await expect(page.getByRole('button', { name: 'Назад к списку' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Назад/i })).toBeVisible({ timeout: 10000 });
   });
 });

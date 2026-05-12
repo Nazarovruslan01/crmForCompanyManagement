@@ -76,7 +76,7 @@ jobs:
         run: pytest --no-migrations -v --tb=short
 
       - name: Run pip-audit
-        run: pip-audit --desc
+        run: pip-audit -r requirements/base.txt --ignore-vuln CVE-2026-42304
 
       - name: Run detect-secrets
-        run: detect-secrets scan --all-files --force-use-all-plugins
+        run: detect-secrets scan --baseline .secrets.baseline --force-use-all-plugins

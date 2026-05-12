@@ -123,8 +123,8 @@ export function EmployeeForm({ open, onClose, onSaved, initial }: Props) {
           <button
             type="button"
             onClick={onClose}
+            className="btn-ghost"
             style={{
-              padding: '9px 20px', borderRadius: 8, fontSize: 14, fontWeight: 500,
               border: '1.5px solid var(--color-gray-3)', background: '#fff',
               cursor: 'pointer', color: 'var(--color-gray-7)',
             }}

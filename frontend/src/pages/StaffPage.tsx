@@ -64,9 +64,9 @@ const employeeColumns: Column<Employee>[] = [
     key: 'user',
     label: 'Сотрудник',
     render: e => (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="info-row">
         <Avatar name={e.user_display} />
-        <span style={{ fontWeight: 500 }}>{e.user_display}</span>
+        <span className="text-semi">{e.user_display}</span>
       </div>
     ),
   },
@@ -105,9 +105,9 @@ const taskColumns: Column<Task>[] = [
     label: 'Задача',
     render: t => (
       <div>
-        <p style={{ margin: 0, fontWeight: 500, fontSize: 13 }}>{t.title}</p>
+        <p className="heading-sm">{t.title}</p>
         {t.ticket_display && (
-          <p style={{ margin: 0, fontSize: 11.5, color: 'var(--color-gray-6)' }}>
+          <p className="text-muted-sm">
             Заявка: {t.ticket_display}
           </p>
         )}
@@ -118,7 +118,7 @@ const taskColumns: Column<Task>[] = [
     key: 'assigned_to',
     label: 'Исполнитель',
     render: t => (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div className="info-row" style={{ gap: 8 }}>
         <Avatar name={t.assigned_to_display} />
         <span style={{ fontSize: 13 }}>{t.assigned_to_display}</span>
       </div>
@@ -141,7 +141,7 @@ const taskColumns: Column<Task>[] = [
       const due = new Date(t.due_date);
       const overdue = due < new Date() && t.status !== 'completed' && t.status !== 'cancelled';
       return (
-        <span style={{ fontSize: 13, color: overdue ? '#ef4444' : undefined, fontWeight: overdue ? 600 : undefined }}>
+        <span style={{ fontSize: 13, color: overdue ? '#ef4444' : undefined }} className={overdue ? 'text-bold' : undefined}>
           {due.toLocaleDateString('ru-RU')}
         </span>
       );
@@ -203,9 +203,8 @@ export function StaffPage() {
       actions={
         tab === 'employees' ? (
           <button
-            className="btn-primary"
+            className="btn-primary btn-sm"
             onClick={() => { setEditing(undefined); setFormOpen(true); }}
-            style={{ padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
           >
             + Добавить сотрудника
           </button>
@@ -216,12 +215,13 @@ export function StaffPage() {
 
       {tab === 'employees' && (
         <>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-            <SearchInput
-              placeholder="Поиск по имени"
-              onSearch={setEmpSearch}
-              style={{ marginBottom: 0, flex: 1, minWidth: 220 }}
-            />
+          <div className="filter-row">
+            <div className="search-wrap">
+              <SearchInput
+                placeholder="Поиск по имени"
+                onSearch={setEmpSearch}
+              />
+            </div>
             <FilterSelect
               value={roleFilter}
               onChange={setRoleFilter}
@@ -244,12 +244,13 @@ export function StaffPage() {
 
       {tab === 'tasks' && (
         <>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>
-            <SearchInput
-              placeholder="Поиск по задаче"
-              onSearch={setTaskSearch}
-              style={{ marginBottom: 0, flex: 1, minWidth: 220 }}
-            />
+          <div className="filter-row">
+            <div className="search-wrap">
+              <SearchInput
+                placeholder="Поиск по задаче"
+                onSearch={setTaskSearch}
+              />
+            </div>
             <FilterSelect
               value={statusFilter}
               onChange={setStatusFilter}

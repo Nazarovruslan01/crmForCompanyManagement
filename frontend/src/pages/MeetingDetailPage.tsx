@@ -248,21 +248,17 @@ export function MeetingDetailPage() {
       <>
         {/* Actions */}
         {isManager && currentMeeting && (currentMeeting.status === 'scheduled' || currentMeeting.status === 'active') && (
-          <div style={{
-            background: '#fff', borderRadius: 12, border: '1px solid var(--color-gray-3)',
-            padding: 24,
-          }}>
+          <div className="card">
             <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 600 }}>Действия</h2>
             {actionError && (
-              <div style={{ marginBottom: 12, color: '#ff4d4f', fontSize: 13 }}>{actionError}</div>
+              <div className="alert-error" style={{ marginBottom: 12 }}>{actionError}</div>
             )}
             <div style={{ display: 'flex', gap: 12 }}>
               {currentMeeting.status === 'scheduled' && (
                 <button
                   onClick={handleStart}
                   disabled={actionLoading}
-                  className="btn-primary"
-                  style={{ padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
+                  className="btn-primary btn-sm"
                 >
                   {actionLoading ? '...' : 'Начать собрание'}
                 </button>
@@ -271,8 +267,7 @@ export function MeetingDetailPage() {
                 <button
                   onClick={handleClose}
                   disabled={actionLoading}
-                  className="btn-primary"
-                  style={{ padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
+                  className="btn-primary btn-sm"
                 >
                   {actionLoading ? '...' : 'Завершить собрание'}
                 </button>
@@ -282,10 +277,7 @@ export function MeetingDetailPage() {
         )}
 
         {/* Agenda items */}
-        <div style={{
-          background: '#fff', borderRadius: 12, border: '1px solid var(--color-gray-3)',
-          padding: 24,
-        }}>
+        <div className="card">
           <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600 }}>Повестка дня</h2>
           {currentMeeting && currentMeeting.agenda_items.length > 0 ? (
             <div style={{ display: 'grid', gap: 12 }}>
@@ -307,10 +299,7 @@ export function MeetingDetailPage() {
 
         {/* Votes summary */}
         {currentMeeting && currentMeeting.votes && currentMeeting.votes.length > 0 && (
-          <div style={{
-            background: '#fff', borderRadius: 12, border: '1px solid var(--color-gray-3)',
-            padding: 24,
-          }}>
+          <div className="card">
             <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600 }}>Результаты голосования</h2>
             <div style={{ display: 'grid', gap: 12 }}>
               {currentMeeting.agenda_items.map(item => {
@@ -339,10 +328,7 @@ export function MeetingDetailPage() {
 
         {/* Protocol */}
         {currentMeeting?.protocol && (
-          <div style={{
-            background: '#fff', borderRadius: 12, border: '1px solid var(--color-gray-3)',
-            padding: 24,
-          }}>
+          <div className="card">
             <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
               <FileText size={18} /> Протокол
             </h2>

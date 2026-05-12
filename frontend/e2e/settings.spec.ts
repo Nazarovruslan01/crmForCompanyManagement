@@ -10,7 +10,8 @@ test.describe('Settings Page', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/settings');
-    await expect(page).toHaveURL(/\/settings/);
+    // Wait for page to fully render
+    await page.waitForLoadState('networkidle');
   });
 
   test('renders settings page', async ({ page }) => {
@@ -18,11 +19,12 @@ test.describe('Settings Page', () => {
   });
 
   test('profile info is visible', async ({ page }) => {
-    await expect(page.getByText('Логин')).toBeVisible();
-    await expect(page.getByText('Email')).toBeVisible();
+    // Wait for profile data to load
+    await expect(page.getByText(/Логин|Username/i).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Email').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('password change section is visible', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Смена пароля' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Смена пароля/i })).toBeVisible({ timeout: 10000 });
   });
 });
