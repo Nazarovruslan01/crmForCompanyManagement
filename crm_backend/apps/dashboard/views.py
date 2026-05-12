@@ -430,6 +430,14 @@ class PaymentMetricsView(AuditLogMixin, APIView):
             .values_list("month", "total")
         )
 
+        # Normalize keys: TruncMonth on DateField → date, on DateTimeField → datetime.
+        # Convert everything to date so sorting and dict lookup work consistently.
+        def _month_to_date(key):
+            return key.date() if hasattr(key, "date") else key
+
+        monthly_billed = {_month_to_date(k): v for k, v in monthly_billed.items()}
+        monthly_paid = {_month_to_date(k): v for k, v in monthly_paid.items()}
+
         all_months = sorted(set(list(monthly_billed.keys()) + list(monthly_paid.keys())))
         trend = []
         for month in all_months:
