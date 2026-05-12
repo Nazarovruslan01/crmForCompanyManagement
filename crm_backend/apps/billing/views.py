@@ -15,7 +15,7 @@ from rest_framework.response import Response
 from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
-from core.mixins import ResidentQuerySetMixin
+from core.mixins import CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin
 
 from .iyzico_client import IyzicoError, checkout_form_initialize, retrieve_checkout_form
 from .models import AidatCharge, ExtraordinaryCharge, Payment, Receipt
@@ -117,7 +117,13 @@ logger = logging.getLogger(__name__)
         },
     ),
 )
-class AidatChargeViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[AidatCharge]):
+class AidatChargeViewSet(
+    AuditLogMixin,
+    CacheListRetrieveMixin,
+    ManagerQuerySetMixin,
+    ResidentQuerySetMixin,
+    viewsets.ModelViewSet[AidatCharge],
+):
     queryset = AidatCharge.objects.select_related("apartment__building").all()
     serializer_class = AidatChargeSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -125,6 +131,7 @@ class AidatChargeViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelVie
     search_fields = ["apartment__apartment_number"]
     ordering_fields = ["billing_period_start", "due_date", "base_amount"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "apartment__building__managers"
     resident_lookup = "apartment__ownerships__resident__user"
 
     @action(detail=False, methods=["get"])
@@ -139,7 +146,9 @@ class AidatChargeViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelVie
         return Response(serializer.data)
 
 
-class ExtraordinaryChargeViewSet(AuditLogMixin, viewsets.ModelViewSet[ExtraordinaryCharge]):
+class ExtraordinaryChargeViewSet(
+    AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, viewsets.ModelViewSet[ExtraordinaryCharge]
+):
     queryset = ExtraordinaryCharge.objects.select_related("building").all()
     serializer_class = ExtraordinaryChargeSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
@@ -147,9 +156,12 @@ class ExtraordinaryChargeViewSet(AuditLogMixin, viewsets.ModelViewSet[Extraordin
     search_fields = ["description", "building__name"]
     ordering_fields = ["created_at", "total_amount"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "building__managers"
 
 
-class PaymentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Payment]):
+class PaymentViewSet(
+    AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Payment]
+):
     queryset = Payment.objects.select_related("apartment__building").all()
     serializer_class = PaymentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -157,6 +169,7 @@ class PaymentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet
     search_fields = ["receipt_number", "bank_reference"]
     ordering_fields = ["paid_at", "amount"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "apartment__building__managers"
     resident_lookup = "apartment__ownerships__resident__user"
 
     def create(self, request: Request, *args: object, **kwargs: object) -> Response:
@@ -191,11 +204,12 @@ class PaymentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class ReceiptViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Receipt]):
+class ReceiptViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Receipt]):
     queryset = Receipt.objects.select_related("payment__apartment__building").all()
     serializer_class = ReceiptSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "payment__apartment__building__managers"
     resident_lookup = "payment__apartment__ownerships__resident__user"
 
     @action(detail=True, methods=["get"], url_path="download")

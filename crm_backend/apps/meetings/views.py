@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
-from core.mixins import CacheListRetrieveMixin, ResidentQuerySetMixin
+from core.mixins import CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin
 
 from .models import AgendaItem, Meeting, MeetingProtocol, Vote
 from .serializers import (
@@ -26,6 +26,7 @@ from .serializers import (
 class MeetingViewSet(
     AuditLogMixin,
     CacheListRetrieveMixin,
+    ManagerQuerySetMixin,
     ResidentQuerySetMixin,
     viewsets.ModelViewSet[Meeting],
 ):
@@ -36,6 +37,7 @@ class MeetingViewSet(
     search_fields = ["title", "description"]
     ordering_fields = ["scheduled_date", "created_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "building__managers"
     resident_lookup = "building__apartments__ownerships__resident__user"
 
     def get_serializer_class(self):
@@ -116,17 +118,19 @@ class MeetingViewSet(
         return Response(VoteSerializer(vote).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
 
-class AgendaItemViewSet(AuditLogMixin, viewsets.ModelViewSet[AgendaItem]):
+class AgendaItemViewSet(AuditLogMixin, ManagerQuerySetMixin, viewsets.ModelViewSet[AgendaItem]):
     queryset = AgendaItem.objects.select_related("meeting").all()
     serializer_class = AgendaItemSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     filterset_fields = ["meeting"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "meeting__building__managers"
 
 
-class MeetingProtocolViewSet(AuditLogMixin, viewsets.ModelViewSet[MeetingProtocol]):
+class MeetingProtocolViewSet(AuditLogMixin, ManagerQuerySetMixin, viewsets.ModelViewSet[MeetingProtocol]):
     queryset = MeetingProtocol.objects.select_related("meeting").all()
     serializer_class = MeetingProtocolSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
     filterset_fields = ["meeting"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "meeting__building__managers"

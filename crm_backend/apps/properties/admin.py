@@ -11,6 +11,7 @@ class BuildingAdmin(admin.ModelAdmin):
     list_filter = ["management_type", "city", "district"]
     search_fields = ["name", "address", "city", "district"]
     readonly_fields = ["created_at", "updated_at"]
+    filter_horizontal = ["managers"]
     date_hierarchy = "created_at"
 
 
