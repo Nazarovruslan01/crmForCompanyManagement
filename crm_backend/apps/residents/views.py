@@ -144,6 +144,27 @@ class OwnershipViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixi
     manager_lookup = "apartment__building__managers"
     resident_lookup = "resident__user"
 
+    def _clear_existing_primary(self, apartment: object) -> None:
+        """Clear is_primary on other ownerships for this apartment."""
+        if apartment:
+            Ownership.objects.filter(apartment=apartment, is_primary=True).update(is_primary=False)
+
+    def perform_create(self, serializer: OwnershipSerializer) -> None:
+        from django.db import transaction
+
+        with transaction.atomic():
+            if serializer.validated_data.get("is_primary"):
+                self._clear_existing_primary(serializer.validated_data.get("apartment"))
+            serializer.save()
+
+    def perform_update(self, serializer: OwnershipSerializer) -> None:
+        from django.db import transaction
+
+        with transaction.atomic():
+            if serializer.validated_data.get("is_primary"):
+                self._clear_existing_primary(serializer.validated_data.get("apartment"))
+            serializer.save()
+
     @action(detail=False, methods=["get"])
     def by_apartment(self, request: Request) -> Response:
         """Get all ownerships for a specific apartment."""

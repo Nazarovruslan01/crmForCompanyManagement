@@ -14,10 +14,10 @@ from rest_framework.response import Response
 
 from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
-from common.throttles import UserReadThrottle, UserWriteThrottle
+from common.throttles import IyzicoCallbackThrottle, UserReadThrottle, UserWriteThrottle
 from core.mixins import CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin
 
-from .iyzico_client import IyzicoError, checkout_form_initialize, retrieve_checkout_form
+from .iyzico_client import IyzicoError, checkout_form_initialize, retrieve_checkout_form, verify_response_signature
 from .models import AidatCharge, ExtraordinaryCharge, Payment, Receipt
 from .serializers import (
     AidatChargeSerializer,
@@ -189,6 +189,26 @@ class PaymentViewSet(
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        # Guard against double payment for the same charge (atomic check-then-create)
+        charge_id = serializer.validated_data.get("charge_id")
+        charge_type = serializer.validated_data.get("charge_type")
+        if charge_id and charge_type:
+            with transaction.atomic():
+                existing_completed = (
+                    Payment.objects.select_for_update()
+                    .filter(
+                        charge_id=charge_id,
+                        charge_type=charge_type,
+                        status=Payment.Status.COMPLETED,
+                    )
+                    .exists()
+                )
+                if existing_completed:
+                    return Response(
+                        {"detail": "A completed payment already exists for this charge."},
+                        status=status.HTTP_409_CONFLICT,
+                    )
+
         try:
             serializer.save(idempotency_key=idempotency_key)
         except IntegrityError:
@@ -237,6 +257,10 @@ class ReceiptViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin,
             elif pdf_url.startswith("http"):
                 # For absolute URLs, try to extract path after media
                 file_path = pdf_url.split(media_url)[-1] if media_url in pdf_url else None
+
+        # Sanitize path to prevent directory traversal
+        if file_path and ".." in file_path:
+            return Response({"detail": "Invalid file path."}, status=status.HTTP_400_BAD_REQUEST)
 
         # If we have a valid file path and the file exists, serve it
         if file_path and default_storage.exists(file_path):
@@ -436,26 +460,84 @@ class IyzicoViewSet(viewsets.ViewSet):
             status=status.HTTP_201_CREATED,
         )
 
-    @action(detail=False, methods=["post"], url_path="callback", permission_classes=[permissions.AllowAny])
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="callback",
+        permission_classes=[permissions.AllowAny],
+        throttle_classes=[IyzicoCallbackThrottle],
+    )
     def callback(self, request: Request) -> Response:
         """Handle Iyzico callback after user completes payment.
 
         Iyzico sends a POST with form data containing ``token``.
-        We retrieve the payment result and update the database.
+        We verify the signature, retrieve the payment result, and update the database.
         """
         token = request.data.get("token") or request.query_params.get("token")
         if not token:
             return Response({"detail": "token is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        payment = Payment.objects.filter(iyzico_token=token).first()
-        if not payment:
-            logger.warning("Iyzico callback with unknown token: %s", token)
-            return Response({"detail": "Payment session not found."}, status=status.HTTP_404_NOT_FOUND)
+        # Verify Iyzico signature to prevent forged callbacks.
+        # If a signature is provided in the request, it must be valid.
+        # If no signature is provided, we rely on the retrieve_checkout_form
+        # call to validate the token with Iyzico's server.
+        signature = request.data.get("signature", "")
+        if signature:
+            secret_key = getattr(settings, "IYZICO_API_SECRET", "")
+            if not secret_key:
+                logger.error("Iyzico callback: signature present but IYZICO_API_SECRET is not configured")
+                return Response(
+                    {"detail": "Signature verification not configured."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            if not verify_response_signature(
+                {"conversationId": request.data.get("conversationId", ""), "token": token, "signature": signature},
+                secret_key,
+            ):
+                logger.warning(
+                    "Iyzico callback: invalid signature for token %s from IP %s", token, self._get_client_ip(request)
+                )
+                return Response({"detail": "Invalid signature."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Lock the payment row to prevent concurrent callback races.
+        with transaction.atomic():
+            payment = Payment.objects.select_for_update().filter(iyzico_token=token).first()
+            if not payment:
+                logger.warning("Iyzico callback with unknown token: %s", token)
+                return Response({"detail": "Payment session not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            # Guard against duplicate successful callbacks (re-checked inside the lock)
+            if payment.status == Payment.Status.COMPLETED:
+                return Response(
+                    {
+                        "status": "success",
+                        "payment_id": payment.pk,
+                        "iyzico_payment_id": payment.iyzico_payment_id,
+                        "amount": str(payment.amount),
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+        # Validate the callback conversationId against our stored record
+        request_conversation_id = request.data.get("conversationId", "")
+        if request_conversation_id and request_conversation_id != (payment.iyzico_conversation_id or ""):
+            logger.warning(
+                "Iyzico callback: conversationId mismatch for token %s (got %s, expected %s)",
+                token,
+                request_conversation_id,
+                payment.iyzico_conversation_id,
+            )
+            return Response({"detail": "Invalid conversation ID."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             result = retrieve_checkout_form(token=token, conversation_id=payment.iyzico_conversation_id or "")
         except IyzicoError as exc:
             logger.error("Iyzico retrieve failed for token %s: %s", token, exc)
+            with transaction.atomic():
+                payment = Payment.objects.select_for_update().filter(pk=payment.pk).first()
+                if payment and payment.status == Payment.Status.PENDING:
+                    payment.status = Payment.Status.FAILED
+                    payment.save(update_fields=["status"])
             return Response(
                 {"detail": "Payment gateway error.", "error": str(exc)},
                 status=status.HTTP_502_BAD_GATEWAY,
@@ -464,11 +546,25 @@ class IyzicoViewSet(viewsets.ViewSet):
         iyzico_payment_id = result.get("paymentId")
         payment_status = result.get("paymentStatus")  # SUCCESS, FAILURE, INIT_THREEDS, etc.
 
-        payment.iyzico_payment_id = iyzico_payment_id
-        payment.save(update_fields=["iyzico_payment_id"])
-
         if payment_status == "SUCCESS":
             with transaction.atomic():
+                payment = Payment.objects.select_for_update().filter(pk=payment.pk).first()
+                if not payment:
+                    return Response({"detail": "Payment not found."}, status=status.HTTP_404_NOT_FOUND)
+                if payment.status == Payment.Status.COMPLETED:
+                    return Response(
+                        {
+                            "status": "success",
+                            "payment_id": payment.pk,
+                            "iyzico_payment_id": payment.iyzico_payment_id,
+                            "amount": str(payment.amount),
+                        },
+                        status=status.HTTP_200_OK,
+                    )
+                payment.iyzico_payment_id = iyzico_payment_id
+                payment.status = Payment.Status.COMPLETED
+                payment.save(update_fields=["iyzico_payment_id", "status"])
+
                 # Update linked AidatCharge
                 if payment.charge_id:
                     AidatCharge.objects.filter(pk=payment.charge_id).update(
@@ -489,6 +585,10 @@ class IyzicoViewSet(viewsets.ViewSet):
             )
 
         # Payment failed or pending
+        payment.iyzico_payment_id = iyzico_payment_id
+        payment.status = Payment.Status.FAILED if payment_status == "FAILURE" else Payment.Status.PENDING
+        payment.save(update_fields=["iyzico_payment_id", "status"])
+
         return Response(
             {
                 "status": "failure" if payment_status == "FAILURE" else (payment_status or "").lower(),

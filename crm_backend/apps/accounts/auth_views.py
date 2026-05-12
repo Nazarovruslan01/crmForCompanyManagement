@@ -295,7 +295,11 @@ class PasswordResetConfirmView(APIView):
 
 
 class PasswordChangeView(APIView):
-    """Change password for authenticated user."""
+    """Change password for authenticated user.
+
+    After a successful password change, existing JWT tokens are invalidated
+    by setting a cache flag checked by DeactivatedUserMiddleware.
+    """
 
     permission_classes = [permissions.IsAuthenticated]
 
@@ -327,6 +331,19 @@ class PasswordChangeView(APIView):
         validate_password_strength(new_password)
         user.set_password(new_password)
         user.save()
+
+        # Invalidate all outstanding JWT tokens for this user.
+        # DeactivatedUserMiddleware checks this cache key and rejects
+        # tokens issued before the password change timestamp.
+        from django.core.cache import cache
+        from rest_framework_simplejwt.settings import api_settings
+
+        access_token_lifetime = api_settings.ACCESS_TOKEN_LIFETIME.total_seconds()
+        cache.set(
+            f"password_changed:{user.pk}",
+            timezone.now().timestamp(),
+            timeout=int(access_token_lifetime) + 300,  # token lifetime + buffer
+        )
 
         return Response({"detail": "Password has been changed successfully"}, status=status.HTTP_200_OK)
 
@@ -501,6 +518,33 @@ class CookieTokenRefreshView(APIView):
                 {"detail": "Refresh token cookie missing"},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+
+        # Validate refresh token and check security flags before issuing new access token.
+        try:
+            raw_token = RefreshToken(refresh_token)  # type: ignore[arg-type]
+            user_id = raw_token.payload.get("user_id")
+            token_iat = raw_token.payload.get("iat")
+        except TokenError as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        from django.core.cache import cache
+
+        if user_id and cache.get(f"user_deactivated:{user_id}"):
+            return Response(
+                {"detail": "User account is deactivated."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        if user_id and token_iat:
+            password_changed_ts = cache.get(f"password_changed:{user_id}")
+            if password_changed_ts and float(token_iat) < float(password_changed_ts):
+                return Response(
+                    {"detail": "Password has been changed. Please log in again."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
 
         serializer = TokenRefreshSerializer(data={"refresh": refresh_token})
         try:

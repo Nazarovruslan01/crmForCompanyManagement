@@ -66,6 +66,7 @@ if os.getenv("DISABLE_THROTTLING"):
         "telegram_webhook": "999999/min",
         "presigned_upload": "999999/min",
         "mfa_verify": "999999/min",
+        "iyzico_callback": "999999/min",
     }
 
 # Telegram Bot token for local tests

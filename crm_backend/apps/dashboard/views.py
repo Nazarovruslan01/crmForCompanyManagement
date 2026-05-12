@@ -43,12 +43,24 @@ class CurrentDate(Func):  # type: ignore[misc]
 
 
 def _get_managed_building_ids(user: object) -> list[int] | None:
-    """Return building IDs for a manager, or None for admin (global access)."""
+    """Return building IDs for a manager, or None for admin (global access).
+
+    Returns an empty list for residents (they have no managed buildings).
+    Use _get_resident_building_ids for resident-scoped queries.
+    """
     if getattr(user, "is_admin", False):
         return None  # global
     if getattr(user, "is_manager", False):
         return list(getattr(user, "managed_buildings", Building.objects.none()).values_list("id", flat=True))
-    return None
+    # Residents and workers — not managers, return empty to indicate no manager access
+    return []
+
+
+def _get_resident_building_ids(user: object) -> list[int]:
+    """Return building IDs where the user owns apartments."""
+    return list(
+        Ownership.objects.filter(resident__user=user).values_list("apartment__building_id", flat=True).distinct()
+    )
 
 
 def _dashboard_cache_key(user_id: int, endpoint: str, **params: object) -> str:
@@ -117,20 +129,24 @@ class DashboardSummaryView(AuditLogMixin, APIView):
             buildings_qs = Apartment.objects.all()
             tickets_qs = Ticket.objects.all()
             residents_qs = Ownership.objects.all()
-            aidat_qs = AidatCharge.objects.all()
+            aidat_qs = AidatCharge.objects.exclude(status=AidatCharge.Status.CANCELLED)
         elif user.is_manager:  # type: ignore[attr-defined]
             managed_building_ids = user.managed_buildings.values_list("id", flat=True)  # type: ignore[attr-defined]
             buildings_qs = Apartment.objects.filter(building_id__in=managed_building_ids)
             tickets_qs = Ticket.objects.filter(apartment__building_id__in=managed_building_ids)
             residents_qs = Ownership.objects.filter(apartment__building_id__in=managed_building_ids)
-            aidat_qs = AidatCharge.objects.filter(apartment__building_id__in=managed_building_ids)
+            aidat_qs = AidatCharge.objects.filter(apartment__building_id__in=managed_building_ids).exclude(
+                status=AidatCharge.Status.CANCELLED
+            )
         else:
             # Resident: scope to their apartments
             owned_apartment_ids = Ownership.objects.filter(resident__user=user).values_list("apartment_id", flat=True)
             buildings_qs = Apartment.objects.filter(id__in=owned_apartment_ids)
             tickets_qs = Ticket.objects.filter(apartment_id__in=owned_apartment_ids)
             residents_qs = Ownership.objects.filter(apartment_id__in=owned_apartment_ids)
-            aidat_qs = AidatCharge.objects.filter(apartment_id__in=owned_apartment_ids)
+            aidat_qs = AidatCharge.objects.filter(apartment_id__in=owned_apartment_ids).exclude(
+                status=AidatCharge.Status.CANCELLED
+            )
 
         # Aggregates
         buildings_count = (
@@ -212,18 +228,25 @@ class BuildingBreakdownView(AuditLogMixin, APIView):
         if cached is not None:
             return Response(cached, status=status.HTTP_200_OK)
 
-        building_ids = _get_managed_building_ids(user)
-        if building_ids is not None and not building_ids:
-            return Response([], status=status.HTTP_200_OK)
-
-        buildings = Building.objects.all() if building_ids is None else Building.objects.filter(id__in=building_ids)
+        # Scope buildings by user role
+        if getattr(user, "is_admin", False):
+            buildings = Building.objects.all()
+        elif getattr(user, "is_manager", False):
+            building_ids = _get_managed_building_ids(user)
+            buildings = Building.objects.filter(id__in=building_ids) if building_ids else Building.objects.none()
+        else:
+            # Resident: only see buildings they own apartments in
+            resident_building_ids = _get_resident_building_ids(user)
+            buildings = Building.objects.filter(id__in=resident_building_ids)
 
         results = []
         for building in buildings:
             apartments = building.apartments.all()
             total = apartments.count()
             occupied = apartments.filter(ownerships__isnull=False).distinct().count()
-            aidat_qs = AidatCharge.objects.filter(apartment__building=building)
+            aidat_qs = AidatCharge.objects.filter(apartment__building=building).exclude(
+                status=AidatCharge.Status.CANCELLED
+            )
             pending = aidat_qs.filter(status=AidatCharge.Status.PENDING).count()
             overdue = aidat_qs.filter(status=AidatCharge.Status.OVERDUE).count()
 
@@ -284,7 +307,15 @@ class TicketMetricsView(AuditLogMixin, APIView):
         if cached is not None:
             return Response(cached, status=status.HTTP_200_OK)
 
-        building_ids = _get_managed_building_ids(user)
+        # Scope by user role
+        if getattr(user, "is_admin", False):
+            building_ids = None  # global
+        elif getattr(user, "is_manager", False):
+            building_ids = _get_managed_building_ids(user)
+        else:
+            # Resident: only see tickets for their own buildings
+            building_ids = _get_resident_building_ids(user)
+
         if building_ids is not None and not building_ids:
             data = {"avg_resolution_time_hours": None, "by_category": {}, "by_status": {}}
             return Response(data, status=status.HTTP_200_OK)
@@ -333,24 +364,56 @@ class PaymentMetricsView(AuditLogMixin, APIView):
         if cached is not None:
             return Response(cached, status=status.HTTP_200_OK)
 
-        building_ids = _get_managed_building_ids(user)
+        # Scope by user role
+        if getattr(user, "is_admin", False):
+            building_ids = None  # global
+        elif getattr(user, "is_manager", False):
+            building_ids = _get_managed_building_ids(user)
+        else:
+            # Resident: only see payments for their own buildings
+            building_ids = _get_resident_building_ids(user)
+
         if building_ids is not None and not building_ids:
             data = {"total_collected": "0.00", "total_billed": "0.00", "collection_rate": 0.0, "monthly_trend": []}
             return Response(data, status=status.HTTP_200_OK)
 
         since = timezone.now() - timedelta(days=months_back * 30)
 
-        aidat_qs = AidatCharge.objects.filter(billing_period_start__gte=since)
+        aidat_qs = AidatCharge.objects.filter(billing_period_start__gte=since).exclude(
+            status=AidatCharge.Status.CANCELLED
+        )
         payment_qs = Payment.objects.filter(paid_at__gte=since)
         if building_ids is not None:
             aidat_qs = aidat_qs.filter(apartment__building_id__in=building_ids)
             payment_qs = payment_qs.filter(apartment__building_id__in=building_ids)
 
         total_billed = aidat_qs.aggregate(total=Sum("base_amount"))["total"] or Decimal("0")
-        total_collected = payment_qs.filter(charge_type=Payment.ChargeType.AIDAT).aggregate(total=Sum("amount"))[
-            "total"
-        ] or Decimal("0")
-        collection_rate = round(float(total_collected / total_billed * 100), 1) if total_billed > 0 else 0.0
+        total_collected = payment_qs.filter(
+            charge_type=Payment.ChargeType.AIDAT,
+            status=Payment.Status.COMPLETED,
+        ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
+        # Use total_due (base + late fees) for collection rate comparison
+        # to avoid rate exceeding 100% when late fees are collected
+        total_due = (
+            aidat_qs.annotate(
+                days_overdue=Greatest(
+                    ExpressionWrapper(
+                        CurrentDate() - F("due_date"),
+                        output_field=DecimalField(max_digits=10, decimal_places=0),
+                    ),
+                    Value(0),
+                ),
+            ).aggregate(
+                total=Sum(
+                    F("base_amount") + F("base_amount") * F("late_fee_rate") * F("days_overdue"),
+                    output_field=DecimalField(max_digits=15, decimal_places=2),
+                )
+            )["total"]
+            or Decimal("0")
+            if connection.vendor == "postgresql"
+            else sum(c.total_due for c in aidat_qs) or Decimal("0")
+        )
+        collection_rate = round(float(total_collected / total_due * 100), 1) if total_due > 0 else 0.0
 
         # Monthly trend
         monthly_billed = dict(
@@ -383,6 +446,7 @@ class PaymentMetricsView(AuditLogMixin, APIView):
         data = {
             "total_collected": total_collected,
             "total_billed": total_billed,
+            "total_due": total_due,
             "collection_rate": collection_rate,
             "monthly_trend": trend,
         }
@@ -408,7 +472,15 @@ class AidatTimeseriesView(AuditLogMixin, APIView):
         if cached is not None:
             return Response(cached, status=status.HTTP_200_OK)
 
-        building_ids = _get_managed_building_ids(user)
+        # Scope by user role
+        if getattr(user, "is_admin", False):
+            building_ids = None  # global
+        elif getattr(user, "is_manager", False):
+            building_ids = _get_managed_building_ids(user)
+        else:
+            # Resident: only see their own buildings
+            building_ids = _get_resident_building_ids(user)
+
         if building_ids is not None and not building_ids:
             return Response([], status=status.HTTP_200_OK)
 
@@ -426,7 +498,7 @@ class AidatTimeseriesView(AuditLogMixin, APIView):
             charges = AidatCharge.objects.filter(
                 apartment__building=building,
                 billing_period_start__gte=since,
-            )
+            ).exclude(status=AidatCharge.Status.CANCELLED)
             monthly = (
                 charges.annotate(month=TruncMonth("billing_period_start"))
                 .values("month")

@@ -53,6 +53,7 @@ class PaymentMetricsSerializer(serializers.Serializer):
 
     total_collected = serializers.DecimalField(max_digits=12, decimal_places=2)
     total_billed = serializers.DecimalField(max_digits=12, decimal_places=2)
+    total_due = serializers.DecimalField(max_digits=15, decimal_places=2)
     collection_rate = serializers.FloatField()
     monthly_trend = MonthlyPaymentTrendSerializer(many=True)
 
