@@ -64,6 +64,29 @@ def manager_client(db):
     return client
 
 
+@pytest.fixture
+def manager_with_building(db, building):
+    """Create a manager user and assign them to the test building."""
+    manager = User.objects.create_user(
+        username="managerbuilding",
+        email="managerbuilding@example.com",
+        password="testpass123",
+        role=User.Role.MANAGER,
+        first_name="Manager",
+        last_name="Building",
+    )
+    building.managers.add(manager)
+    return manager
+
+
+@pytest.fixture
+def manager_client_with_building(manager_with_building):
+    """Return API client authenticated as a manager assigned to the test building."""
+    client = APIClient()
+    client.force_authenticate(user=manager_with_building)
+    return client
+
+
 # =============================================================================
 # User Fixtures
 # =============================================================================

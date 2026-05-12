@@ -280,8 +280,10 @@ class TestTokenRefresh:
 
     def test_token_refresh_success(self, user):
         """Valid refresh token cookie returns new access token."""
+        from django.core.cache import cache
         from rest_framework.test import APIClient
 
+        cache.clear()  # Ensure no stale password_changed flags from other tests
         client = APIClient()
         refresh = RefreshToken.for_user(user)
         client.cookies.load({"refresh_token": str(refresh)})

@@ -2,6 +2,7 @@
 
 from decimal import Decimal
 
+from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
 
@@ -24,6 +25,13 @@ class Building(models.Model):
     )
     annual_budget = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True, verbose_name="Annual Budget (TRY)"
+    )
+    managers = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="managed_buildings",
+        verbose_name="Managers",
+        help_text="Users with manager role who manage this building",
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

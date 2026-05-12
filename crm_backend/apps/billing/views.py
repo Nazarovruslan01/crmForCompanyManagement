@@ -1,6 +1,7 @@
 """Billing app views for REST API."""
 
 import logging
+import os
 
 from django.conf import settings
 from django.db import transaction
@@ -14,10 +15,10 @@ from rest_framework.response import Response
 
 from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
-from common.throttles import UserReadThrottle, UserWriteThrottle
-from core.mixins import ResidentQuerySetMixin
+from common.throttles import IyzicoCallbackThrottle, UserReadThrottle, UserWriteThrottle
+from core.mixins import CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin
 
-from .iyzico_client import IyzicoError, checkout_form_initialize, retrieve_checkout_form
+from .iyzico_client import IyzicoError, checkout_form_initialize, retrieve_checkout_form, verify_response_signature
 from .models import AidatCharge, ExtraordinaryCharge, Payment, Receipt
 from .serializers import (
     AidatChargeSerializer,
@@ -117,7 +118,13 @@ logger = logging.getLogger(__name__)
         },
     ),
 )
-class AidatChargeViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[AidatCharge]):
+class AidatChargeViewSet(
+    AuditLogMixin,
+    CacheListRetrieveMixin,
+    ManagerQuerySetMixin,
+    ResidentQuerySetMixin,
+    viewsets.ModelViewSet[AidatCharge],
+):
     queryset = AidatCharge.objects.select_related("apartment__building").all()
     serializer_class = AidatChargeSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -125,6 +132,7 @@ class AidatChargeViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelVie
     search_fields = ["apartment__apartment_number"]
     ordering_fields = ["billing_period_start", "due_date", "base_amount"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "apartment__building__managers"
     resident_lookup = "apartment__ownerships__resident__user"
 
     @action(detail=False, methods=["get"])
@@ -139,7 +147,9 @@ class AidatChargeViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelVie
         return Response(serializer.data)
 
 
-class ExtraordinaryChargeViewSet(AuditLogMixin, viewsets.ModelViewSet[ExtraordinaryCharge]):
+class ExtraordinaryChargeViewSet(
+    AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, viewsets.ModelViewSet[ExtraordinaryCharge]
+):
     queryset = ExtraordinaryCharge.objects.select_related("building").all()
     serializer_class = ExtraordinaryChargeSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
@@ -147,9 +157,12 @@ class ExtraordinaryChargeViewSet(AuditLogMixin, viewsets.ModelViewSet[Extraordin
     search_fields = ["description", "building__name"]
     ordering_fields = ["created_at", "total_amount"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "building__managers"
 
 
-class PaymentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Payment]):
+class PaymentViewSet(
+    AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Payment]
+):
     queryset = Payment.objects.select_related("apartment__building").all()
     serializer_class = PaymentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -157,6 +170,7 @@ class PaymentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet
     search_fields = ["receipt_number", "bank_reference"]
     ordering_fields = ["paid_at", "amount"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "apartment__building__managers"
     resident_lookup = "apartment__ownerships__resident__user"
 
     def create(self, request: Request, *args: object, **kwargs: object) -> Response:
@@ -176,6 +190,26 @@ class PaymentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        # Guard against double payment for the same charge (atomic check-then-create)
+        charge_id = serializer.validated_data.get("charge_id")
+        charge_type = serializer.validated_data.get("charge_type")
+        if charge_id and charge_type:
+            with transaction.atomic():
+                existing_completed = (
+                    Payment.objects.select_for_update()
+                    .filter(
+                        charge_id=charge_id,
+                        charge_type=charge_type,
+                        status=Payment.Status.COMPLETED,
+                    )
+                    .exists()
+                )
+                if existing_completed:
+                    return Response(
+                        {"detail": "A completed payment already exists for this charge."},
+                        status=status.HTTP_409_CONFLICT,
+                    )
+
         try:
             serializer.save(idempotency_key=idempotency_key)
         except IntegrityError:
@@ -191,11 +225,12 @@ class PaymentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class ReceiptViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Receipt]):
+class ReceiptViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Receipt]):
     queryset = Receipt.objects.select_related("payment__apartment__building").all()
     serializer_class = ReceiptSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "payment__apartment__building__managers"
     resident_lookup = "payment__apartment__ownerships__resident__user"
 
     @action(detail=True, methods=["get"], url_path="download")
@@ -203,66 +238,76 @@ class ReceiptViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet
         """Download the PDF receipt for a payment.
 
         If the receipt PDF has not been generated yet, it is created on the fly.
+        Uses select_for_update() to prevent concurrent PDF generation races.
         """
         from django.core.files.base import ContentFile
         from django.core.files.storage import default_storage
 
         from apps.billing.receipt_pdf import generate_payment_receipt
 
-        receipt = self.get_object()
-        payment = receipt.payment
+        with transaction.atomic():
+            receipt = self.get_queryset().select_for_update(nowait=False).get(pk=pk)
+            self.check_object_permissions(request, receipt)
+            payment = receipt.payment
 
-        # Determine the file path from pdf_url
-        pdf_url = receipt.pdf_url
-        file_path = None
-        if pdf_url:
-            # pdf_url is a URL like /media/receipts/...; strip MEDIA_URL to get storage path
-            media_url = getattr(settings, "MEDIA_URL", "/media/")
-            if pdf_url.startswith(media_url):
-                file_path = pdf_url[len(media_url) :]
-            elif pdf_url.startswith("http"):
-                # For absolute URLs, try to extract path after media
-                file_path = pdf_url.split(media_url)[-1] if media_url in pdf_url else None
+            # Determine the file path from pdf_url
+            pdf_url = receipt.pdf_url
+            file_path = None
+            if pdf_url:
+                # pdf_url is a URL like /media/receipts/...; strip MEDIA_URL to get storage path
+                media_url = getattr(settings, "MEDIA_URL", "/media/")
+                if pdf_url.startswith(media_url):
+                    file_path = pdf_url[len(media_url) :]
+                elif pdf_url.startswith("http"):
+                    # For absolute URLs, try to extract path after media
+                    file_path = pdf_url.split(media_url)[-1] if media_url in pdf_url else None
 
-        # If we have a valid file path and the file exists, serve it
-        if file_path and default_storage.exists(file_path):
-            file_obj = default_storage.open(file_path)
+            # Sanitize path to prevent directory traversal
+            if file_path:
+                normalized = os.path.normpath(file_path)
+                if normalized.startswith("..") or normalized.startswith("/") or ".." in normalized.split(os.sep):
+                    return Response({"detail": "Invalid file path."}, status=status.HTTP_400_BAD_REQUEST)
+                file_path = normalized
+
+            # If we have a valid file path and the file exists, serve it
+            if file_path and default_storage.exists(file_path):
+                file_obj = default_storage.open(file_path)
+                return FileResponse(
+                    file_obj,
+                    as_attachment=True,
+                    filename=f"Makbuz_{payment.receipt_number or payment.id}.pdf",
+                    content_type="application/pdf",
+                )
+
+            # Otherwise generate synchronously
+            try:
+                pdf_bytes = generate_payment_receipt(payment)
+            except Exception as exc:
+                logger.error("Receipt download: PDF generation failed for payment %s: %s", payment.id, exc)
+                return Response(
+                    {"detail": "PDF generation failed."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            filename = f"receipts/payment_{payment.id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            try:
+                path = default_storage.save(filename, ContentFile(pdf_bytes))
+                receipt.pdf_url = default_storage.url(path)
+                receipt.save(update_fields=["pdf_url"])
+            except Exception as exc:
+                logger.error("Receipt download: Storage failed for payment %s: %s", payment.id, exc)
+                return Response(
+                    {"detail": "PDF storage failed."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
+            file_obj = default_storage.open(path)
             return FileResponse(
                 file_obj,
                 as_attachment=True,
                 filename=f"Makbuz_{payment.receipt_number or payment.id}.pdf",
                 content_type="application/pdf",
             )
-
-        # Otherwise generate synchronously
-        try:
-            pdf_bytes = generate_payment_receipt(payment)
-        except Exception as exc:
-            logger.error("Receipt download: PDF generation failed for payment %s: %s", payment.id, exc)
-            return Response(
-                {"detail": "PDF generation failed."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        filename = f"receipts/payment_{payment.id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        try:
-            path = default_storage.save(filename, ContentFile(pdf_bytes))
-            receipt.pdf_url = default_storage.url(path)
-            receipt.save(update_fields=["pdf_url"])
-        except Exception as exc:
-            logger.error("Receipt download: Storage failed for payment %s: %s", payment.id, exc)
-            return Response(
-                {"detail": "PDF storage failed."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-        file_obj = default_storage.open(path)
-        return FileResponse(
-            file_obj,
-            as_attachment=True,
-            filename=f"Makbuz_{payment.receipt_number or payment.id}.pdf",
-            content_type="application/pdf",
-        )
 
 
 class IyzicoViewSet(viewsets.ViewSet):
@@ -422,26 +467,84 @@ class IyzicoViewSet(viewsets.ViewSet):
             status=status.HTTP_201_CREATED,
         )
 
-    @action(detail=False, methods=["post"], url_path="callback", permission_classes=[permissions.AllowAny])
+    @action(
+        detail=False,
+        methods=["post"],
+        url_path="callback",
+        permission_classes=[permissions.AllowAny],
+        throttle_classes=[IyzicoCallbackThrottle],
+    )
     def callback(self, request: Request) -> Response:
         """Handle Iyzico callback after user completes payment.
 
         Iyzico sends a POST with form data containing ``token``.
-        We retrieve the payment result and update the database.
+        We verify the signature, retrieve the payment result, and update the database.
         """
         token = request.data.get("token") or request.query_params.get("token")
         if not token:
             return Response({"detail": "token is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        payment = Payment.objects.filter(iyzico_token=token).first()
-        if not payment:
-            logger.warning("Iyzico callback with unknown token: %s", token)
-            return Response({"detail": "Payment session not found."}, status=status.HTTP_404_NOT_FOUND)
+        # Verify Iyzico signature to prevent forged callbacks.
+        # If a signature is provided in the request, it must be valid.
+        # If no signature is provided, we rely on the retrieve_checkout_form
+        # call to validate the token with Iyzico's server.
+        signature = request.data.get("signature", "")
+        if signature:
+            secret_key = getattr(settings, "IYZICO_API_SECRET", "")
+            if not secret_key:
+                logger.error("Iyzico callback: signature present but IYZICO_API_SECRET is not configured")
+                return Response(
+                    {"detail": "Signature verification not configured."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+            if not verify_response_signature(
+                {"conversationId": request.data.get("conversationId", ""), "token": token, "signature": signature},
+                secret_key,
+            ):
+                logger.warning(
+                    "Iyzico callback: invalid signature for token %s from IP %s", token, self._get_client_ip(request)
+                )
+                return Response({"detail": "Invalid signature."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Lock the payment row to prevent concurrent callback races.
+        with transaction.atomic():
+            payment = Payment.objects.select_for_update().filter(iyzico_token=token).first()
+            if not payment:
+                logger.warning("Iyzico callback with unknown token: %s", token)
+                return Response({"detail": "Payment session not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            # Guard against duplicate successful callbacks (re-checked inside the lock)
+            if payment.status == Payment.Status.COMPLETED:
+                return Response(
+                    {
+                        "status": "success",
+                        "payment_id": payment.pk,
+                        "iyzico_payment_id": payment.iyzico_payment_id,
+                        "amount": str(payment.amount),
+                    },
+                    status=status.HTTP_200_OK,
+                )
+
+        # Validate the callback conversationId against our stored record
+        request_conversation_id = request.data.get("conversationId", "")
+        if request_conversation_id and request_conversation_id != (payment.iyzico_conversation_id or ""):
+            logger.warning(
+                "Iyzico callback: conversationId mismatch for token %s (got %s, expected %s)",
+                token,
+                request_conversation_id,
+                payment.iyzico_conversation_id,
+            )
+            return Response({"detail": "Invalid conversation ID."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             result = retrieve_checkout_form(token=token, conversation_id=payment.iyzico_conversation_id or "")
         except IyzicoError as exc:
             logger.error("Iyzico retrieve failed for token %s: %s", token, exc)
+            with transaction.atomic():
+                payment = Payment.objects.select_for_update().filter(pk=payment.pk).first()
+                if payment and payment.status == Payment.Status.PENDING:
+                    payment.status = Payment.Status.FAILED
+                    payment.save(update_fields=["status"])
             return Response(
                 {"detail": "Payment gateway error.", "error": str(exc)},
                 status=status.HTTP_502_BAD_GATEWAY,
@@ -450,11 +553,25 @@ class IyzicoViewSet(viewsets.ViewSet):
         iyzico_payment_id = result.get("paymentId")
         payment_status = result.get("paymentStatus")  # SUCCESS, FAILURE, INIT_THREEDS, etc.
 
-        payment.iyzico_payment_id = iyzico_payment_id
-        payment.save(update_fields=["iyzico_payment_id"])
-
         if payment_status == "SUCCESS":
             with transaction.atomic():
+                payment = Payment.objects.select_for_update().filter(pk=payment.pk).first()
+                if not payment:
+                    return Response({"detail": "Payment not found."}, status=status.HTTP_404_NOT_FOUND)
+                if payment.status == Payment.Status.COMPLETED:
+                    return Response(
+                        {
+                            "status": "success",
+                            "payment_id": payment.pk,
+                            "iyzico_payment_id": payment.iyzico_payment_id,
+                            "amount": str(payment.amount),
+                        },
+                        status=status.HTTP_200_OK,
+                    )
+                payment.iyzico_payment_id = iyzico_payment_id
+                payment.status = Payment.Status.COMPLETED
+                payment.save(update_fields=["iyzico_payment_id", "status"])
+
                 # Update linked AidatCharge
                 if payment.charge_id:
                     AidatCharge.objects.filter(pk=payment.charge_id).update(
@@ -475,6 +592,10 @@ class IyzicoViewSet(viewsets.ViewSet):
             )
 
         # Payment failed or pending
+        payment.iyzico_payment_id = iyzico_payment_id
+        payment.status = Payment.Status.FAILED if payment_status == "FAILURE" else Payment.Status.PENDING
+        payment.save(update_fields=["iyzico_payment_id", "status"])
+
         return Response(
             {
                 "status": "failure" if payment_status == "FAILURE" else (payment_status or "").lower(),

@@ -12,7 +12,7 @@ from django.core.cache import cache
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
-from apps.billing.models import AidatCharge
+from apps.billing.models import AidatCharge, Payment
 from apps.residents.models import Ownership
 
 from .models import Apartment, Building
@@ -39,6 +39,14 @@ def invalidate_building_chessboard(building_id: int) -> None:
     ownerships, or aidat charges (bulk_create, bulk_update, raw SQL).
     """
     cache.delete(f"chessboard:building:{building_id}")
+
+
+def _invalidate_dashboard_cache() -> None:
+    """Bump dashboard cache version to invalidate all dashboard endpoints."""
+    try:
+        cache.incr("dashboard_cache_version")
+    except ValueError:
+        cache.set("dashboard_cache_version", 2, timeout=None)
 
 
 # ─── Building ────────────────────────────────────────────────────────────────
@@ -73,6 +81,9 @@ def invalidate_ownership_chessboard_on_save(sender: type[Ownership], **kwargs: A
     instance = kwargs.get("instance")
     if instance and instance.apartment_id:
         invalidate_building_chessboard(instance.apartment.building_id)
+    _bump_cache_version(Apartment)
+    _bump_cache_version(Building)
+    _invalidate_dashboard_cache()
 
 
 @receiver(post_delete, sender=Ownership)
@@ -88,6 +99,9 @@ def invalidate_ownership_chessboard_on_delete(sender: type[Ownership], **kwargs:
     except Exception:
         # Apartment already deleted via cascade — skip.
         pass
+    _bump_cache_version(Apartment)
+    _bump_cache_version(Building)
+    _invalidate_dashboard_cache()
 
 
 # ─── AidatCharge ─────────────────────────────────────────────────────────────
@@ -98,6 +112,8 @@ def invalidate_aidat_chessboard_on_save(sender: type[AidatCharge], **kwargs: Any
     instance = kwargs.get("instance")
     if instance and instance.apartment_id:
         invalidate_building_chessboard(instance.apartment.building_id)
+    _bump_cache_version(Apartment)
+    _invalidate_dashboard_cache()
 
 
 @receiver(post_delete, sender=AidatCharge)
@@ -113,3 +129,24 @@ def invalidate_aidat_chessboard_on_delete(sender: type[AidatCharge], **kwargs: A
     except Exception:
         # Apartment already deleted via cascade — skip.
         pass
+    _bump_cache_version(Apartment)
+    _invalidate_dashboard_cache()
+
+
+# ─── Payment ────────────────────────────────────────────────────────────────
+
+
+@receiver(post_save, sender=Payment)
+def invalidate_payment_related_cache(sender: type[Payment], **kwargs: Any) -> None:
+    """When a payment is recorded, invalidate apartment and building caches."""
+    instance = kwargs.get("instance")
+    _bump_cache_version(Apartment)
+    _bump_cache_version(Building)
+    _invalidate_dashboard_cache()
+    if instance and instance.apartment_id:
+        try:
+            building_id = instance.apartment.building_id
+            if building_id:
+                invalidate_building_chessboard(building_id)
+        except Exception:
+            pass

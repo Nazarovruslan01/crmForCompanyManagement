@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
-from core.mixins import ResidentQuerySetMixin
+from core.mixins import ManagerQuerySetMixin, ResidentQuerySetMixin
 
 from .models import Ownership, PersonalAccount, Resident
 from .serializers import (
@@ -107,7 +107,7 @@ from .serializers import (
         },
     ),
 )
-class ResidentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Resident]):
+class ResidentViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Resident]):
     queryset = Resident.objects.select_related("user").all()
     serializer_class = ResidentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -115,10 +115,13 @@ class ResidentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSe
     search_fields = ["name", "surname", "tc_kimlik_no", "passport_no"]
     ordering_fields = ["surname", "name", "created_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "ownerships__apartment__building__managers"
     resident_lookup = "user"
 
 
-class PersonalAccountViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[PersonalAccount]):
+class PersonalAccountViewSet(
+    AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[PersonalAccount]
+):
     queryset = PersonalAccount.objects.select_related("apartment__building").all()
     serializer_class = PersonalAccountSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -126,10 +129,11 @@ class PersonalAccountViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.Mode
     search_fields = ["account_number", "apartment__apartment_number"]
     ordering_fields = ["account_number", "balance"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "apartment__building__managers"
     resident_lookup = "apartment__ownerships__resident__user"
 
 
-class OwnershipViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Ownership]):
+class OwnershipViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Ownership]):
     queryset = Ownership.objects.select_related("resident", "apartment__building").all()
     serializer_class = OwnershipSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -137,7 +141,29 @@ class OwnershipViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewS
     search_fields = ["resident__name", "resident__surname", "apartment__apartment_number"]
     ordering_fields = ["created_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "apartment__building__managers"
     resident_lookup = "resident__user"
+
+    def _clear_existing_primary(self, apartment: object) -> None:
+        """Clear is_primary on other ownerships for this apartment."""
+        if apartment:
+            Ownership.objects.filter(apartment=apartment, is_primary=True).update(is_primary=False)
+
+    def perform_create(self, serializer: OwnershipSerializer) -> None:
+        from django.db import transaction
+
+        with transaction.atomic():
+            if serializer.validated_data.get("is_primary"):
+                self._clear_existing_primary(serializer.validated_data.get("apartment"))
+            serializer.save()
+
+    def perform_update(self, serializer: OwnershipSerializer) -> None:
+        from django.db import transaction
+
+        with transaction.atomic():
+            if serializer.validated_data.get("is_primary"):
+                self._clear_existing_primary(serializer.validated_data.get("apartment"))
+            serializer.save()
 
     @action(detail=False, methods=["get"])
     def by_apartment(self, request: Request) -> Response:

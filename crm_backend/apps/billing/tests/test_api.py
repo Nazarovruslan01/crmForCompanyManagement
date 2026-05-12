@@ -257,7 +257,7 @@ class TestReceiptViewSetFull:
         assert response.data["pdf_url"] == "https://example.com/receipt.pdf"
 
     def test_update_receipt(self, admin_client, payment):
-        """Admin can update a receipt."""
+        """pdf_url is read-only — updates should be ignored."""
         from apps.billing.models import Receipt
 
         receipt = Receipt.objects.create(payment=payment, pdf_url="https://example.com/old.pdf")
@@ -265,7 +265,8 @@ class TestReceiptViewSetFull:
         response = admin_client.patch(f"/api/v2/billing/receipts/{receipt.id}/", payload, format="json")
         assert response.status_code == status.HTTP_200_OK
         receipt.refresh_from_db()
-        assert receipt.pdf_url == "https://example.com/new.pdf"
+        # pdf_url is read-only, so the update should be ignored
+        assert receipt.pdf_url == "https://example.com/old.pdf"
 
     def test_delete_receipt(self, admin_client, payment):
         """Admin can delete a receipt."""

@@ -16,6 +16,16 @@ _WRITE_METHODS = frozenset({"POST", "PUT", "PATCH"})
 # Cache TTL for idempotency keys (24 hours)
 _IDEMPOTENCY_TTL = 60 * 60 * 24
 
+# Content types that are safe to cache as text
+_CACHABLE_CONTENT_TYPES = frozenset(
+    {
+        "application/json",
+        "application/vnd.api+json",
+        "text/plain",
+        "text/html",
+    }
+)
+
 
 class RequestIdMiddleware:
     """Attach a unique request ID to every incoming request.
@@ -96,13 +106,13 @@ class IdempotencyKeyMiddleware:
         if any(path.startswith(prefix) for prefix in self.EXCLUDED_PATH_PREFIXES):
             return self.get_response(request)
 
-        # Sanitise and scope the key per user session via Authorization header.
+        # Scope the key per user by extracting user ID from JWT payload.
         # Django's AuthenticationMiddleware runs before us but only resolves
         # session-based auth — JWT users appear as AnonymousUser at this layer.
-        # We hash the Authorization header to scope keys per bearer token.
+        # We parse the JWT payload (without verification) to get the user_id.
         idempotency_key = str(raw_key)[:128]
         auth_header = request.META.get("HTTP_AUTHORIZATION", "")
-        scope = hashlib.sha256(auth_header.encode()).hexdigest()[:16] if auth_header else "anon"
+        scope = self._get_scope(auth_header)
         cache_key = f"{self.cache_prefix}:{scope}:{idempotency_key}"
 
         # Check for a cached response
@@ -118,33 +128,53 @@ class IdempotencyKeyMiddleware:
         response = self.get_response(request)
 
         # Only cache successful responses so retries on errors still work.
-        # We do NOT cache response headers to avoid leaking security headers
-        # or session cookies in cached responses.
+        # Skip caching for binary/non-text responses (PDFs, images, etc.)
+        # to avoid decode errors and large cache entries.
         if 200 <= response.status_code < 300:
-            body = response.content
-            cache.set(
-                cache_key,
-                {
-                    "body": body.decode("utf-8", errors="replace"),
-                    "status": response.status_code,
-                    "content_type": response.get("Content-Type", "application/json"),
-                },
-                timeout=_IDEMPOTENCY_TTL,
-            )
+            content_type = response.get("Content-Type", "")
+            is_cachable = any(ct in content_type for ct in _CACHABLE_CONTENT_TYPES)
+
+            if is_cachable:
+                body = response.content
+                cache.set(
+                    cache_key,
+                    {
+                        "body": body.decode("utf-8", errors="replace"),
+                        "status": response.status_code,
+                        "content_type": content_type,
+                    },
+                    timeout=_IDEMPOTENCY_TTL,
+                )
 
         return response
 
+    @staticmethod
+    def _get_scope(auth_header: str) -> str:
+        """Return a unique scope for the given Authorization header.
+
+        We hash the full header value instead of parsing the JWT payload.
+        Parsing without signature verification would allow an attacker to
+        forge a user_id claim and retrieve another user's cached response.
+        """
+        if not auth_header:
+            return "anon"
+        return hashlib.sha256(auth_header.encode()).hexdigest()[:16]
+
 
 class DeactivatedUserMiddleware:
-    """Reject requests from users who were soft-deleted after their JWT was issued.
+    """Reject requests from users who were soft-deleted or changed their password.
 
-    When a user is soft-deleted (is_active=False), their existing JWT tokens
-    remain valid until expiry. This middleware checks a cache flag set during
-    soft-delete to immediately reject such tokens without waiting for expiry.
+    NOTE: This middleware only works for session-authenticated requests.
+    DRF JWT authentication runs in the view layer (after all middleware),
+    so request.user.is_authenticated is always False for JWT users here.
+    For JWT invalidation, use PasswordChangedPermission (DRF permission class).
 
-    The cache key ``user_deactivated:<user_id>`` is set in ``User.delete()``
-    with a TTL matching the access token lifetime, so it auto-expires when
-    all outstanding tokens would have expired anyway.
+    When a user is soft-deleted (is_active=False), their existing session
+    remains valid until expiry. This middleware checks a cache flag set during
+    soft-delete to immediately reject such sessions.
+
+    Similarly, after a password change, a cache flag is set so that sessions
+    issued before the change are rejected.
     """
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
@@ -153,12 +183,46 @@ class DeactivatedUserMiddleware:
     def __call__(self, request: HttpRequest) -> HttpResponse:
         user = getattr(request, "user", None)
         if user is not None and user.is_authenticated and user.pk is not None:
+            # Check if user was deactivated
             if cache.get(f"user_deactivated:{user.pk}"):
                 return JsonResponse(
                     {"detail": "User account is deactivated."},
                     status=401,
                 )
+            # Check if user changed their password after this token was issued
+            password_changed_ts = cache.get(f"password_changed:{user.pk}")
+            if password_changed_ts:
+                # Extract token issue time from JWT payload
+                token_issued_ts = self._get_token_issued_ts(request)
+                if token_issued_ts and token_issued_ts < password_changed_ts:
+                    return JsonResponse(
+                        {"detail": "Password has been changed. Please log in again."},
+                        status=401,
+                    )
         return self.get_response(request)
+
+    @staticmethod
+    def _get_token_issued_ts(request: HttpRequest) -> float | None:
+        """Extract the 'iat' claim from the JWT Authorization header."""
+        auth_header = request.META.get("HTTP_AUTHORIZATION", "")
+        if not auth_header.startswith("Bearer "):
+            return None
+        token = auth_header[7:]
+        try:
+            import base64
+            import json
+
+            parts = token.split(".")
+            if len(parts) != 3:
+                return None
+            payload_b64 = parts[1]
+            padding = 4 - len(payload_b64) % 4
+            if padding != 4:
+                payload_b64 += "=" * padding
+            payload = json.loads(base64.urlsafe_b64decode(payload_b64))
+            return float(payload.get("iat", 0))
+        except Exception:
+            return None
 
 
 class DeprecationMiddleware:
