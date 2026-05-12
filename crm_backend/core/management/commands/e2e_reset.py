@@ -1,9 +1,16 @@
-"""Management command to create test users and seed data for E2E tests."""
+"""Management command to reset E2E test database state.
+
+Clears stale JWT tokens, re-seeds test users, and ensures a clean
+state for Playwright E2E tests.
+"""
 
 from typing import Any
 
 from django.core.management.base import BaseCommand
-from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+from rest_framework_simplejwt.token_blacklist.models import (
+    BlacklistedToken,
+    OutstandingToken,
+)
 
 from apps.accounts.models import User
 from apps.properties.models import Apartment, Building
@@ -63,10 +70,9 @@ def _create_or_update_user(data: dict[str, Any]) -> Any:
 
 
 class Command(BaseCommand):
-    help = "Create test users and seed data for E2E tests"
+    help = "Reset E2E test database state: clear tokens, seed users and data"
 
     def handle(self, *args: Any, **options: Any) -> None:
-        # Clear stale JWT tokens so E2E auth.setup always gets fresh refresh tokens
         BlacklistedToken.objects.all().delete()
         OutstandingToken.objects.all().delete()
         self.stdout.write(self.style.SUCCESS("Cleared stale JWT tokens"))
@@ -79,7 +85,6 @@ class Command(BaseCommand):
         for user_data in TEST_USERS:
             self.stdout.write(f"  {user_data['username']} / {user_data['password']}")
 
-        # ─── Seed related data ────────────────────────────────────────────────
         self._seed_departments()
         self._seed_buildings_and_apartments()
         self._seed_residents()
@@ -127,7 +132,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("Apartment not found, skipping resident seed"))
             return
 
-        resident, _ = Resident.objects.get_or_create(
+        resident, _ = Resident.objects.get_or_create(  # type: ignore[misc]
             tc_kimlik_no="10000000146",
             defaults={
                 "name": "Ahmet",
@@ -139,7 +144,7 @@ class Command(BaseCommand):
             },
         )
 
-        Ownership.objects.get_or_create(
+        Ownership.objects.get_or_create(  # type: ignore[misc]
             resident=resident,
             apartment=apartment,
             role="owner",
@@ -161,7 +166,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("Worker user or department not found, skipping employee seed"))
             return
 
-        employee, _ = Employee.objects.get_or_create(
+        employee, _ = Employee.objects.get_or_create(  # type: ignore[misc]
             user=worker_user,
             defaults={
                 "department": dept,

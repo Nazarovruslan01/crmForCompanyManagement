@@ -3,14 +3,19 @@ Local / CI settings — inherits from base.
 """
 
 import os
+from pathlib import Path
+
+# Compute BASE_DIR early so the fallback DATABASE_URL uses an absolute path.
+# This must happen before importing base.py, which reads DATABASE_URL.
+_BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Set fallback env vars before importing base so that local dev works
 # without an .env file. Production settings (base.py) require these to be
 # set explicitly and raise if missing.
 os.environ.setdefault("DJANGO_SECRET_KEY", "django-insecure-local-dev-only-do-not-use-in-production")
-os.environ.setdefault("DATABASE_URL", "sqlite:///db.sqlite3")
+os.environ.setdefault("DATABASE_URL", f"sqlite:///{_BASE_DIR / 'db.sqlite3'}")
 
-from .base import *  # noqa: F401, F403
+from .base import *  # noqa: F401, F403, E402
 
 DEBUG = True
 

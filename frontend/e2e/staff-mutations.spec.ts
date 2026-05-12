@@ -9,15 +9,21 @@ import { test, expect } from '@playwright/test';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 const API = `${BACKEND_URL}/api/v2`;
 
+/** Login via API and return the access token. */
+async function getAdminToken(request: import('@playwright/test').APIRequestContext): Promise<string> {
+  const res = await request.post(`${API}/accounts/login/`, {
+    data: { username: 'admin', password: 'admin123!' },
+  });
+  expect(res.ok()).toBeTruthy();
+  const data = (await res.json()) as { access: string };
+  return data.access;
+}
+
 test.describe('Staff Mutations — Admin', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
   test('admin can create an employee', async ({ page, request }) => {
-    // Ensure we are on the app origin so localStorage is accessible
-    await page.goto('/');
-    // Use the already-authenticated browser token instead of re-logging in
-    const adminToken = await page.evaluate(() => localStorage.getItem('access_token') || '');
-    expect(adminToken, 'admin access token not found in localStorage').toBeTruthy();
+    const adminToken = await getAdminToken(request);
 
     // Seed a free user
     const username = `e2e_staff_${Date.now()}`;
@@ -41,11 +47,15 @@ test.describe('Staff Mutations — Admin', () => {
     expect(usersData.results.length).toBeGreaterThan(0);
     const userId = usersData.results[0].id;
 
+    // Wait for staff page API to load
+    const staffLoaded = page.waitForResponse(
+      (resp) => resp.url().includes('/api/v2/staff/') && resp.status() === 200,
+    );
     await page.goto('/staff');
-    await expect(page).toHaveURL(/\/staff/);
+    await staffLoaded;
 
     const createBtn = page.getByRole('button', { name: /Добавить сотрудника/i });
-    await expect(createBtn).toBeVisible();
+    await expect(createBtn).toBeVisible({ timeout: 10000 });
 
     // Click the button and wait for the department list API call to finish
     const departmentsPromise = page.waitForResponse(
@@ -55,19 +65,19 @@ test.describe('Staff Mutations — Admin', () => {
     await departmentsPromise;
 
     // Wait for modal
-    await expect(page.getByRole('heading', { name: /Новый сотрудник/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Новый сотрудник/i })).toBeVisible({ timeout: 10000 });
 
-    // Fill creation form (fields have no name attribute, use placeholders/labels)
+    // Fill creation form
     await page.locator('input[type="number"]').first().fill(String(userId));
 
-    // Form has two selects: department (first) and role (second)
-    // Use the first real department option from the dropdown (seeded data is always present)
-    const deptSelect = page.locator('select').first();
+    const deptSelect = page.locator('label', { hasText: 'Отдел' }).locator('..').locator('select');
     const deptOptions = await deptSelect.locator('option').allTextContents();
     const firstDept = deptOptions.find((o) => o !== 'Выберите отдел');
     if (!firstDept) throw new Error('No departments available in dropdown');
     await deptSelect.selectOption(firstDept);
-    await page.locator('select').nth(1).selectOption('security');
+
+    const roleSelect = page.locator('label', { hasText: 'Роль' }).locator('..').locator('select');
+    await roleSelect.selectOption('security');
 
     await page.getByPlaceholder('+90 555 000 00 00', { exact: true }).fill('+90 555 000 00 02');
     await page.locator('input[type="date"]').fill(new Date().toISOString().slice(0, 10));
@@ -75,6 +85,6 @@ test.describe('Staff Mutations — Admin', () => {
     await page.getByRole('button', { name: /Создать/i }).click();
 
     // Verify success feedback
-    await expect(page.getByText(/Сотрудник добавлен|успешно/i)).toBeVisible();
+    await expect(page.getByText(/Сотрудник добавлен|успешно/i)).toBeVisible({ timeout: 10000 });
   });
 });

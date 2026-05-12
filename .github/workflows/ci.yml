@@ -308,7 +308,7 @@ jobs:
     needs: [smoke-test]
     env:
       DATABASE_URL: postgresql://crm_user:crm_password@localhost:5432/crm_test
-      DJANGO_SETTINGS_MODULE: config.settings.local
+      DJANGO_SETTINGS_MODULE: config.settings.e2e
       REDIS_URL: redis://localhost:6379/0
       BACKEND_URL: http://localhost:8000
       BASE_URL: http://localhost:4173
@@ -369,9 +369,9 @@ jobs:
       - name: Apply migrations
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: python manage.py migrate --noinput
-      - name: Seed E2E test users
+      - name: Seed E2E test data
         working-directory: ${{ env.WORKING_DIRECTORY }}
-        run: python manage.py create_test_users
+        run: python manage.py e2e_reset
       - name: Start Django backend
         working-directory: ${{ env.WORKING_DIRECTORY }}
         run: |

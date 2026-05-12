@@ -136,6 +136,48 @@ run_step "Frontend build (tsc + vite)" \
 run_step "Frontend security audit (npm audit)" \
     bash -c "cd '$CRM_DIR/frontend' && npm audit --audit-level moderate" || true
 
+# ─── 8. E2E tests (optional, requires running backend + frontend) ───────────────
+RUN_E2E="${WITH_E2E:-0}"
+if [ "$RUN_E2E" -eq 1 ]; then
+    echo ""
+    echo "═══════════════════════════════════════════════════════════════"
+    echo "  E2E tests (Playwright)"
+    echo "═══════════════════════════════════════════════════════════════"
+
+    export DJANGO_SETTINGS_MODULE=config.settings.e2e
+    cd "$BACKEND_DIR"
+
+    echo "Seeding E2E test data..."
+    $PY manage.py e2e_reset
+
+    echo "Starting Django backend..."
+    $PY manage.py runserver 0.0.0.0:8000 &
+    DJANGO_PID=$!
+    sleep 3
+
+    echo "Starting frontend preview..."
+    cd "$CRM_DIR/frontend"
+    npm run build
+    npm run preview -- --port 4173 &
+    PREVIEW_PID=$!
+    sleep 3
+
+    echo "Running Playwright tests..."
+    npx playwright test --workers=1
+    E2E_RESULT=$?
+
+    kill $DJANGO_PID 2>/dev/null || true
+    kill $PREVIEW_PID 2>/dev/null || true
+
+    if [ "$E2E_RESULT" -ne 0 ]; then
+        FAILED=$((FAILED + 1))
+        FAILED_STEPS+=("E2E tests (Playwright)")
+    fi
+else
+    echo ""
+    echo "Skipping E2E tests. Run WITH_E2E=1 ./scripts/run-ci-local.sh to include them."
+fi
+
 # ─── Summary ────────────────────────────────────────────────────────────────────
 echo ""
 echo "═══════════════════════════════════════════════════════════════"

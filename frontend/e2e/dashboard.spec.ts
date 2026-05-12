@@ -23,11 +23,11 @@ test.describe('Dashboard', () => {
 
   test('recent tickets section is visible', async ({ page }) => {
     await expect(page.getByText('Последние заявки')).toBeVisible();
-    await expect(page.locator('table')).toBeVisible();
+    await expect(page.locator('table').first()).toBeVisible();
   });
 
   test('recent tickets table has rows or empty state', async ({ page }) => {
-    const table = page.locator('table');
+    const table = page.locator('table').first();
     await expect(table).toBeVisible();
 
     const firstRow = table.locator('tbody tr').first();
