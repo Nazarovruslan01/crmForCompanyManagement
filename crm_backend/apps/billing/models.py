@@ -189,6 +189,13 @@ class Payment(models.Model):
         verbose_name = "Payment"
         verbose_name_plural = "Payments"
         ordering = ["-paid_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0),
+                name="payment_amount_positive",
+                violation_error_message="Payment amount must be greater than zero.",
+            ),
+        ]
         indexes = [
             models.Index(fields=["apartment", "paid_at"]),
             models.Index(fields=["idempotency_key"]),
@@ -265,7 +272,7 @@ class Receipt(models.Model):
 
     id = models.BigAutoField(primary_key=True)
     payment = models.OneToOneField(Payment, on_delete=models.CASCADE, related_name="receipt")
-    pdf_url = models.URLField(max_length=500)
+    pdf_url = models.URLField(max_length=500, blank=True, null=True)
     generated_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

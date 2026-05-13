@@ -592,9 +592,23 @@ class IyzicoViewSet(viewsets.ViewSet):
             )
 
         # Payment failed or pending
-        payment.iyzico_payment_id = iyzico_payment_id
-        payment.status = Payment.Status.FAILED if payment_status == "FAILURE" else Payment.Status.PENDING
-        payment.save(update_fields=["iyzico_payment_id", "status"])
+        with transaction.atomic():
+            payment = Payment.objects.select_for_update().filter(pk=payment.pk).first()
+            if not payment:
+                return Response({"detail": "Payment not found."}, status=status.HTTP_404_NOT_FOUND)
+            if payment.status == Payment.Status.COMPLETED:
+                return Response(
+                    {
+                        "status": "success",
+                        "payment_id": payment.pk,
+                        "iyzico_payment_id": payment.iyzico_payment_id,
+                        "amount": str(payment.amount),
+                    },
+                    status=status.HTTP_200_OK,
+                )
+            payment.iyzico_payment_id = iyzico_payment_id
+            payment.status = Payment.Status.FAILED if payment_status == "FAILURE" else Payment.Status.PENDING
+            payment.save(update_fields=["iyzico_payment_id", "status"])
 
         return Response(
             {

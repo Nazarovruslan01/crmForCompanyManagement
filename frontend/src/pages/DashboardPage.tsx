@@ -199,6 +199,7 @@ export function DashboardPage() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [recentTickets, setRecentTickets] = useState<Ticket[]>([]);
   const [ticketsLoading, setTicketsLoading] = useState(true);
+  const [statsError, setStatsError] = useState<string | null>(null);
   const [overdueCharges, setOverdueCharges] = useState<AidatCharge[]>([]);
   const [overdueLoading, setOverdueLoading] = useState(true);
   const [overdueError, setOverdueError] = useState<string | null>(null);
@@ -216,6 +217,7 @@ export function DashboardPage() {
         });
         setRecentTickets(data.recent_tickets);
       })
+      .catch(err => setStatsError((err as Error).message))
       .finally(() => {
         setStatsLoading(false);
         setTicketsLoading(false);
@@ -229,6 +231,20 @@ export function DashboardPage() {
 
   return (
     <PageLayout title="Аналитика">
+      {statsError && (
+        <div style={{
+          background: '#FEF2F2',
+          border: '1px solid #FECACA',
+          borderRadius: 10,
+          padding: '12px 16px',
+          marginBottom: 20,
+          color: '#B91C1C',
+          fontSize: 13,
+        }}>
+          {statsError}
+        </div>
+      )}
+
       {/* Stat cards — 3 columns */}
       <div style={{
         display: 'grid',
