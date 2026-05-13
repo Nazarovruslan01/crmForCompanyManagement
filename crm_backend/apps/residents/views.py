@@ -10,6 +10,7 @@ from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
 from core.mixins import ManagerQuerySetMixin, ResidentQuerySetMixin
+from core.permissions import BasePermissionMixin
 
 from .models import Ownership, PersonalAccount, Resident
 from .serializers import (
@@ -107,7 +108,7 @@ from .serializers import (
         },
     ),
 )
-class ResidentViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Resident]):
+class ResidentViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Resident]):
     queryset = Resident.objects.select_related("user").all()
     serializer_class = ResidentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -120,7 +121,7 @@ class ResidentViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin
 
 
 class PersonalAccountViewSet(
-    AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[PersonalAccount]
+    AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[PersonalAccount]
 ):
     queryset = PersonalAccount.objects.select_related("apartment__building").all()
     serializer_class = PersonalAccountSerializer
@@ -133,7 +134,7 @@ class PersonalAccountViewSet(
     resident_lookup = "apartment__ownerships__resident__user"
 
 
-class OwnershipViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Ownership]):
+class OwnershipViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Ownership]):
     queryset = Ownership.objects.select_related("resident", "apartment__building").all()
     serializer_class = OwnershipSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -147,7 +148,7 @@ class OwnershipViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixi
     def _clear_existing_primary(self, apartment: object) -> None:
         """Clear is_primary on other ownerships for this apartment."""
         if apartment:
-            Ownership.objects.filter(apartment=apartment, is_primary=True).update(is_primary=False)
+            Ownership.objects.filter(apartment=apartment, is_primary=True).select_for_update().update(is_primary=False)
 
     def perform_create(self, serializer: OwnershipSerializer) -> None:
         from django.db import transaction

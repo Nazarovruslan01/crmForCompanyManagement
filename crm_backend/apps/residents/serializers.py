@@ -30,6 +30,10 @@ class ResidentSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["created_at", "updated_at"]
+        extra_kwargs = {
+            "tc_kimlik_no": {"write_only": True},
+            "passport_no": {"write_only": True},
+        }
 
     def validate_email(self, value: str | None) -> str | None:
         if value:

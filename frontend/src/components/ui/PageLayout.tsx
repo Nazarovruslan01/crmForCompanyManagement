@@ -11,9 +11,9 @@ export function PageLayout({ title, actions, children }: PageLayoutProps) {
     <div className="page-wrapper">
       <div className="page-header">
         <h1>{title}</h1>
-        {actions && <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>{actions}</div>}
+        {actions && <div className="page-layout-actions">{actions}</div>}
       </div>
-      <div className="page-content" style={{ paddingBottom: 40 }}>{children}</div>
+      <div className="page-content page-content-pb">{children}</div>
     </div>
   );
 }

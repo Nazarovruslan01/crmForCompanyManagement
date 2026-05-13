@@ -12,6 +12,7 @@ from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
 from core.mixins import CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin
+from core.permissions import BasePermissionMixin
 
 from .models import AgendaItem, Meeting, MeetingProtocol, Vote
 from .serializers import (
@@ -28,6 +29,7 @@ class MeetingViewSet(
     CacheListRetrieveMixin,
     ManagerQuerySetMixin,
     ResidentQuerySetMixin,
+    BasePermissionMixin,
     viewsets.ModelViewSet[Meeting],
 ):
     queryset = Meeting.objects.select_related("building", "created_by").prefetch_related("agenda_items").all()
@@ -118,7 +120,7 @@ class MeetingViewSet(
         return Response(VoteSerializer(vote).data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
 
-class AgendaItemViewSet(AuditLogMixin, ManagerQuerySetMixin, viewsets.ModelViewSet[AgendaItem]):
+class AgendaItemViewSet(AuditLogMixin, ManagerQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[AgendaItem]):
     queryset = AgendaItem.objects.select_related("meeting").all()
     serializer_class = AgendaItemSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
@@ -127,7 +129,7 @@ class AgendaItemViewSet(AuditLogMixin, ManagerQuerySetMixin, viewsets.ModelViewS
     manager_lookup = "meeting__building__managers"
 
 
-class MeetingProtocolViewSet(AuditLogMixin, ManagerQuerySetMixin, viewsets.ModelViewSet[MeetingProtocol]):
+class MeetingProtocolViewSet(AuditLogMixin, ManagerQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[MeetingProtocol]):
     queryset = MeetingProtocol.objects.select_related("meeting").all()
     serializer_class = MeetingProtocolSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]

@@ -17,6 +17,7 @@ from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManagerOrWorkerOrResidentReadOwn
 from common.throttles import PresignedUploadThrottle, UserReadThrottle, UserWriteThrottle
 from core.mixins import ManagerQuerySetMixin, ResidentQuerySetMixin
+from core.permissions import BasePermissionMixin
 
 from .models import Ticket, TicketAttachment, TicketComment
 from .serializers import (
@@ -144,7 +145,7 @@ from .serializers import (
         },
     ),
 )
-class TicketViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Ticket]):
+class TicketViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Ticket]):
     queryset = Ticket.objects.select_related("apartment__building", "assigned_worker__user", "created_by").all()
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrWorkerOrResidentReadOwn]
@@ -176,7 +177,7 @@ class TicketViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, 
         """Mark ticket as resolved."""
         ticket = self.get_object()
         ticket.status = Ticket.Status.RESOLVED
-        ticket.save()
+        ticket.save(update_fields=["status", "updated_at"])
         serializer = self.get_serializer(ticket)
         return Response(serializer.data)
 
@@ -185,13 +186,13 @@ class TicketViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, 
         """Mark ticket as closed."""
         ticket = self.get_object()
         ticket.status = Ticket.Status.CLOSED
-        ticket.save()
+        ticket.save(update_fields=["status", "updated_at"])
         serializer = self.get_serializer(ticket)
         return Response(serializer.data)
 
 
 class TicketCommentViewSet(
-    AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[TicketComment]
+    AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[TicketComment]
 ):
     queryset = TicketComment.objects.select_related("author", "ticket").all()
     serializer_class = TicketCommentSerializer
@@ -206,7 +207,7 @@ class TicketCommentViewSet(
 
 
 class TicketAttachmentViewSet(
-    AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[TicketAttachment]
+    AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[TicketAttachment]
 ):
     queryset = TicketAttachment.objects.select_related("uploaded_by", "ticket").all()
     serializer_class = TicketAttachmentSerializer

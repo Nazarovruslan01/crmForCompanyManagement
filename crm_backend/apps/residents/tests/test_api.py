@@ -308,7 +308,10 @@ class TestResidentSerializerValidation:
         assert response.data["name"] == "Minimal"
         assert response.data["email"] is None
         assert response.data["phone"] is None
-        assert response.data["passport_no"] == "MP1234567"
+        # passport_no is write-only, verify in DB
+        from apps.residents.models import Resident
+        resident = Resident.objects.get(pk=response.data["id"])
+        assert resident.passport_no == "MP1234567"
 
     def test_update_resident_clear_optional_fields(self, admin_client, resident):
         """Optional fields can be cleared (set to null) — but at least one ID must remain."""

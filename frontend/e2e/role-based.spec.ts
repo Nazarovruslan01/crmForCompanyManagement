@@ -48,10 +48,7 @@ test.describe('Role-based navigation', () => {
 
     test('resident accessing forbidden page shows error or redirects', async ({ page }) => {
       await page.goto('/buildings');
-
-      // The route may render but the API call will fail for residents.
-      // Wait for the page to settle
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const isLogin = page.url().includes('/login');
       const isDashboard = page.url().includes('/dashboard');
@@ -83,7 +80,7 @@ test.describe('Role-based navigation', () => {
 
     test('worker may be blocked from buildings page', async ({ page }) => {
       await page.goto('/buildings');
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const isLogin = page.url().includes('/login');
       const isDashboard = page.url().includes('/dashboard');

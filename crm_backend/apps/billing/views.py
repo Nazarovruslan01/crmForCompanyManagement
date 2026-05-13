@@ -17,6 +17,7 @@ from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
 from common.throttles import IyzicoCallbackThrottle, UserReadThrottle, UserWriteThrottle
 from core.mixins import CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin
+from core.permissions import BasePermissionMixin
 
 from .iyzico_client import IyzicoError, checkout_form_initialize, retrieve_checkout_form, verify_response_signature
 from .models import AidatCharge, ExtraordinaryCharge, Payment, Receipt
@@ -123,6 +124,7 @@ class AidatChargeViewSet(
     CacheListRetrieveMixin,
     ManagerQuerySetMixin,
     ResidentQuerySetMixin,
+    BasePermissionMixin,
     viewsets.ModelViewSet[AidatCharge],
 ):
     queryset = AidatCharge.objects.select_related("apartment__building").all()
@@ -148,7 +150,7 @@ class AidatChargeViewSet(
 
 
 class ExtraordinaryChargeViewSet(
-    AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, viewsets.ModelViewSet[ExtraordinaryCharge]
+    AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[ExtraordinaryCharge]
 ):
     queryset = ExtraordinaryCharge.objects.select_related("building").all()
     serializer_class = ExtraordinaryChargeSerializer
@@ -161,7 +163,7 @@ class ExtraordinaryChargeViewSet(
 
 
 class PaymentViewSet(
-    AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Payment]
+    AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Payment]
 ):
     queryset = Payment.objects.select_related("apartment__building").all()
     serializer_class = PaymentSerializer
@@ -225,7 +227,7 @@ class PaymentViewSet(
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class ReceiptViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Receipt]):
+class ReceiptViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Receipt]):
     queryset = Receipt.objects.select_related("payment__apartment__building").all()
     serializer_class = ReceiptSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -310,7 +312,7 @@ class ReceiptViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin,
             )
 
 
-class IyzicoViewSet(viewsets.ViewSet):
+class IyzicoViewSet(BasePermissionMixin, viewsets.ViewSet):
     """Iyzico payment gateway integration endpoints."""
 
     permission_classes = [permissions.IsAuthenticated]

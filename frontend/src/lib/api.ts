@@ -142,10 +142,10 @@ class ApiClient {
   }
 
   users = {
-    list:   (params?: Record<string, string>) => this.list<User>('/accounts/users/', params),
-    get:    (id: number)                      => this.request<User>(`/accounts/users/${id}/`),
-    create: (data: Record<string, unknown>)   => this.request<User>('/accounts/users/', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: number, data: Record<string, unknown>) => this.request<User>(`/accounts/users/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+    list:   (params?: Record<string, string>, signal?: AbortSignal) => this.list<User>('/accounts/users/', params, signal),
+    get:    (id: number, signal?: AbortSignal)                      => this.request<User>(`/accounts/users/${id}/`, { signal }),
+    create: (data: Record<string, unknown>, signal?: AbortSignal)   => this.request<User>('/accounts/users/', { method: 'POST', body: JSON.stringify(data), signal }),
+    update: (id: number, data: Record<string, unknown>, signal?: AbortSignal) => this.request<User>(`/accounts/users/${id}/`, { method: 'PATCH', body: JSON.stringify(data), signal }),
   };
 
   async changePassword(old_password: string, new_password: string): Promise<{ detail: string }> {
@@ -158,19 +158,19 @@ class ApiClient {
   // ─── Generic list helper ────────────────────────────────────────────────────
   // Cursor pagination: { next, previous, results }
 
-  private list<T>(path: string, params?: Record<string, string>): Promise<PaginatedResponse<T>> {
+  private list<T>(path: string, params?: Record<string, string>, signal?: AbortSignal): Promise<PaginatedResponse<T>> {
     const qs = params ? `?${new URLSearchParams(params)}` : '';
-    return this.request<PaginatedResponse<T>>(`${path}${qs}`);
+    return this.request<PaginatedResponse<T>>(`${path}${qs}`, { signal });
   }
 
   /** Generic CRUD factory — replaces boilerplate per-entity definitions. */
   crud<T>(basePath: string) {
     return {
-      list:   (params?: Record<string, string>) => this.list<T>(`${basePath}/`, params),
-      get:    (id: number)              => this.request<T>(`${basePath}/${id}/`),
-      create: (data: Partial<T>)       => this.request<T>(`${basePath}/`,   { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: number, data: Partial<T>) => this.request<T>(`${basePath}/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
-      delete: (id: number)              => this.request<void>(`${basePath}/${id}/`, { method: 'DELETE' }),
+      list:   (params?: Record<string, string>, signal?: AbortSignal) => this.list<T>(`${basePath}/`, params, signal),
+      get:    (id: number, signal?: AbortSignal)              => this.request<T>(`${basePath}/${id}/`, { signal }),
+      create: (data: Partial<T>, signal?: AbortSignal)       => this.request<T>(`${basePath}/`,   { method: 'POST', body: JSON.stringify(data), signal }),
+      update: (id: number, data: Partial<T>, signal?: AbortSignal) => this.request<T>(`${basePath}/${id}/`, { method: 'PATCH', body: JSON.stringify(data), signal }),
+      delete: (id: number, signal?: AbortSignal)              => this.request<void>(`${basePath}/${id}/`, { method: 'DELETE', signal }),
     };
   }
 
@@ -178,90 +178,92 @@ class ApiClient {
 
   buildings = {
     ...this.crud<Building>('/properties/buildings'),
-    chessboard: (id: number) => this.request<ChessboardResponse>(`/properties/buildings/${id}/chessboard/`),
+    chessboard: (id: number, signal?: AbortSignal) => this.request<ChessboardResponse>(`/properties/buildings/${id}/chessboard/`, { signal }),
     generateApartments: (id: number, data: {
       blocks: { name: string; floors: number; apartments_per_floor: number; numbering: 'floor_based' | 'sequential' }[];
       clear_existing?: boolean;
-    }) => this.request<{ created: number; building_id: number }>(
+    }, signal?: AbortSignal) => this.request<{ created: number; building_id: number }>(
       `/properties/buildings/${id}/generate_apartments/`,
-      { method: 'POST', body: JSON.stringify(data) },
+      { method: 'POST', body: JSON.stringify(data), signal },
     ),
   };
   apartments   = this.crud<Apartment>  ('/properties/apartments');
 
   residents      = this.crud<Resident>       ('/residents/residents');
   ownerships     = {
-    list:        (params?: Record<string, string>) => this.list<Ownership>('/residents/ownerships/', params),
-    byApartment: (apartmentId: number) => this.request<Ownership[]>(`/residents/ownerships/by_apartment/?apartment_id=${apartmentId}`),
+    list:        (params?: Record<string, string>, signal?: AbortSignal) => this.list<Ownership>('/residents/ownerships/', params, signal),
+    byApartment: (apartmentId: number, signal?: AbortSignal) => this.request<Ownership[]>(`/residents/ownerships/by_apartment/?apartment_id=${apartmentId}`, { signal }),
   };
-  personalAccounts = { list: (params?: Record<string, string>) => this.list<PersonalAccount>('/residents/accounts/', params) };
+  personalAccounts = { list: (params?: Record<string, string>, signal?: AbortSignal) => this.list<PersonalAccount>('/residents/accounts/', params, signal) };
 
   // ─── Tickets ────────────────────────────────────────────────────────────────
 
   tickets = {
     ...this.crud<Ticket>('/tickets/tickets'),
-    resolve: (id: number) => this.request<Ticket>(`/tickets/tickets/${id}/resolve/`, { method: 'POST' }),
-    close:   (id: number) => this.request<Ticket>(`/tickets/tickets/${id}/close/`,  { method: 'POST' }),
+    resolve: (id: number, signal?: AbortSignal) => this.request<Ticket>(`/tickets/tickets/${id}/resolve/`, { method: 'POST', signal }),
+    close:   (id: number, signal?: AbortSignal) => this.request<Ticket>(`/tickets/tickets/${id}/close/`,  { method: 'POST', signal }),
   };
 
-  comments = { list: (params?: Record<string, string>) => this.list<TicketComment>('/tickets/comments/', params), create: (data: Partial<TicketComment>) => this.request<TicketComment>('/tickets/comments/', { method: 'POST', body: JSON.stringify(data) }) };
+  comments = { list: (params?: Record<string, string>, signal?: AbortSignal) => this.list<TicketComment>('/tickets/comments/', params, signal), create: (data: Partial<TicketComment>, signal?: AbortSignal) => this.request<TicketComment>('/tickets/comments/', { method: 'POST', body: JSON.stringify(data), signal }) };
 
   // ─── Billing ────────────────────────────────────────────────────────────────
 
   aidatCharges = {
-    list: (params?: Record<string, string>) => this.list<AidatCharge>('/billing/aidat-charges/', params),
-    get: (id: number) => this.request<AidatCharge>(`/billing/aidat-charges/${id}/`),
-    overdue: (params?: Record<string, string>) => this.list<AidatCharge>('/billing/aidat-charges/overdue/', params),
+    list: (params?: Record<string, string>, signal?: AbortSignal) => this.list<AidatCharge>('/billing/aidat-charges/', params, signal),
+    get: (id: number, signal?: AbortSignal) => this.request<AidatCharge>(`/billing/aidat-charges/${id}/`, { signal }),
+    overdue: (params?: Record<string, string>, signal?: AbortSignal) => this.list<AidatCharge>('/billing/aidat-charges/overdue/', params, signal),
   };
 
   payments = {
-    list: (params?: Record<string, string>) => this.list<Payment>('/billing/payments/', params),
-    get: (id: number) => this.request<Payment>(`/billing/payments/${id}/`),
-    create: (data: Partial<Payment>, idempotencyKey?: string) =>
+    list: (params?: Record<string, string>, signal?: AbortSignal) => this.list<Payment>('/billing/payments/', params, signal),
+    get: (id: number, signal?: AbortSignal) => this.request<Payment>(`/billing/payments/${id}/`, { signal }),
+    create: (data: Partial<Payment>, idempotencyKey?: string, signal?: AbortSignal) =>
       this.request<Payment>('/billing/payments/', {
         method: 'POST',
         headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
         body: JSON.stringify(data),
+        signal,
       }),
   };
 
   // ─── Staff ──────────────────────────────────────────────────────────────────
 
   employees    = this.crud<Employee>      ('/staff/employees');
-  departments  = { list: (params?: Record<string, string>) => this.list<Department>('/staff/departments/', params) };
-  tasks        = { list: (params?: Record<string, string>) => this.list<Task>('/staff/tasks/', params) };
+  departments  = { list: (params?: Record<string, string>, signal?: AbortSignal) => this.list<Department>('/staff/departments/', params, signal) };
+  tasks        = { list: (params?: Record<string, string>, signal?: AbortSignal) => this.list<Task>('/staff/tasks/', params, signal) };
 
   // ─── Notifications ───────────────────────────────────────────────────────────
 
   notificationLogs = {
-    list: (params?: Record<string, string>) => this.list<NotificationLog>('/notifications/logs/', params),
+    list: (params?: Record<string, string>, signal?: AbortSignal) => this.list<NotificationLog>('/notifications/logs/', params, signal),
   };
 
   // ─── Documents ───────────────────────────────────────────────────────────────
 
   documents = {
     ...this.crud<Document>('/documents/documents'),
-    upload: (formData: FormData) =>
-      this.request<Document>('/documents/documents/', { method: 'POST', body: formData }),
+    upload: (formData: FormData, signal?: AbortSignal) =>
+      this.request<Document>('/documents/documents/', { method: 'POST', body: formData, signal }),
   };
 
   // ─── Meetings ─────────────────────────────────────────────────────────────────
 
   meetings = {
     ...this.crud<Meeting>('/meetings/meetings'),
-    start: (id: number) => this.request<Meeting>(`/meetings/meetings/${id}/start/`, { method: 'POST' }),
-    close: (id: number) => this.request<Meeting>(`/meetings/meetings/${id}/close/`,  { method: 'POST' }),
-    vote:  (id: number, agendaItemId: number, voteChoice: 'yes' | 'no' | 'abstain') =>
+    start: (id: number, signal?: AbortSignal) => this.request<Meeting>(`/meetings/meetings/${id}/start/`, { method: 'POST', signal }),
+    close: (id: number, signal?: AbortSignal) => this.request<Meeting>(`/meetings/meetings/${id}/close/`,  { method: 'POST', signal }),
+    vote:  (id: number, agendaItemId: number, voteChoice: 'yes' | 'no' | 'abstain', signal?: AbortSignal) =>
       this.request<Meeting>(`/meetings/meetings/${id}/vote/`, {
         method: 'POST',
         body: JSON.stringify({ agenda_item: agendaItemId, vote_choice: voteChoice }),
+        signal,
       }),
   };
 
   // ─── Dashboard ───────────────────────────────────────────────────────────────
 
   dashboard = {
-    summary: () => this.request<DashboardSummary>('/dashboard/summary/'),
+    summary: (signal?: AbortSignal) => this.request<DashboardSummary>('/dashboard/summary/', { signal }),
   };
 }
 

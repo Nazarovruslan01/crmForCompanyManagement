@@ -16,6 +16,7 @@ from apps.residents.models import Ownership, PersonalAccount
 from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
 from core.mixins import CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin
+from core.permissions import BasePermissionMixin
 
 from .models import Apartment, Building
 from .serializers import (
@@ -102,7 +103,7 @@ from .serializers import (
         },
     ),
 )
-class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, viewsets.ModelViewSet[Building]):
+class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Building]):
     queryset = Building.objects.all()
     serializer_class = BuildingSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
@@ -261,6 +262,7 @@ class ApartmentViewSet(
     CacheListRetrieveMixin,
     ManagerQuerySetMixin,
     ResidentQuerySetMixin,
+    BasePermissionMixin,
     viewsets.ModelViewSet[Apartment],
 ):
     queryset = Apartment.objects.select_related("building").all()
@@ -279,6 +281,7 @@ class ApartmentMinimalViewSet(
     CacheListRetrieveMixin,
     ManagerQuerySetMixin,
     ResidentQuerySetMixin,
+    BasePermissionMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet[Apartment],

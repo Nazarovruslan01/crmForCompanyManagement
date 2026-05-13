@@ -14,7 +14,7 @@ type Action<T> =
   | { type: 'invalid' };
 
 export function useDetail<T>(
-  fetcher: (id: number) => Promise<T>,
+  fetcher: (id: number, signal?: AbortSignal) => Promise<T>,
   id: number | undefined,
 ): UseDetailResult<T> {
   const [refetchKey, setRefetchKey] = useState(0);
@@ -39,16 +39,20 @@ export function useDetail<T>(
 
     dispatch({ type: 'fetch' });
     let cancelled = false;
+    const controller = new AbortController();
 
-    fetcher(id)
+    fetcher(id, controller.signal)
       .then(payload => {
         if (!cancelled) dispatch({ type: 'success', payload });
       })
       .catch(err => {
-        if (!cancelled) dispatch({ type: 'failure', error: (err as Error).message });
+        if (!cancelled) {
+          if (err instanceof Error && err.name === 'AbortError') return;
+          dispatch({ type: 'failure', error: (err as Error).message });
+        }
       });
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; controller.abort(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, refetchKey]);
 

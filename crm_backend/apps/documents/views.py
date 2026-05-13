@@ -7,6 +7,7 @@ from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
 from core.mixins import CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin
+from core.permissions import BasePermissionMixin
 
 from .models import Document
 from .serializers import DocumentSerializer
@@ -111,6 +112,7 @@ class DocumentViewSet(
     CacheListRetrieveMixin,
     ManagerQuerySetMixin,
     ResidentQuerySetMixin,
+    BasePermissionMixin,
     viewsets.ModelViewSet[Document],
 ):
     queryset = Document.objects.select_related("building", "apartment", "resident", "uploaded_by").all()

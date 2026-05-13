@@ -18,27 +18,6 @@ interface DataTableProps<T> {
   onRowClick?: (row: T) => void;
 }
 
-const th: React.CSSProperties = {
-  padding: '11px 18px',
-  textAlign: 'left',
-  fontSize: 11.5,
-  fontWeight: 600,
-  color: 'var(--color-gray-7)',
-  borderBottom: '1px solid var(--color-gray-3)',
-  background: 'var(--color-gray-1)',
-  whiteSpace: 'nowrap',
-  letterSpacing: '0.04em',
-  textTransform: 'uppercase',
-};
-
-const td: React.CSSProperties = {
-  padding: '13px 18px',
-  fontSize: 13.5,
-  color: 'var(--color-gray-8)',
-  verticalAlign: 'middle',
-  borderBottom: '1px solid var(--color-gray-3)',
-};
-
 export function DataTable<T>({
   columns,
   rows,
@@ -49,18 +28,12 @@ export function DataTable<T>({
   onRowClick,
 }: DataTableProps<T>) {
   return (
-    <div style={{
-      background: '#fff',
-      border: '1px solid var(--color-gray-3)',
-      borderRadius: 14,
-      overflow: 'hidden',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-    }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <div className="data-table-wrap">
+      <table className="data-table">
         <thead>
           <tr>
             {columns.map(col => (
-              <th key={col.key} style={{ ...th, width: col.width }}>
+              <th key={col.key} style={{ width: col.width }}>
                 {col.label}
               </th>
             ))}
@@ -95,20 +68,14 @@ export function DataTable<T>({
               </td>
             </tr>
           ) : (
-            rows.map((row, idx) => (
+            rows.map((row) => (
               <tr
                 key={keyExtractor(row)}
                 onClick={() => onRowClick?.(row)}
-                style={{
-                  borderBottom: idx < rows.length - 1 ? '1px solid var(--color-gray-3)' : 'none',
-                  transition: 'background 100ms ease',
-                  cursor: onRowClick ? 'pointer' : 'default',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-gray-1)')}
-                onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
+                className={`data-table-row ${onRowClick ? 'data-table-row--clickable' : ''}`}
               >
                 {columns.map(col => (
-                  <td key={col.key} style={{ ...td, borderBottom: 'none' }}>{col.render(row)}</td>
+                  <td key={col.key} style={{ borderBottom: 'none' }}>{col.render(row)}</td>
                 ))}
               </tr>
             ))

@@ -9,6 +9,23 @@ from rest_framework.request import Request
 logger = logging.getLogger(__name__)
 
 
+class BasePermissionMixin:
+    """Mixin that ensures PasswordChangedPermission is always included.
+
+    When a ViewSet explicitly overrides ``permission_classes``, the global
+    ``DEFAULT_PERMISSION_CLASSES`` (which includes ``PasswordChangedPermission``)
+    is discarded. This mixin overrides ``get_permissions()`` to append
+    ``PasswordChangedPermission()`` at the end of the resolved permission list
+    so the password-change / deactivation check cannot be bypassed.
+    """
+
+    def get_permissions(self) -> list[permissions.BasePermission]:
+        perms = super().get_permissions()  # type: ignore[misc]
+        if not any(isinstance(p, PasswordChangedPermission) for p in perms):
+            perms.append(PasswordChangedPermission())
+        return perms
+
+
 class PasswordChangedPermission(permissions.BasePermission):
     """Reject JWT tokens issued before the user's last password change.
 

@@ -74,10 +74,6 @@ class PaymentSerializer(serializers.ModelSerializer):
             "status_display",
             "bank_reference",
             "receipt_number",
-            "idempotency_key",
-            "iyzico_payment_id",
-            "iyzico_conversation_id",
-            "iyzico_token",
             "paid_at",
             "created_at",
         ]
@@ -85,10 +81,6 @@ class PaymentSerializer(serializers.ModelSerializer):
             "receipt_number",
             "created_at",
             "status",
-            "idempotency_key",
-            "iyzico_payment_id",
-            "iyzico_conversation_id",
-            "iyzico_token",
         ]
 
 
@@ -96,4 +88,4 @@ class ReceiptSerializer(serializers.ModelSerializer):
     class Meta:  # type: ignore
         model = Receipt
         fields = ["id", "payment", "pdf_url", "generated_at"]
-        read_only_fields = ["generated_at", "pdf_url"]
+        read_only_fields = ["generated_at", "pdf_url", "payment"]

@@ -10,12 +10,13 @@ from rest_framework.response import Response
 from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManager
 from common.throttles import UserReadThrottle, UserWriteThrottle
+from core.permissions import BasePermissionMixin
 
 from .models import NotificationLog, NotificationTemplate
 from .serializers import NotificationLogSerializer, NotificationTemplateSerializer
 
 
-class NotificationTemplateViewSet(AuditLogMixin, viewsets.ModelViewSet[NotificationTemplate]):
+class NotificationTemplateViewSet(AuditLogMixin, BasePermissionMixin, viewsets.ModelViewSet[NotificationTemplate]):
     queryset = NotificationTemplate.objects.all()
     serializer_class = NotificationTemplateSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
@@ -36,7 +37,7 @@ class NotificationTemplateViewSet(AuditLogMixin, viewsets.ModelViewSet[Notificat
         return Response(serializer.data)
 
 
-class NotificationLogViewSet(AuditLogMixin, viewsets.ModelViewSet[NotificationLog]):
+class NotificationLogViewSet(AuditLogMixin, BasePermissionMixin, viewsets.ModelViewSet[NotificationLog]):
     queryset = NotificationLog.objects.select_related("recipient", "template").all()
     serializer_class = NotificationLogSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]

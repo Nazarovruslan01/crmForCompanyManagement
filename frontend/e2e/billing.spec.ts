@@ -41,8 +41,6 @@ test.describe('Billing Page', () => {
 
   test('payments tab shows table columns', async ({ page }) => {
     await page.getByRole('button', { name: /История платежей/i }).click();
-    // Wait for the payments data to load
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('table').first()).toBeVisible();
+    await expect(page.locator('table').first()).toBeVisible({ timeout: 10000 });
   });
 });

@@ -383,16 +383,23 @@ jobs:
         run: |
           npm run build
           npm run preview -- --port 4173 &
-          sleep 3
+          curl --retry 10 --retry-delay 1 http://localhost:4173 || true
       - name: Run Playwright E2E tests
         working-directory: frontend
         run: npx playwright test --workers=1
       - name: Upload Playwright report
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v5
         with:
           name: playwright-report
           path: frontend/playwright-report/
+
+      - name: Upload Playwright test results
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-test-results
+          path: frontend/test-results/
 
   # ─── 5. Docker build ────────────────────────────────────────────────────────
   docker-build:

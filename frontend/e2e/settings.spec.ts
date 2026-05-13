@@ -10,8 +10,7 @@ test.describe('Settings Page', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/settings');
-    // Wait for page to fully render
-    await page.waitForLoadState('networkidle');
+    await expect(page.locator('h1')).toContainText('Настройки');
   });
 
   test('renders settings page', async ({ page }) => {

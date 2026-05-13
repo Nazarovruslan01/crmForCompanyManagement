@@ -78,8 +78,8 @@ export function AppRoutes() {
         <Route path="buildings/:id/chessboard" element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><ChessboardPage /></AuthorizeRoute>} />
         <Route path="buildings/:id/setup" element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><BuildingSetupPage /></AuthorizeRoute>} />
         <Route path="apartments/:id" element={<ProtectedRoute><ApartmentDetailPage /></ProtectedRoute>} />
-        <Route path="tickets"       element={<TicketsPage />} />
-        <Route path="tickets/:id"    element={<TicketDetailPage />} />
+        <Route path="tickets"       element={<ProtectedRoute><TicketsPage /></ProtectedRoute>} />
+        <Route path="tickets/:id"    element={<ProtectedRoute><TicketDetailPage /></ProtectedRoute>} />
         <Route path="residents"     element={<ProtectedRoute><ResidentsPage /></ProtectedRoute>} />
         <Route path="residents/:id" element={<ProtectedRoute><ResidentDetailPage /></ProtectedRoute>} />
         <Route path="staff"         element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><StaffPage /></AuthorizeRoute>} />

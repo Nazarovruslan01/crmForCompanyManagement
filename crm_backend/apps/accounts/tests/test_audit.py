@@ -78,6 +78,24 @@ class TestAuditLogMixin:
         assert AuditLog.objects.count() == before
 
 
+class TestAuditLogMixinSensitiveFields:
+    """Tests that sensitive fields are masked in audit logs."""
+
+    def test_safe_changes_masks_sensitive_fields(self):
+        """Fields in SENSITIVE_FIELDS should be replaced with '***'."""
+        data = {
+            "name": "Test Building",
+            "address": "123 St",
+            "tc_kimlik_no": "12345678901",
+            "password": "secret123",
+        }
+        result = AuditLogMixin._safe_changes(data)
+        assert result["name"] == "Test Building"
+        assert result["address"] == "123 St"
+        assert result["tc_kimlik_no"] == "***"
+        assert result["password"] == "***"
+
+
 class TestAuditLogMixinOptOut:
     """Tests that a ViewSet can disable audit logging."""
 

@@ -64,13 +64,10 @@ test.describe('Resident Detail', () => {
   });
 
   test('shows resident info sections', async ({ page }) => {
-    // Wait for resident detail API to finish
-    await page.waitForLoadState('networkidle');
     await expect(page.getByText(/TC|Паспорт/i).first()).toBeVisible({ timeout: 10000 });
   });
 
   test('shows apartments section', async ({ page }) => {
-    await page.waitForLoadState('networkidle');
     const apartmentsHeading = page.getByText(/Квартиры|Apartments/i);
     await expect(apartmentsHeading.first()).toBeVisible({ timeout: 10000 });
   });

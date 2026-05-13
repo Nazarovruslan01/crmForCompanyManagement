@@ -11,6 +11,81 @@ from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
+# Safe field whitelist for CSV/XLSX/PDF exports — excludes PII and payment tokens
+EXPORT_FIELD_WHITELIST: dict[str, list[str]] = {
+    "payments": [
+        "id",
+        "apartment",
+        "charge_type",
+        "charge_id",
+        "amount",
+        "currency",
+        "payment_method",
+        "status",
+        "bank_reference",
+        "receipt_number",
+        "paid_at",
+        "created_at",
+    ],
+    "aidat_charges": [
+        "id",
+        "apartment",
+        "billing_period_start",
+        "billing_period_end",
+        "base_amount",
+        "late_fee_rate",
+        "due_date",
+        "status",
+        "paid_at",
+        "paid_amount",
+        "created_at",
+        "updated_at",
+    ],
+    "meetings": [
+        "id",
+        "building",
+        "title",
+        "description",
+        "scheduled_date",
+        "status",
+        "quorum_required",
+        "created_at",
+        "updated_at",
+    ],
+    "residents": [
+        "id",
+        "user",
+        "name",
+        "surname",
+        "phone",
+        "email",
+        "is_foreign_owner",
+        "owner_type",
+        "is_active",
+        "created_at",
+        "updated_at",
+    ],
+    "apartments": [
+        "id",
+        "building",
+        "apartment_number",
+        "floor",
+        "block",
+        "square_meters",
+        "share_ratio_num",
+        "share_ratio_denom",
+        "tapu_number",
+        "status",
+        "created_at",
+        "updated_at",
+    ],
+}
+
+
+def _get_export_fields(report_type: str) -> list[str]:
+    """Return safe field list for a given report type."""
+    return EXPORT_FIELD_WHITELIST.get(report_type, [])
+
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)  # type: ignore[untyped-decorator]
 def generate_export_report(self: Any, report_id: int) -> bool:
@@ -64,7 +139,9 @@ def generate_export_report(self: Any, report_id: int) -> bool:
             if filter_kwargs:
                 queryset = queryset.filter(**filter_kwargs)
 
-        data: list[dict[str, Any]] = list(queryset.values())
+        # Whitelist safe fields per report type to prevent leaking PII and payment tokens
+        export_fields = _get_export_fields(report_type)
+        data: list[dict[str, Any]] = list(queryset.values(*export_fields))
 
         if format_type == ExportReport.Format.CSV:
             file_bytes = _generate_csv(data)
