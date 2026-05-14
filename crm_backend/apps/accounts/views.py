@@ -19,7 +19,7 @@ class UserViewSet(AuditLogMixin, BasePermissionMixin, viewsets.ModelViewSet[User
     queryset = User.objects.filter(is_active=True)
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
-    filterset_fields = ["role", "is_active", "is_staff"]
+    filterset_fields = ["role", "is_active", "is_staff", "username"]
     search_fields = ["username", "email", "first_name", "last_name"]
     ordering_fields = ["username", "date_joined"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]

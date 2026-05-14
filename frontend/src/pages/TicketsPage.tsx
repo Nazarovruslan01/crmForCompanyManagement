@@ -10,32 +10,8 @@ import { SearchInput } from '../components/ui/SearchInput';
 import { FilterSelect } from '../components/ui/FilterSelect';
 import { TabBar } from '../components/ui/TabBar';
 import { TicketForm } from '../components/forms/TicketForm';
+import { TICKET_PRIORITY_OPTIONS, TICKET_CATEGORY_OPTIONS, TICKET_STATUS_TABS } from '../constants/options';
 import type { Ticket, TicketStatus } from '../types';
-
-const PRIORITY_OPTIONS = [
-  { value: 'low', label: 'Низкий' },
-  { value: 'medium', label: 'Средний' },
-  { value: 'high', label: 'Высокий' },
-  { value: 'urgent', label: 'Срочный' },
-];
-
-const CATEGORY_OPTIONS = [
-  { value: 'plumbing', label: 'Сантехника' },
-  { value: 'electrical', label: 'Электрика' },
-  { value: 'cleaning', label: 'Уборка' },
-  { value: 'security', label: 'Безопасность' },
-  { value: 'noise', label: 'Шум' },
-  { value: 'general', label: 'Общее' },
-];
-
-const STATUS_TABS: { value: TicketStatus | ''; label: string }[] = [
-  { value: '', label: 'Все' },
-  { value: 'new', label: 'Новые' },
-  { value: 'assigned', label: 'Назначены' },
-  { value: 'in_progress', label: 'В работе' },
-  { value: 'resolved', label: 'Решены' },
-  { value: 'closed', label: 'Закрыты' },
-];
 
 const columns: Column<Ticket>[] = [
   { key: 'id', label: '#', width: 60, render: t => `#${t.id}` },
@@ -120,17 +96,17 @@ export function TicketsPage() {
         <FilterSelect
           value={priorityFilter}
           onChange={setPriorityFilter}
-          options={PRIORITY_OPTIONS}
+          options={TICKET_PRIORITY_OPTIONS}
           placeholder="Приоритет"
         />
         <FilterSelect
           value={categoryFilter}
           onChange={setCategoryFilter}
-          options={CATEGORY_OPTIONS}
+          options={TICKET_CATEGORY_OPTIONS}
           placeholder="Категория"
         />
       </div>
-      <TabBar tabs={STATUS_TABS} value={statusFilter} onChange={setStatusFilter} />
+      <TabBar tabs={TICKET_STATUS_TABS} value={statusFilter} onChange={setStatusFilter} />
 
       <DataTable
         columns={columns}

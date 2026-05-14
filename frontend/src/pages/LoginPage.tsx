@@ -1,58 +1,66 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../hooks/useAuth';
 import { Eye, EyeOff } from 'lucide-react';
 import { HouseraLogo } from '../components/HouseraLogo';
+import { loginSchema, mfaSchema, type LoginFormData, type MFAFormData } from '../validation/schemas';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, verifyMFA } = useAuth();
-
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/dashboard';
 
   const [step, setStep] = useState<'credentials' | 'mfa'>('credentials');
   const [tempToken, setTempToken] = useState('');
-  const [mfaCode, setMfaCode] = useState('');
-
-  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [globalError, setGlobalError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleCredentialsSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  const loginForm = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { username: '', password: '' },
+  });
+
+  const mfaForm = useForm<MFAFormData>({
+    resolver: zodResolver(mfaSchema),
+    defaultValues: { mfaCode: '' },
+  });
+
+  const handleCredentialsSubmit = loginForm.handleSubmit(async (data) => {
+    setGlobalError('');
     setIsLoading(true);
     try {
-      const result = await login(username, password);
+      const result = await login(data.username, data.password);
       if (result.requiresMfa) {
         setTempToken(result.tempToken ?? '');
         setStep('mfa');
       } else {
-        navigate('/dashboard');
+        navigate(from, { replace: true });
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Неверный логин или пароль';
-      setError(msg);
+      setGlobalError(msg);
     } finally {
       setIsLoading(false);
     }
-  };
+  });
 
-  const handleMFASubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  const handleMFASubmit = mfaForm.handleSubmit(async (data) => {
+    setGlobalError('');
     setIsLoading(true);
     try {
-      await verifyMFA(tempToken, mfaCode);
-      navigate('/dashboard');
+      await verifyMFA(tempToken, data.mfaCode);
+      navigate(from, { replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Неверный код подтверждения';
-      setError(msg);
+      setGlobalError(msg);
     } finally {
       setIsLoading(false);
     }
-  };
+  });
 
   return (
     <div style={{
@@ -90,7 +98,7 @@ export function LoginPage() {
 
         {step === 'credentials' ? (
           <form onSubmit={handleCredentialsSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {error && (
+            {globalError && (
               <div style={{
                 background: '#fff2f0',
                 border: '1px solid #ffccc7',
@@ -99,7 +107,7 @@ export function LoginPage() {
                 fontSize: 14,
                 color: '#ff4d4f',
               }}>
-                {error}
+                {globalError}
               </div>
             )}
 
@@ -108,14 +116,15 @@ export function LoginPage() {
               <input
                 id="username"
                 type="text"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                className="form-input"
+                {...loginForm.register('username')}
+                className={`form-input ${loginForm.formState.errors.username ? 'form-input--error' : ''}`}
                 placeholder="Введите логин"
-                required
                 disabled={isLoading}
                 autoFocus
               />
+              {loginForm.formState.errors.username && (
+                <p className="form-error">{loginForm.formState.errors.username.message}</p>
+              )}
             </div>
 
             <div>
@@ -124,12 +133,10 @@ export function LoginPage() {
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="form-input"
+                  {...loginForm.register('password')}
+                  className={`form-input ${loginForm.formState.errors.password ? 'form-input--error' : ''}`}
                   placeholder="Введите пароль"
                   style={{ paddingRight: 40 }}
-                  required
                   disabled={isLoading}
                 />
                 <button
@@ -146,6 +153,9 @@ export function LoginPage() {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {loginForm.formState.errors.password && (
+                <p className="form-error">{loginForm.formState.errors.password.message}</p>
+              )}
             </div>
 
             <button
@@ -159,7 +169,7 @@ export function LoginPage() {
           </form>
         ) : (
           <form onSubmit={handleMFASubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-            {error && (
+            {globalError && (
               <div style={{
                 background: '#fff2f0',
                 border: '1px solid #ffccc7',
@@ -168,7 +178,7 @@ export function LoginPage() {
                 fontSize: 14,
                 color: '#ff4d4f',
               }}>
-                {error}
+                {globalError}
               </div>
             )}
 
@@ -178,21 +188,21 @@ export function LoginPage() {
                 id="mfa-code"
                 type="text"
                 inputMode="numeric"
-                pattern="[0-9]*"
                 maxLength={6}
-                value={mfaCode}
-                onChange={e => setMfaCode(e.target.value.replace(/\D/g, ''))}
-                className="form-input"
+                {...mfaForm.register('mfaCode')}
+                className={`form-input ${mfaForm.formState.errors.mfaCode ? 'form-input--error' : ''}`}
                 placeholder="000000"
-                required
                 disabled={isLoading}
                 autoFocus
               />
+              {mfaForm.formState.errors.mfaCode && (
+                <p className="form-error">{mfaForm.formState.errors.mfaCode.message}</p>
+              )}
             </div>
 
             <button
               type="submit"
-              disabled={isLoading || mfaCode.length !== 6}
+              disabled={isLoading || !mfaForm.formState.isValid}
               className="btn-primary btn-block"
               style={{ marginTop: 6 }}
             >
@@ -201,7 +211,7 @@ export function LoginPage() {
 
             <button
               type="button"
-              onClick={() => { setStep('credentials'); setMfaCode(''); setError(''); }}
+              onClick={() => { setStep('credentials'); mfaForm.reset(); setGlobalError(''); }}
               disabled={isLoading}
               style={{
                 marginTop: 8,

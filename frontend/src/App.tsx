@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
@@ -6,44 +7,47 @@ import type { User } from './types';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { DashboardLayout } from './components/DashboardLayout';
-import { DashboardPage } from './pages/DashboardPage';
-import { BuildingsPage } from './pages/BuildingsPage';
-import { BuildingDetailPage } from './pages/BuildingDetailPage';
-import { ChessboardPage } from './pages/ChessboardPage';
-import { TicketsPage } from './pages/TicketsPage';
-import { TicketDetailPage } from './pages/TicketDetailPage';
-import { ResidentsPage } from './pages/ResidentsPage';
-import { ResidentDetailPage } from './pages/ResidentDetailPage';
-import { ApartmentDetailPage } from './pages/ApartmentDetailPage';
-import { BuildingSetupPage } from './pages/BuildingSetupPage';
-import { StaffPage } from './pages/StaffPage';
-import { BillingPage } from './pages/BillingPage';
-import { DocumentsPage } from './pages/DocumentsPage';
-import { MeetingsPage } from './pages/MeetingsPage';
-import { MeetingDetailPage } from './pages/MeetingDetailPage';
-import { NotificationsPage } from './pages/NotificationsPage';
-import { SettingsPage } from './pages/SettingsPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
+
+const DashboardPage = lazy(() => import('./pages/DashboardPage'));
+const BuildingsPage = lazy(() => import('./pages/BuildingsPage'));
+const BuildingDetailPage = lazy(() => import('./pages/BuildingDetailPage'));
+const ChessboardPage = lazy(() => import('./pages/ChessboardPage'));
+const TicketsPage = lazy(() => import('./pages/TicketsPage'));
+const TicketDetailPage = lazy(() => import('./pages/TicketDetailPage'));
+const ResidentsPage = lazy(() => import('./pages/ResidentsPage'));
+const ResidentDetailPage = lazy(() => import('./pages/ResidentDetailPage'));
+const ApartmentDetailPage = lazy(() => import('./pages/ApartmentDetailPage'));
+const BuildingSetupPage = lazy(() => import('./pages/BuildingSetupPage'));
+const StaffPage = lazy(() => import('./pages/StaffPage'));
+const BillingPage = lazy(() => import('./pages/BillingPage'));
+const DocumentsPage = lazy(() => import('./pages/DocumentsPage'));
+const MeetingsPage = lazy(() => import('./pages/MeetingsPage'));
+const MeetingDetailPage = lazy(() => import('./pages/MeetingDetailPage'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
   return <>{children}</>;
 }
 
 function AuthorizeRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: User['role'][] }) {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return <LoadingSpinner />;
   }
 
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <Navigate to="/login" replace state={{ from: location }} />;
   if (!user || !allowedRoles.includes(user.role)) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -100,7 +104,9 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <ErrorBoundary>
-          <AppRoutes />
+          <Suspense fallback={<LoadingSpinner />}>
+            <AppRoutes />
+          </Suspense>
         </ErrorBoundary>
       </AuthProvider>
     </BrowserRouter>

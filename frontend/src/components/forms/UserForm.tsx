@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
 import type { User } from '../../types';
+import { userSchema, type UserFormData } from '../../validation/schemas';
 import { Modal } from '../ui/Modal';
 import { Field, SelectField, FormRow, FormActions } from '../ui/FormField';
 
@@ -19,43 +22,60 @@ const ROLE_OPTIONS = [
   { value: 'resident', label: 'Жилец' },
 ];
 
+const STATUS_OPTIONS = [
+  { value: 'true',  label: 'Активен' },
+  { value: 'false', label: 'Деактивирован' },
+];
+
 export function UserForm({ open, onClose, onSaved, initial }: Props) {
   const isEdit = !!initial;
   const [saving, setSaving] = useState(false);
 
-  const [form, setForm] = useState({
-    username:   initial?.username ?? '',
-    email:      initial?.email ?? '',
-    first_name: initial?.first_name ?? '',
-    last_name:  initial?.last_name ?? '',
-    role:       initial?.role ?? 'worker',
-    phone:      initial?.phone ?? '',
-    password:   '',
-    is_active:  String(initial?.is_active ?? true),
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors },
+  } = useForm<UserFormData>({
+    resolver: zodResolver(userSchema),
+    defaultValues: {
+      username: initial?.username ?? '',
+      email: initial?.email ?? '',
+      first_name: initial?.first_name ?? '',
+      last_name: initial?.last_name ?? '',
+      role: initial?.role ?? 'worker',
+      phone: initial?.phone ?? '',
+      password: '',
+    },
   });
 
-  const set = (field: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-      setForm(f => ({ ...f, [field]: e.target.value }));
+  useEffect(() => {
+    if (!open) return;
+    reset({
+      username: initial?.username ?? '',
+      email: initial?.email ?? '',
+      first_name: initial?.first_name ?? '',
+      last_name: initial?.last_name ?? '',
+      role: initial?.role ?? 'worker',
+      phone: initial?.phone ?? '',
+      password: '',
+    });
+  }, [open, initial, reset]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!isEdit && form.password.length < 8) {
-      toast.error('Пароль должен быть не менее 8 символов');
-      return;
-    }
+  async function onSubmit(data: UserFormData) {
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
-        username:   form.username,
-        email:      form.email,
-        first_name: form.first_name,
-        last_name:  form.last_name,
-        role:       form.role,
-        phone:      form.phone || null,
+        username: data.username,
+        email: data.email,
+        first_name: data.first_name,
+        last_name: data.last_name,
+        role: data.role,
+        phone: data.phone || null,
       };
-      if (!isEdit) payload.password = form.password;
-      if (isEdit)  payload.is_active = form.is_active === 'true';
+      if (!isEdit) payload.password = data.password;
+      if (isEdit) payload.is_active = data.is_active === 'true';
 
       if (isEdit) {
         await api.users.update(initial!.id, payload);
@@ -80,61 +100,86 @@ export function UserForm({ open, onClose, onSaved, initial }: Props) {
       title={isEdit ? 'Редактировать пользователя' : 'Новый пользователь'}
       width={540}
     >
-      <form onSubmit={submit}>
+      <form onSubmit={handleSubmit(onSubmit)}>
         <FormRow>
-          <Field label="Имя" value={form.first_name} onChange={set('first_name')} placeholder="Иван" />
-          <Field label="Фамилия" value={form.last_name} onChange={set('last_name')} placeholder="Иванов" />
+          <Field
+            label="Имя"
+            {...register('first_name')}
+            placeholder="Иван"
+            error={errors.first_name?.message}
+          />
+          <Field
+            label="Фамилия"
+            {...register('last_name')}
+            placeholder="Иванов"
+            error={errors.last_name?.message}
+          />
         </FormRow>
+
         <Field
           label="Логин"
           required
-          value={form.username}
-          onChange={set('username')}
+          {...register('username')}
           placeholder="ivan_ivanov"
+          error={errors.username?.message}
         />
+
         <Field
           label="Email"
           type="email"
-          value={form.email}
-          onChange={set('email')}
+          {...register('email')}
           placeholder="ivan@example.com"
+          error={errors.email?.message}
         />
+
         <FormRow>
-          <SelectField
-            label="Роль"
-            required
-            value={form.role}
-            onChange={set('role')}
-            options={ROLE_OPTIONS}
+          <Controller
+            name="role"
+            control={control}
+            render={({ field }) => (
+              <SelectField
+                label="Роль"
+                required
+                {...field}
+                options={ROLE_OPTIONS}
+                error={errors.role?.message}
+              />
+            )}
           />
           <Field
             label="Телефон"
-            value={form.phone}
-            onChange={set('phone')}
+            {...register('phone')}
             placeholder="+7 999 123-45-67"
+            error={errors.phone?.message}
           />
         </FormRow>
+
         {!isEdit && (
           <Field
             label="Пароль"
             required
             type="password"
-            value={form.password}
-            onChange={set('password')}
+            {...register('password')}
             placeholder="Минимум 8 символов"
+            error={errors.password?.message}
           />
         )}
+
         {isEdit && (
-          <SelectField
-            label="Статус"
-            value={form.is_active}
-            onChange={set('is_active')}
-            options={[
-              { value: 'true',  label: 'Активен' },
-              { value: 'false', label: 'Деактивирован' },
-            ]}
+          <Controller
+            name="is_active"
+            control={control}
+            render={({ field }) => (
+              <SelectField
+                label="Статус"
+                {...field}
+                options={STATUS_OPTIONS}
+                error={errors.is_active?.message}
+              />
+            )}
           />
         )}
+
         <FormActions>
           <button
             type="button"

@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
 import type { Meeting, Building } from '../../types';
+import { meetingSchema, type MeetingFormData } from '../../validation/schemas';
 import { Modal } from '../ui/Modal';
 import { Field, SelectField, TextareaField, FormRow, FormActions } from '../ui/FormField';
 
@@ -17,35 +20,48 @@ export function MeetingForm({ open, onClose, onSaved, initial }: Props) {
   const [saving, setSaving] = useState(false);
   const [buildings, setBuildings] = useState<Building[]>([]);
 
-  const [form, setForm] = useState({
-    building: String(initial?.building ?? ''),
-    title: initial?.title ?? '',
-    description: initial?.description ?? '',
-    scheduled_date: initial?.scheduled_date
-      ? initial.scheduled_date.slice(0, 16)
-      : '',
-    quorum_required: String(initial?.quorum_required ?? 50),
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors },
+  } = useForm<MeetingFormData>({
+    resolver: zodResolver(meetingSchema),
+    defaultValues: {
+      building: String(initial?.building ?? ''),
+      title: initial?.title ?? '',
+      description: initial?.description ?? '',
+      scheduled_date: initial?.scheduled_date
+        ? initial.scheduled_date.slice(0, 16)
+        : '',
+      quorum_required: String(initial?.quorum_required ?? 50),
+    },
   });
 
   useEffect(() => {
     if (!open) return;
+    reset({
+      building: String(initial?.building ?? ''),
+      title: initial?.title ?? '',
+      description: initial?.description ?? '',
+      scheduled_date: initial?.scheduled_date
+        ? initial.scheduled_date.slice(0, 16)
+        : '',
+      quorum_required: String(initial?.quorum_required ?? 50),
+    });
     api.buildings.list().then(r => setBuildings(r.results)).catch(() => {});
-  }, [open]);
+  }, [open, initial, reset]);
 
-  const set = (field: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-      setForm(f => ({ ...f, [field]: e.target.value }));
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function onSubmit(data: MeetingFormData) {
     setSaving(true);
     try {
       const payload = {
-        building: Number(form.building),
-        title: form.title,
-        description: form.description,
-        scheduled_date: form.scheduled_date,
-        quorum_required: Number(form.quorum_required),
+        building: Number(data.building),
+        title: data.title,
+        description: data.description,
+        scheduled_date: data.scheduled_date,
+        quorum_required: Number(data.quorum_required),
       };
       if (isEdit) {
         await api.meetings.update(initial!.id, payload);
@@ -72,45 +88,51 @@ export function MeetingForm({ open, onClose, onSaved, initial }: Props) {
       title={isEdit ? 'Редактировать собрание' : 'Новое собрание'}
       width={540}
     >
-      <form onSubmit={submit}>
-        <SelectField
-          label="Здание"
-          required
-          value={form.building}
-          onChange={set('building')}
-          options={buildingOptions}
-          placeholder="Выберите здание"
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <Controller
+          name="building"
+          control={control}
+          render={({ field }) => (
+            <SelectField
+              label="Здание"
+              required
+              {...field}
+              options={buildingOptions}
+              placeholder="Выберите здание"
+              error={errors.building?.message}
+            />
+          )}
         />
         <Field
           label="Название"
           required
-          value={form.title}
-          onChange={set('title')}
+          {...register('title')}
           placeholder="Годовое общее собрание"
+          error={errors.title?.message}
         />
         <FormRow>
           <Field
             label="Дата и время"
             required
             type="datetime-local"
-            value={form.scheduled_date}
-            onChange={set('scheduled_date')}
+            {...register('scheduled_date')}
+            error={errors.scheduled_date?.message}
           />
           <Field
             label="Кворум (%)"
             required
             type="number"
-            value={form.quorum_required}
-            onChange={set('quorum_required')}
+            {...register('quorum_required')}
             placeholder="50"
+            error={errors.quorum_required?.message}
           />
         </FormRow>
         <TextareaField
           label="Описание / повестка"
-          value={form.description}
-          onChange={set('description')}
+          {...register('description')}
           placeholder="Обсуждение бюджета, выборы председателя..."
           rows={4}
+          error={errors.description?.message}
         />
         <FormActions>
           <button

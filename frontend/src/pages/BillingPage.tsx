@@ -8,6 +8,7 @@ import { Pagination } from '../components/ui/Pagination';
 import { SearchInput } from '../components/ui/SearchInput';
 import { FilterSelect } from '../components/ui/FilterSelect';
 import { TabBar } from '../components/ui/TabBar';
+import { AIDAT_STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS } from '../constants/options';
 import type { AidatCharge, Payment } from '../types';
 
 type Tab = 'aidat' | 'payments';
@@ -15,19 +16,6 @@ type Tab = 'aidat' | 'payments';
 const TABS: { value: Tab; label: string }[] = [
   { value: 'aidat',    label: 'Айдат (квартплата)' },
   { value: 'payments', label: 'История платежей' },
-];
-
-const AIDAT_STATUS_OPTIONS = [
-  { value: 'pending', label: 'Не оплачено' },
-  { value: 'overdue', label: 'Просрочено' },
-  { value: 'paid',    label: 'Оплачено' },
-];
-
-const PAYMENT_METHOD_OPTIONS = [
-  { value: 'eft',         label: 'EFT / Перевод' },
-  { value: 'credit_card', label: 'Карта' },
-  { value: 'cash',        label: 'Наличные' },
-  { value: 'online',      label: 'Онлайн' },
 ];
 
 // ─── Columns ─────────────────────────────────────────────────────────────────

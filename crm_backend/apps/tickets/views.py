@@ -149,7 +149,7 @@ class TicketViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, 
     queryset = Ticket.objects.select_related("apartment__building", "assigned_worker__user", "created_by").all()
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrWorkerOrResidentReadOwn]
-    filterset_fields = ["status", "priority", "category", "assigned_worker"]
+    filterset_fields = ["status", "priority", "category", "assigned_worker", "title"]
     search_fields = ["title", "description", "apartment__apartment_number"]
     ordering_fields = ["priority", "created_at", "updated_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]

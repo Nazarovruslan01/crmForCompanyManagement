@@ -5,26 +5,13 @@ import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
-import { Badge, type BadgeColor } from '../components/ui/Badge';
+import { Badge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
 import { SearchInput } from '../components/ui/SearchInput';
 import { FilterSelect } from '../components/ui/FilterSelect';
 import { MeetingForm } from '../components/forms/MeetingForm';
+import { MEETING_STATUS_OPTIONS, MEETING_STATUS_COLOR } from '../constants/options';
 import type { Meeting } from '../types';
-
-const STATUS_OPTIONS = [
-  { value: 'scheduled',  label: 'Запланировано' },
-  { value: 'active',     label: 'Активно' },
-  { value: 'completed',  label: 'Завершено' },
-  { value: 'cancelled',  label: 'Отменено' },
-];
-
-const statusColor: Record<string, BadgeColor> = {
-  scheduled: 'blue',
-  active:    'green',
-  completed: 'gray',
-  cancelled: 'red',
-};
 
 const columns: Column<Meeting>[] = [
   {
@@ -55,7 +42,7 @@ const columns: Column<Meeting>[] = [
     render: m => (
       <Badge
         label={m.status_display ?? m.status}
-        color={statusColor[m.status] ?? 'blue'}
+        color={MEETING_STATUS_COLOR[m.status] ?? 'blue'}
       />
     ),
   },
@@ -109,7 +96,7 @@ export function MeetingsPage() {
         <FilterSelect
           value={statusFilter}
           onChange={setStatusFilter}
-          options={STATUS_OPTIONS}
+          options={MEETING_STATUS_OPTIONS}
           placeholder="Статус"
         />
       </div>

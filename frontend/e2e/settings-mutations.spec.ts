@@ -12,6 +12,7 @@ test.describe('Settings — Password Mutations', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('/settings');
+    await expect(page.locator('h1')).toContainText('Настройки', { timeout: 10000 });
     await expect(page.getByRole('heading', { name: /Смена пароля/i })).toBeVisible({ timeout: 10000 });
   });
 

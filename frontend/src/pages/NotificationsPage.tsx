@@ -3,39 +3,12 @@ import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
-import { Badge, type BadgeColor } from '../components/ui/Badge';
+import { Badge } from '../components/ui/Badge';
 import { Pagination } from '../components/ui/Pagination';
 import { SearchInput } from '../components/ui/SearchInput';
 import { FilterSelect } from '../components/ui/FilterSelect';
+import { NOTIFICATION_STATUS_OPTIONS, NOTIFICATION_CHANNEL_OPTIONS, NOTIFICATION_STATUS_COLOR, NOTIFICATION_CHANNEL_COLOR } from '../constants/options';
 import type { NotificationLog } from '../types';
-
-const STATUS_OPTIONS = [
-  { value: 'pending',   label: 'Ожидает' },
-  { value: 'sent',      label: 'Отправлено' },
-  { value: 'delivered', label: 'Доставлено' },
-  { value: 'failed',    label: 'Ошибка' },
-];
-
-const CHANNEL_OPTIONS = [
-  { value: 'push',     label: 'Push' },
-  { value: 'sms',      label: 'SMS' },
-  { value: 'email',    label: 'Email' },
-  { value: 'telegram', label: 'Telegram' },
-];
-
-const statusColor: Record<NotificationLog['status'], BadgeColor> = {
-  pending:   'blue',
-  sent:      'orange',
-  delivered: 'green',
-  failed:    'red',
-};
-
-const channelColor: Record<string, BadgeColor> = {
-  push:     'purple',
-  sms:      'blue',
-  email:    'orange',
-  telegram: 'blue',
-};
 
 const columns: Column<NotificationLog>[] = [
   {
@@ -49,7 +22,7 @@ const columns: Column<NotificationLog>[] = [
     render: n => (
       <Badge
         label={n.channel_display ?? n.channel}
-        color={channelColor[n.channel] ?? 'gray'}
+        color={NOTIFICATION_CHANNEL_COLOR[n.channel] ?? 'gray'}
       />
     ),
   },
@@ -63,7 +36,7 @@ const columns: Column<NotificationLog>[] = [
   {
     key: 'status',
     label: 'Статус',
-    render: n => <Badge label={n.status_display ?? n.status} color={statusColor[n.status]} />,
+    render: n => <Badge label={n.status_display ?? n.status} color={NOTIFICATION_STATUS_COLOR[n.status]} />,
   },
   {
     key: 'sent_at',
@@ -108,13 +81,13 @@ export function NotificationsPage() {
         <FilterSelect
           value={statusFilter}
           onChange={setStatusFilter}
-          options={STATUS_OPTIONS}
+          options={NOTIFICATION_STATUS_OPTIONS}
           placeholder="Статус"
         />
         <FilterSelect
           value={channelFilter}
           onChange={setChannelFilter}
-          options={CHANNEL_OPTIONS}
+          options={NOTIFICATION_CHANNEL_OPTIONS}
           placeholder="Канал"
         />
       </div>

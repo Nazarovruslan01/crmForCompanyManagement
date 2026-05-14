@@ -112,7 +112,7 @@ class ResidentViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin
     queryset = Resident.objects.select_related("user").all()
     serializer_class = ResidentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
-    filterset_fields = ["owner_type", "is_foreign_owner"]
+    filterset_fields = ["owner_type", "is_foreign_owner", "email"]
     search_fields = ["name", "surname", "tc_kimlik_no", "passport_no"]
     ordering_fields = ["surname", "name", "created_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
