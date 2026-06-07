@@ -19,9 +19,9 @@ export type MFAFormData = z.infer<typeof mfaSchema>;
 
 export const ticketSchema = z.object({
   apartment: z.string().min(1, 'Выберите квартиру'),
-  category: z.string().min(1, 'Выберите категорию'),
-  priority: z.string().min(1, 'Выберите приоритет'),
-  status: z.string().optional(),
+  category: z.enum(['plumbing', 'electrical', 'cleaning', 'security', 'noise', 'general'], { error: 'Выберите категорию' }),
+  priority: z.enum(['low', 'medium', 'high', 'urgent'], { error: 'Выберите приоритет' }),
+  status: z.enum(['new', 'assigned', 'in_progress', 'resolved', 'closed']).optional(),
   title: z.string().min(3, 'Минимум 3 символа').max(200, 'Максимум 200 символов'),
   description: z.string().min(10, 'Минимум 10 символов').max(2000, 'Максимум 2000 символов'),
   assigned_worker: z.string().optional(),
@@ -40,7 +40,7 @@ export const apartmentSchema = z.object({
   share_ratio_num: z.string().min(1, 'Введите числитель'),
   share_ratio_denom: z.string().min(1, 'Введите знаменатель'),
   tapu_number: z.string().optional(),
-  status: z.string().min(1, 'Выберите статус'),
+  status: z.enum(['active', 'inactive', 'pending_handover'], { error: 'Выберите статус' }),
 });
 
 export type ApartmentFormData = z.infer<typeof apartmentSchema>;
@@ -80,7 +80,7 @@ export const buildingSchema = z.object({
   address: z.string().min(1, 'Введите адрес').max(200, 'Максимум 200 символов'),
   city: z.string().min(1, 'Введите город').max(50, 'Максимум 50 символов'),
   district: z.string().min(1, 'Введите район').max(50, 'Максимум 50 символов'),
-  management_type: z.string().min(1, 'Выберите тип управления'),
+  management_type: z.enum(['self_managed', 'external_company'], { error: 'Выберите тип управления' }),
   annual_budget: z.string().optional(),
 });
 

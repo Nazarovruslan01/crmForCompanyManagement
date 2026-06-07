@@ -125,7 +125,7 @@ export const NOTIFICATION_CHANNEL_COLOR: Record<string, 'purple' | 'blue' | 'ora
 
 // ─── Apartments ───────────────────────────────────────────────────────────────
 
-export const APARTMENT_STATUS_OPTIONS: Option[] = [
+export const APARTMENT_STATUS_OPTIONS: Option<'active' | 'inactive' | 'pending_handover'>[] = [
   { value: 'active',          label: 'Активна' },
   { value: 'inactive',        label: 'Неактивна' },
   { value: 'pending_handover', label: 'Ожидает сдачи' },

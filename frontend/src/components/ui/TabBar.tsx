@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, CSSProperties } from 'react';
 
 interface Tab<T extends string> {
   value: T;
@@ -11,6 +11,7 @@ interface TabBarProps<T extends string> {
   value: T;
   onChange: (value: T) => void;
   className?: string;
+  style?: CSSProperties;
 }
 
 /**
@@ -18,9 +19,9 @@ interface TabBarProps<T extends string> {
  * Active tab: brand-colored text + 2px bottom border.
  * Inactive: gray-7 text, hover → gray-9.
  */
-export function TabBar<T extends string>({ tabs, value, onChange, className = '' }: TabBarProps<T>): ReactNode {
+export function TabBar<T extends string>({ tabs, value, onChange, className = '', style }: TabBarProps<T>): ReactNode {
   return (
-    <div className={`tab-bar ${className}`}>
+    <div className={`tab-bar ${className}`} style={style}>
       {tabs.map(tab => {
         const active = tab.value === value;
         return (

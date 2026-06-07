@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { Search, X } from 'lucide-react';
 
 interface SearchInputProps {
@@ -6,9 +6,10 @@ interface SearchInputProps {
   onSearch: (value: string) => void;
   debounceMs?: number;
   className?: string;
+  style?: CSSProperties;
 }
 
-export function SearchInput({ placeholder = 'Поиск...', onSearch, debounceMs = 350, className = '' }: SearchInputProps) {
+export function SearchInput({ placeholder = 'Поиск...', onSearch, debounceMs = 350, className = '', style }: SearchInputProps) {
   const [value, setValue] = useState('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onSearchRef = useRef(onSearch);
@@ -24,7 +25,7 @@ export function SearchInput({ placeholder = 'Поиск...', onSearch, debounceM
   }, [value]);
 
   return (
-    <div className={`search-input-wrap ${className}`}>
+    <div className={`search-input-wrap ${className}`} style={style}>
       <Search
         size={16}
         className="search-input-icon"
