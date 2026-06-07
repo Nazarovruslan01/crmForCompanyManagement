@@ -8,7 +8,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 2 : 1,
   timeout: 15000,
-  reporter: process.env.CI ? ['github', 'html'] : 'list',
+  reporter: process.env.CI ? [['github'], ['html']] : 'list',
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:4173',
     trace: 'on-first-retry',
