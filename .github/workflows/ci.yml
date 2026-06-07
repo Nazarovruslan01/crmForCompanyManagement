@@ -377,7 +377,7 @@ jobs:
         run: |
           python manage.py runserver 0.0.0.0:8000 &
           sleep 5
-          curl -sSf http://localhost:8000/api/v2/ || (echo "Django failed to start" && exit 1)
+          curl -sSf http://localhost:8000/api/health/ || (echo "Django failed to start" && exit 1)
       - name: Build and serve frontend
         working-directory: frontend
         run: |
