@@ -310,6 +310,7 @@ class TestResidentSerializerValidation:
         assert response.data["phone"] is None
         # passport_no is write-only, verify in DB
         from apps.residents.models import Resident
+
         resident = Resident.objects.get(pk=response.data["id"])
         assert resident.passport_no == "MP1234567"
 

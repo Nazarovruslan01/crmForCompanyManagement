@@ -129,7 +129,9 @@ class AgendaItemViewSet(AuditLogMixin, ManagerQuerySetMixin, BasePermissionMixin
     manager_lookup = "meeting__building__managers"
 
 
-class MeetingProtocolViewSet(AuditLogMixin, ManagerQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[MeetingProtocol]):
+class MeetingProtocolViewSet(
+    AuditLogMixin, ManagerQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[MeetingProtocol]
+):
     queryset = MeetingProtocol.objects.select_related("meeting").all()
     serializer_class = MeetingProtocolSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]

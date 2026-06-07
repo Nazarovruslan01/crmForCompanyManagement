@@ -145,7 +145,9 @@ from .serializers import (
         },
     ),
 )
-class TicketViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Ticket]):
+class TicketViewSet(
+    AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Ticket]
+):
     queryset = Ticket.objects.select_related("apartment__building", "assigned_worker__user", "created_by").all()
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrWorkerOrResidentReadOwn]
@@ -192,7 +194,11 @@ class TicketViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, 
 
 
 class TicketCommentViewSet(
-    AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[TicketComment]
+    AuditLogMixin,
+    ManagerQuerySetMixin,
+    ResidentQuerySetMixin,
+    BasePermissionMixin,
+    viewsets.ModelViewSet[TicketComment],
 ):
     queryset = TicketComment.objects.select_related("author", "ticket").all()
     serializer_class = TicketCommentSerializer
@@ -207,7 +213,11 @@ class TicketCommentViewSet(
 
 
 class TicketAttachmentViewSet(
-    AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[TicketAttachment]
+    AuditLogMixin,
+    ManagerQuerySetMixin,
+    ResidentQuerySetMixin,
+    BasePermissionMixin,
+    viewsets.ModelViewSet[TicketAttachment],
 ):
     queryset = TicketAttachment.objects.select_related("uploaded_by", "ticket").all()
     serializer_class = TicketAttachmentSerializer

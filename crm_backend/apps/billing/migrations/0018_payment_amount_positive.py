@@ -4,15 +4,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('billing', '0017_payment_backfill_status'),
-        ('properties', '0005_assign_existing_managers'),
+        ("billing", "0017_payment_backfill_status"),
+        ("properties", "0005_assign_existing_managers"),
     ]
 
     operations = [
         migrations.AddConstraint(
-            model_name='payment',
-            constraint=models.CheckConstraint(condition=models.Q(('amount__gt', 0)), name='payment_amount_positive', violation_error_message='Payment amount must be greater than zero.'),
+            model_name="payment",
+            constraint=models.CheckConstraint(
+                condition=models.Q(("amount__gt", 0)),
+                name="payment_amount_positive",
+                violation_error_message="Payment amount must be greater than zero.",
+            ),
         ),
     ]

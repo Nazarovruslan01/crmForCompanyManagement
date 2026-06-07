@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('billing', '0015_add_iyzico_token_index_unique'),
+        ("billing", "0015_add_iyzico_token_index_unique"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='receipt',
-            name='pdf_url',
+            model_name="receipt",
+            name="pdf_url",
             field=models.URLField(blank=True, max_length=500, null=True),
         ),
     ]

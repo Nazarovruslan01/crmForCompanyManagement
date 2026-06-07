@@ -103,7 +103,9 @@ from .serializers import (
         },
     ),
 )
-class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Building]):
+class BuildingViewSet(
+    AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Building]
+):
     queryset = Building.objects.all()
     serializer_class = BuildingSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]

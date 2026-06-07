@@ -132,10 +132,7 @@ class AuditLogMixin:
 
     @classmethod
     def _safe_changes(cls, data: dict[str, Any]) -> dict[str, Any]:
-        return {
-            k: "***" if k in cls.SENSITIVE_FIELDS else cls._serialize_value(v)
-            for k, v in data.items()
-        }
+        return {k: "***" if k in cls.SENSITIVE_FIELDS else cls._serialize_value(v) for k, v in data.items()}
 
 
 def _get_client_ip(request: Request) -> str | None:

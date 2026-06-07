@@ -150,7 +150,11 @@ class AidatChargeViewSet(
 
 
 class ExtraordinaryChargeViewSet(
-    AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[ExtraordinaryCharge]
+    AuditLogMixin,
+    CacheListRetrieveMixin,
+    ManagerQuerySetMixin,
+    BasePermissionMixin,
+    viewsets.ModelViewSet[ExtraordinaryCharge],
 ):
     queryset = ExtraordinaryCharge.objects.select_related("building").all()
     serializer_class = ExtraordinaryChargeSerializer
@@ -163,7 +167,12 @@ class ExtraordinaryChargeViewSet(
 
 
 class PaymentViewSet(
-    AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Payment]
+    AuditLogMixin,
+    CacheListRetrieveMixin,
+    ManagerQuerySetMixin,
+    ResidentQuerySetMixin,
+    BasePermissionMixin,
+    viewsets.ModelViewSet[Payment],
 ):
     queryset = Payment.objects.select_related("apartment__building").all()
     serializer_class = PaymentSerializer
@@ -227,7 +236,9 @@ class PaymentViewSet(
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
 
-class ReceiptViewSet(AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Receipt]):
+class ReceiptViewSet(
+    AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Receipt]
+):
     queryset = Receipt.objects.select_related("payment__apartment__building").all()
     serializer_class = ReceiptSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]

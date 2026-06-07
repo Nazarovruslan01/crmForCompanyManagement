@@ -20,7 +20,7 @@ class BasePermissionMixin:
     """
 
     def get_permissions(self) -> list[permissions.BasePermission]:
-        perms = super().get_permissions()  # type: ignore[misc]
+        perms: list[permissions.BasePermission] = super().get_permissions()  # type: ignore[misc,assignment]
         if not any(isinstance(p, PasswordChangedPermission) for p in perms):
             perms.append(PasswordChangedPermission())
         return perms
