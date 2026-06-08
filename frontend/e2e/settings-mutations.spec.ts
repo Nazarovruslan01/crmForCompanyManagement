@@ -17,7 +17,11 @@ test.describe('Settings — Password Mutations', () => {
   });
 
   test.afterEach(async ({ page }) => {
-    // Safety net: always leave admin password as admin123!
+    // Safety net: always leave admin password as admin123! AND persist fresh tokens
+    // to playwright/.auth/admin.json. Changing the password invalidates all existing
+    // JWT tokens via PasswordChangedPermission (cache-based iat check), so every
+    // password change must be followed by a fresh login and storageState save —
+    // otherwise all subsequent tests that load admin.json will fail auth.
     await page.goto('/login');
     await page.fill('#username', 'admin');
     await page.fill('#password', 'admin123!');
@@ -25,9 +29,11 @@ test.describe('Settings — Password Mutations', () => {
 
     try {
       await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 3000 });
+      // Password was already admin123! — persist fresh tokens from this login.
+      await page.context().storageState({ path: 'playwright/.auth/admin.json' });
       return;
     } catch {
-      // Password is still NewPass123! — log in and revert it
+      // Password is still NewPass123! — log in and revert it.
       await page.fill('#password', 'NewPass123!');
       await page.click('button[type="submit"]');
       await page.waitForURL((url) => !url.pathname.includes('/login'));
@@ -47,6 +53,15 @@ test.describe('Settings — Password Mutations', () => {
     await expect(
       page.getByText(/Password has been changed successfully|пароль изменён|успешно/i),
     ).toBeVisible({ timeout: 10000 });
+
+    // Re-login with admin123! to get tokens issued AFTER the password reset,
+    // then persist them so PasswordChangedPermission accepts them.
+    await page.goto('/login');
+    await page.fill('#username', 'admin');
+    await page.fill('#password', 'admin123!');
+    await page.click('button[type="submit"]');
+    await page.waitForURL((url) => !url.pathname.includes('/login'));
+    await page.context().storageState({ path: 'playwright/.auth/admin.json' });
   });
 
   test('user can change password', async ({ page }) => {

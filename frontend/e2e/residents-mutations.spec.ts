@@ -62,9 +62,10 @@ test.describe('Resident Mutations — Admin', () => {
       return;
     }
 
-    const listData = (await listRes.json()) as { results: Array<{ id: number }> };
-    if (listData.results.length > 0) {
-      await request.delete(`${API}/residents/${listData.results[0].id}/`, {
+    const listData = (await listRes.json()) as { results?: Array<{ id: number }> } | Array<{ id: number }>;
+    const results: Array<{ id: number }> = Array.isArray(listData) ? listData : (listData.results ?? []);
+    if (results.length > 0) {
+      await request.delete(`${API}/residents/${results[0].id}/`, {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
     }
