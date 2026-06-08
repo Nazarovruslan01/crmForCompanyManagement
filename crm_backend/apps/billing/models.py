@@ -172,6 +172,7 @@ class Payment(models.Model):
         max_length=100,
         null=True,
         blank=True,
+        db_index=True,
         verbose_name="Iyzico Conversation ID",
     )
     iyzico_token = models.CharField(
