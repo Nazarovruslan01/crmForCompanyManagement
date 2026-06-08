@@ -257,7 +257,7 @@ class TestReceiptViewSetFull:
         assert response.data["pdf_url"] == "https://example.com/receipt.pdf"
 
     def test_update_receipt(self, admin_client, payment):
-        """Admin can update a receipt."""
+        """pdf_url is read-only — updates should be ignored."""
         from apps.billing.models import Receipt
 
         receipt = Receipt.objects.create(payment=payment, pdf_url="https://example.com/old.pdf")
@@ -265,7 +265,8 @@ class TestReceiptViewSetFull:
         response = admin_client.patch(f"/api/v2/billing/receipts/{receipt.id}/", payload, format="json")
         assert response.status_code == status.HTTP_200_OK
         receipt.refresh_from_db()
-        assert receipt.pdf_url == "https://example.com/new.pdf"
+        # pdf_url is read-only, so the update should be ignored
+        assert receipt.pdf_url == "https://example.com/old.pdf"
 
     def test_delete_receipt(self, admin_client, payment):
         """Admin can delete a receipt."""
@@ -343,7 +344,9 @@ class TestPaymentIdempotency:
             HTTP_IDEMPOTENCY_KEY="test-key-123",
         )
         assert response.status_code == status.HTTP_201_CREATED
-        assert response.data["idempotency_key"] == "test-key-123"
+        # Verify idempotency key stored in DB but not exposed in response
+        payment = Payment.objects.get(pk=response.data["id"])
+        assert payment.idempotency_key == "test-key-123"
 
     def test_duplicate_idempotency_key_returns_existing(self, admin_client, apartment):
         """Retry with same Idempotency-Key returns cached response (no duplicate created)."""
@@ -516,13 +519,13 @@ class TestReceiptViewSet:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_create_receipt(self, admin_client, payment):
-        """Admin can create a receipt."""
-        payload = {
-            "payment": payment.id,
-            "pdf_url": "https://example.com/new-receipt.pdf",
-        }
-        response = admin_client.post("/api/v2/billing/receipts/", payload, format="json")
-        assert response.status_code == status.HTTP_201_CREATED
+        """Admin can create a receipt via system (payment is read-only in API)."""
+        from apps.billing.models import Receipt
+
+        receipt = Receipt.objects.create(payment=payment, pdf_url="https://example.com/new-receipt.pdf")
+        response = admin_client.get(f"/api/v2/billing/receipts/{receipt.id}/")
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["pdf_url"] == "https://example.com/new-receipt.pdf"
 
 
 class TestIyzicoViewSet:
@@ -659,4 +662,6 @@ class TestIyzicoViewSet:
         )
         response = admin_client.get("/api/v2/billing/iyzico/status/", {"conversation_id": "conv-status-1"})
         assert response.status_code == status.HTTP_200_OK
-        assert response.data["iyzico_conversation_id"] == "conv-status-1"
+        # Verify correct payment found; iyzico_conversation_id is not exposed in response
+        payment = Payment.objects.get(iyzico_conversation_id="conv-status-1")
+        assert response.data["id"] == payment.id

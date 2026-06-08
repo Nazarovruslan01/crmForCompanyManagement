@@ -1,23 +1,14 @@
-import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Building2, ClipboardList, Users, Wallet,
   TrendingUp, AlertTriangle, ArrowRight,
 } from 'lucide-react';
-import { api } from '../lib/api';
+import { useDashboardSummary } from '../hooks/queries/useDashboard';
+import { useAidatOverdue } from '../hooks/queries/useAidat';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
 import { TicketStatusBadge, TicketPriorityBadge, Badge } from '../components/ui/Badge';
 import type { Ticket, AidatCharge } from '../types';
-
-interface Stats {
-  buildings: number;
-  activeTickets: number;
-  residents: number;
-  overdueCharges: number;
-  totalDebt: string;
-  occupancyRate: number;
-}
 
 // ─── Stat card ───────────────────────────────────────────────────────────────
 
@@ -192,43 +183,37 @@ const overdueColumns: Column<AidatCharge>[] = [
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<Stats>({
-    buildings: 0, activeTickets: 0, residents: 0,
-    overdueCharges: 0, totalDebt: '0.00', occupancyRate: 0,
-  });
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [recentTickets, setRecentTickets] = useState<Ticket[]>([]);
-  const [ticketsLoading, setTicketsLoading] = useState(true);
-  const [overdueCharges, setOverdueCharges] = useState<AidatCharge[]>([]);
-  const [overdueLoading, setOverdueLoading] = useState(true);
-  const [overdueError, setOverdueError] = useState<string | null>(null);
+  const { data: summary, isLoading: statsLoading, error: statsError } = useDashboardSummary();
+  const { data: overdueData, isLoading: overdueLoading, error: overdueError } = useAidatOverdue({ page_size: '8' });
 
-  useEffect(() => {
-    api.dashboard.summary()
-      .then(data => {
-        setStats({
-          buildings: data.buildings_count,
-          activeTickets: data.active_tickets_count,
-          residents: data.residents_count,
-          overdueCharges: data.overdue_charges_count,
-          totalDebt: data.total_debt,
-          occupancyRate: data.occupancy_rate,
-        });
-        setRecentTickets(data.recent_tickets);
-      })
-      .finally(() => {
-        setStatsLoading(false);
-        setTicketsLoading(false);
-      });
+  const stats = summary ? {
+    buildings: summary.buildings_count,
+    activeTickets: summary.active_tickets_count,
+    residents: summary.residents_count,
+    overdueCharges: summary.overdue_charges_count,
+    totalDebt: summary.total_debt,
+    occupancyRate: summary.occupancy_rate,
+  } : null;
 
-    api.aidatCharges.overdue({ page_size: '8' })
-      .then(res => setOverdueCharges(res.results))
-      .catch(err => setOverdueError((err as Error).message))
-      .finally(() => setOverdueLoading(false));
-  }, []);
+  const recentTickets = summary?.recent_tickets ?? [];
+  const overdueCharges = overdueData?.results ?? [];
 
   return (
     <PageLayout title="Аналитика">
+      {statsError && (
+        <div style={{
+          background: '#FEF2F2',
+          border: '1px solid #FECACA',
+          borderRadius: 10,
+          padding: '12px 16px',
+          marginBottom: 20,
+          color: '#B91C1C',
+          fontSize: 13,
+        }}>
+          {statsError.message}
+        </div>
+      )}
+
       {/* Stat cards — 3 columns */}
       <div style={{
         display: 'grid',
@@ -236,26 +221,26 @@ export function DashboardPage() {
         gap: 16,
         marginBottom: 28,
       }}>
-        <StatCard label="Зданий" value={stats.buildings} icon={Building2} loading={statsLoading} accent="orange" />
-        <StatCard label="Жильцов" value={stats.residents} icon={Users} loading={statsLoading} accent="green" />
+        <StatCard label="Зданий" value={stats?.buildings ?? 0} icon={Building2} loading={statsLoading} accent="orange" />
+        <StatCard label="Жильцов" value={stats?.residents ?? 0} icon={Users} loading={statsLoading} accent="green" />
         <StatCard
           label="Заполненность"
-          value={`${stats.occupancyRate}%`}
+          value={`${stats?.occupancyRate ?? 0}%`}
           icon={TrendingUp}
           loading={statsLoading}
           accent="blue"
         />
-        <StatCard label="Новых заявок" value={stats.activeTickets} icon={ClipboardList} loading={statsLoading} accent="purple" />
+        <StatCard label="Новых заявок" value={stats?.activeTickets ?? 0} icon={ClipboardList} loading={statsLoading} accent="purple" />
         <StatCard
           label="Просрочено оплат"
-          value={stats.overdueCharges}
+          value={stats?.overdueCharges ?? 0}
           icon={AlertTriangle}
           loading={statsLoading}
           accent="red"
         />
         <StatCard
           label="Общий долг"
-          value={statsLoading ? '—' : `₺${Number(stats.totalDebt).toLocaleString('ru-RU')}`}
+          value={statsLoading ? '—' : `₺${Number(stats?.totalDebt ?? 0).toLocaleString('ru-RU')}`}
           icon={Wallet}
           loading={statsLoading}
           accent="red"
@@ -276,7 +261,7 @@ export function DashboardPage() {
           <DataTable
             columns={ticketColumns}
             rows={recentTickets}
-            loading={ticketsLoading}
+            loading={statsLoading}
             error={null}
             keyExtractor={t => t.id}
             emptyText="Нет заявок"
@@ -296,7 +281,7 @@ export function DashboardPage() {
             columns={overdueColumns}
             rows={overdueCharges}
             loading={overdueLoading}
-            error={overdueError}
+            error={overdueError?.message ?? null}
             keyExtractor={c => c.id}
             emptyText="Просроченных платежей нет"
           />

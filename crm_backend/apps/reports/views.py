@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManager
 from common.throttles import UserReadThrottle, UserWriteThrottle
+from core.permissions import BasePermissionMixin
 
 from .models import ExportReport
 from .serializers import ExportReportSerializer
@@ -20,7 +21,7 @@ from .tasks import generate_export_report
 logger = logging.getLogger(__name__)
 
 
-class ExportReportViewSet(AuditLogMixin, viewsets.ModelViewSet[ExportReport]):
+class ExportReportViewSet(AuditLogMixin, BasePermissionMixin, viewsets.ModelViewSet[ExportReport]):
     """ViewSet for managing export reports.
 
     Admins and managers can create and download data exports.

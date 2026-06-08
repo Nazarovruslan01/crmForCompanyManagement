@@ -5,7 +5,7 @@
 from typing import Any
 
 from django.db import transaction
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from core.tasks import send_email_async, send_sms_async
@@ -191,3 +191,26 @@ def ticket_comment_notification_handler(
         send_telegram_message(chat_id, telegram_message)
 
     transaction.on_commit(_send_telegram)
+
+
+# ─── Cache invalidation ───────────────────────────────────────────────────
+
+
+def _invalidate_ticket_related_cache() -> None:
+    """Bump Apartment and Building cache versions and dashboard cache when tickets change."""
+    from apps.properties.models import Apartment, Building
+    from apps.properties.signals import _bump_cache_version, _invalidate_dashboard_cache
+
+    _bump_cache_version(Apartment)
+    _bump_cache_version(Building)
+    _invalidate_dashboard_cache()
+
+
+@receiver(post_save, sender=Ticket)
+def invalidate_ticket_cache_on_save(sender: type[Ticket], **kwargs: Any) -> None:
+    _invalidate_ticket_related_cache()
+
+
+@receiver(post_delete, sender=Ticket)
+def invalidate_ticket_cache_on_delete(sender: type[Ticket], **kwargs: Any) -> None:
+    _invalidate_ticket_related_cache()

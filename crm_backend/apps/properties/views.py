@@ -15,7 +15,8 @@ from apps.documents.models import Document
 from apps.residents.models import Ownership, PersonalAccount
 from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
-from core.mixins import CacheListRetrieveMixin, ResidentQuerySetMixin
+from core.mixins import CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin
+from core.permissions import BasePermissionMixin
 
 from .models import Apartment, Building
 from .serializers import (
@@ -102,7 +103,9 @@ from .serializers import (
         },
     ),
 )
-class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewSet[Building]):
+class BuildingViewSet(
+    AuditLogMixin, CacheListRetrieveMixin, ManagerQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Building]
+):
     queryset = Building.objects.all()
     serializer_class = BuildingSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
@@ -110,6 +113,7 @@ class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewS
     search_fields = ["name", "address"]
     ordering_fields = ["name", "created_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "managers"
 
     @action(
         detail=True,
@@ -255,7 +259,14 @@ class BuildingViewSet(AuditLogMixin, CacheListRetrieveMixin, viewsets.ModelViewS
         return Response(result, status=status.HTTP_200_OK)
 
 
-class ApartmentViewSet(AuditLogMixin, CacheListRetrieveMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Apartment]):
+class ApartmentViewSet(
+    AuditLogMixin,
+    CacheListRetrieveMixin,
+    ManagerQuerySetMixin,
+    ResidentQuerySetMixin,
+    BasePermissionMixin,
+    viewsets.ModelViewSet[Apartment],
+):
     queryset = Apartment.objects.select_related("building").all()
     serializer_class = ApartmentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
@@ -263,13 +274,16 @@ class ApartmentViewSet(AuditLogMixin, CacheListRetrieveMixin, ResidentQuerySetMi
     search_fields = ["apartment_number", "building__name", "tapu_number"]
     ordering_fields = ["building", "apartment_number", "created_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "building__managers"
     resident_lookup = "ownerships__resident__user"
 
 
 class ApartmentMinimalViewSet(
     AuditLogMixin,
     CacheListRetrieveMixin,
+    ManagerQuerySetMixin,
     ResidentQuerySetMixin,
+    BasePermissionMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     viewsets.GenericViewSet[Apartment],
@@ -280,4 +294,5 @@ class ApartmentMinimalViewSet(
     serializer_class = ApartmentMinimalSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrResidentReadOwn]
     throttle_classes = [UserReadThrottle]
+    manager_lookup = "building__managers"
     resident_lookup = "ownerships__resident__user"

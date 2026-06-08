@@ -2,6 +2,8 @@
 
 """Residents app models for Turkish HOA CRM"""
 
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import models
 
@@ -88,6 +90,29 @@ class PersonalAccount(models.Model):
 
     def __str__(self) -> str:
         return f"{self.account_number} - {self.apartment}"
+
+    def compute_balance(self) -> Decimal:
+        """Calculate current balance from related charges and payments.
+
+        Balance = sum of all charge amounts (base + late fees) - sum of all payments.
+        Positive balance = resident owes money. Negative = overpaid.
+        """
+        from apps.billing.models import AidatCharge, Payment
+
+        total_charges = sum(
+            (
+                charge.total_due
+                for charge in AidatCharge.objects.filter(
+                    apartment=self.apartment,
+                    status__in=(AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE),
+                )
+            ),
+            Decimal("0"),
+        )
+        total_payments = Payment.objects.filter(apartment=self.apartment, status=Payment.Status.COMPLETED).aggregate(
+            total=models.Sum("amount")
+        )["total"] or Decimal("0")
+        return total_charges - total_payments
 
 
 class Ownership(models.Model):

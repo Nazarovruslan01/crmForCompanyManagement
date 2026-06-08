@@ -6,6 +6,19 @@
  */
 import { test, expect } from '@playwright/test';
 
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+const API = `${BACKEND_URL}/api/v2`;
+
+/** Login via API and return the access token. */
+async function getAdminToken(request: import('@playwright/test').APIRequestContext): Promise<string> {
+  const res = await request.post(`${API}/accounts/login/`, {
+    data: { username: 'admin', password: 'admin123!' },
+  });
+  expect(res.ok()).toBeTruthy();
+  const data = (await res.json()) as { access: string };
+  return data.access;
+}
+
 /** Generate a valid TC Kimlik No (11-digit Turkish ID with correct checksum). */
 function generateValidTc(): string {
   const d = [Math.floor(Math.random() * 9) + 1];
@@ -24,12 +37,40 @@ function generateValidTc(): string {
 test.describe('Resident Mutations — Admin', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
+  let createdResidentEmail: string | null = null;
+
   test.beforeEach(async ({ page }) => {
     const residentsLoaded = page.waitForResponse(
       (resp) => resp.url().includes('/api/v2/residents/') && resp.status() === 200,
     );
     await page.goto('/residents');
     await residentsLoaded;
+  });
+
+  test.afterEach(async ({ request }) => {
+    if (!createdResidentEmail) return;
+
+    const adminToken = await getAdminToken(request);
+
+    // Find resident by email
+    const listRes = await request.get(
+      `${API}/residents/?email=${encodeURIComponent(createdResidentEmail)}`,
+      { headers: { Authorization: `Bearer ${adminToken}` } },
+    );
+    if (!listRes.ok()) {
+      createdResidentEmail = null;
+      return;
+    }
+
+    const listData = (await listRes.json()) as { results?: Array<{ id: number }> } | Array<{ id: number }>;
+    const results: Array<{ id: number }> = Array.isArray(listData) ? listData : (listData.results ?? []);
+    if (results.length > 0) {
+      await request.delete(`${API}/residents/${results[0].id}/`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+    }
+
+    createdResidentEmail = null;
   });
 
   test('admin can create a resident', async ({ page }) => {
@@ -43,10 +84,12 @@ test.describe('Resident Mutations — Admin', () => {
     const uniqueSuffix = Date.now().toString(36);
     const tc = generateValidTc();
 
+    createdResidentEmail = `e2e-${uniqueSuffix}@example.com`;
+
     await page.getByPlaceholder('Ahmet', { exact: true }).fill(`E2E ${uniqueSuffix}`);
     await page.getByPlaceholder('Yılmaz', { exact: true }).fill('Resident');
     await page.getByPlaceholder('+90 555 000 00 00', { exact: true }).fill('+90 555 000 00 01');
-    await page.getByPlaceholder('ahmet@example.com', { exact: true }).fill(`e2e-${uniqueSuffix}@example.com`);
+    await page.getByPlaceholder('ahmet@example.com', { exact: true }).fill(createdResidentEmail);
     await page.locator('select').first().selectOption('owner');
     await page.getByPlaceholder('12345678901', { exact: true }).fill(tc);
 

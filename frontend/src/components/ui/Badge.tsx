@@ -2,28 +2,9 @@ import type { TicketStatus, TicketPriority, AidatStatus } from '../../types';
 
 type BadgeColor = 'green' | 'red' | 'orange' | 'blue' | 'gray' | 'purple';
 
-const colors: Record<BadgeColor, { bg: string; color: string }> = {
-  green:  { bg: '#f6ffed', color: '#52c41a' },
-  red:    { bg: '#fff2f0', color: '#ff4d4f' },
-  orange: { bg: '#fff7e6', color: '#fa8c16' },
-  blue:   { bg: '#e6f7ff', color: '#1677ff' },
-  gray:   { bg: '#f5f5f5', color: '#8c8c8c' },
-  purple: { bg: '#f9f0ff', color: '#722ed1' },
-};
-
 export function Badge({ label, color }: { label: string; color: BadgeColor }) {
-  const { bg, color: textColor } = colors[color];
   return (
-    <span style={{
-      display: 'inline-block',
-      padding: '2px 10px',
-      borderRadius: 20,
-      fontSize: 12,
-      fontWeight: 500,
-      background: bg,
-      color: textColor,
-      whiteSpace: 'nowrap',
-    }}>
+    <span className={`badge badge-${color}`}>
       {label}
     </span>
   );

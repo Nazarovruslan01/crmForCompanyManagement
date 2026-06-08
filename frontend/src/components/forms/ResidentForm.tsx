@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
 import type { Resident } from '../../types';
+import { residentSchema, type ResidentFormData } from '../../validation/schemas';
 import { Modal } from '../ui/Modal';
 import { Field, SelectField, CheckboxField, FormRow, FormActions } from '../ui/FormField';
 
@@ -22,36 +25,57 @@ const OWNER_TYPE_OPTIONS = [
 export function ResidentForm({ open, onClose, onSaved, initial }: Props) {
   const isEdit = !!initial;
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    name: initial?.name ?? '',
-    surname: initial?.surname ?? '',
-    phone: initial?.phone ?? '',
-    email: initial?.email ?? '',
-    tc_kimlik_no: initial?.tc_kimlik_no ?? '',
-    passport_no: initial?.passport_no ?? '',
-    is_foreign_owner: initial?.is_foreign_owner ?? false,
-    owner_type: initial?.owner_type ?? 'owner',
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<ResidentFormData>({
+    resolver: zodResolver(residentSchema),
+    defaultValues: {
+      name: initial?.name ?? '',
+      surname: initial?.surname ?? '',
+      phone: initial?.phone ?? '',
+      email: initial?.email ?? '',
+      tc_kimlik_no: initial?.tc_kimlik_no ?? '',
+      passport_no: initial?.passport_no ?? '',
+      is_foreign_owner: initial?.is_foreign_owner ?? false,
+      owner_type: initial?.owner_type ?? 'owner',
+    },
   });
 
-  const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm(f => ({ ...f, [field]: e.target.value }));
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const isForeignOwner = watch('is_foreign_owner');
 
-  const toggle = (field: 'is_foreign_owner') => (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm(f => ({ ...f, [field]: e.target.checked }));
+  useEffect(() => {
+    if (!open) return;
+    reset({
+      name: initial?.name ?? '',
+      surname: initial?.surname ?? '',
+      phone: initial?.phone ?? '',
+      email: initial?.email ?? '',
+      tc_kimlik_no: initial?.tc_kimlik_no ?? '',
+      passport_no: initial?.passport_no ?? '',
+      is_foreign_owner: initial?.is_foreign_owner ?? false,
+      owner_type: initial?.owner_type ?? 'owner',
+    });
+  }, [open, initial, reset]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function onSubmit(data: ResidentFormData) {
     setSaving(true);
     try {
       const payload = {
-        name: form.name,
-        surname: form.surname,
-        phone: form.phone || null,
-        email: form.email || null,
-        tc_kimlik_no: form.is_foreign_owner ? null : (form.tc_kimlik_no || null),
-        passport_no: form.is_foreign_owner ? (form.passport_no || null) : null,
-        is_foreign_owner: form.is_foreign_owner,
-        owner_type: form.owner_type,
+        name: data.name,
+        surname: data.surname,
+        phone: data.phone || null,
+        email: data.email || null,
+        tc_kimlik_no: data.is_foreign_owner ? null : (data.tc_kimlik_no || null),
+        passport_no: data.is_foreign_owner ? (data.passport_no || null) : null,
+        is_foreign_owner: data.is_foreign_owner,
+        owner_type: data.owner_type,
       };
       if (isEdit) {
         await api.residents.update(initial!.id, payload);
@@ -71,37 +95,78 @@ export function ResidentForm({ open, onClose, onSaved, initial }: Props) {
 
   return (
     <Modal open={open} onClose={onClose} title={isEdit ? 'Редактировать резидента' : 'Новый резидент'}>
-      <form onSubmit={submit}>
+      <form onSubmit={handleSubmit(onSubmit)}>
         <FormRow>
-          <Field label="Имя" required value={form.name} onChange={set('name')} placeholder="Ahmet" />
-          <Field label="Фамилия" required value={form.surname} onChange={set('surname')} placeholder="Yılmaz" />
+          <Field
+            label="Имя"
+            required
+            {...register('name')}
+            placeholder="Ahmet"
+            error={errors.name?.message}
+          />
+          <Field
+            label="Фамилия"
+            required
+            {...register('surname')}
+            placeholder="Yılmaz"
+            error={errors.surname?.message}
+          />
         </FormRow>
         <FormRow>
-          <Field label="Телефон" type="tel" value={form.phone} onChange={set('phone')} placeholder="+90 555 000 00 00" />
-          <Field label="Email" type="email" value={form.email} onChange={set('email')} placeholder="ahmet@example.com" />
+          <Field
+            label="Телефон"
+            type="tel"
+            {...register('phone')}
+            placeholder="+90 555 000 00 00"
+            error={errors.phone?.message}
+          />
+          <Field
+            label="Email"
+            type="email"
+            {...register('email')}
+            placeholder="ahmet@example.com"
+            error={errors.email?.message}
+          />
         </FormRow>
-        <SelectField
-          label="Тип владельца"
-          required
-          value={form.owner_type}
-          onChange={set('owner_type')}
-          options={OWNER_TYPE_OPTIONS}
+        <Controller
+          name="owner_type"
+          control={control}
+          render={({ field }) => (
+            <SelectField
+              label="Тип владельца"
+              required
+              {...field}
+              options={OWNER_TYPE_OPTIONS}
+              error={errors.owner_type?.message}
+            />
+          )}
         />
-        <CheckboxField
-          label="Иностранный владелец"
-          checked={form.is_foreign_owner}
-          onChange={toggle('is_foreign_owner')}
+        <Controller
+          name="is_foreign_owner"
+          control={control}
+          render={({ field }) => (
+            <CheckboxField
+              label="Иностранный владелец"
+              checked={field.value}
+              onChange={e => field.onChange(e.target.checked)}
+            />
+          )}
         />
-        {form.is_foreign_owner ? (
-          <Field label="Номер паспорта" value={form.passport_no} onChange={set('passport_no')} placeholder="AB1234567" />
+        {isForeignOwner ? (
+          <Field
+            label="Номер паспорта"
+            {...register('passport_no')}
+            placeholder="AB1234567"
+            error={errors.passport_no?.message}
+          />
         ) : (
           <Field
             label="ТС кимлик но"
-            value={form.tc_kimlik_no}
-            onChange={set('tc_kimlik_no')}
+            {...register('tc_kimlik_no')}
             placeholder="12345678901"
             maxLength={11}
             hint="11-значный идентификационный номер гражданина Турции"
+            error={errors.tc_kimlik_no?.message}
           />
         )}
         <FormActions>

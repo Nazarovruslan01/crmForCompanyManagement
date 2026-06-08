@@ -55,6 +55,7 @@ class PaymentSerializer(serializers.ModelSerializer):
     apartment_display = serializers.CharField(source="apartment.__str__", read_only=True)
     charge_type_display = serializers.CharField(source="get_charge_type_display", read_only=True)
     payment_method_display = serializers.CharField(source="get_payment_method_display", read_only=True)
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
 
     class Meta:  # type: ignore
         model = Payment
@@ -69,22 +70,17 @@ class PaymentSerializer(serializers.ModelSerializer):
             "currency",
             "payment_method",
             "payment_method_display",
+            "status",
+            "status_display",
             "bank_reference",
             "receipt_number",
-            "idempotency_key",
-            "iyzico_payment_id",
-            "iyzico_conversation_id",
-            "iyzico_token",
             "paid_at",
             "created_at",
         ]
         read_only_fields = [
             "receipt_number",
             "created_at",
-            "idempotency_key",
-            "iyzico_payment_id",
-            "iyzico_conversation_id",
-            "iyzico_token",
+            "status",
         ]
 
 
@@ -92,4 +88,4 @@ class ReceiptSerializer(serializers.ModelSerializer):
     class Meta:  # type: ignore
         model = Receipt
         fields = ["id", "payment", "pdf_url", "generated_at"]
-        read_only_fields = ["generated_at"]
+        read_only_fields = ["generated_at", "pdf_url", "payment"]

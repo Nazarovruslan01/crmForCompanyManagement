@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Upload } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
 import type { Building } from '../../types';
+import { documentSchema, type DocumentFormData } from '../../validation/schemas';
 import { Modal } from '../ui/Modal';
 import { Field, SelectField, TextareaField, FormActions } from '../ui/FormField';
 
@@ -26,31 +29,41 @@ export function DocumentForm({ open, onClose, onSaved }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [form, setForm] = useState({
-    title: '',
-    document_type: 'other',
-    description: '',
-    building: '',
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors },
+  } = useForm<DocumentFormData>({
+    resolver: zodResolver(documentSchema),
+    defaultValues: {
+      title: '',
+      document_type: 'other',
+      description: '',
+      building: '',
+    },
   });
 
   useEffect(() => {
     if (!open) return;
-    api.buildings.list().then(r => setBuildings(r.results)).catch(() => {});
-  }, [open]);
+    reset({
+      title: '',
+      document_type: 'other',
+      description: '',
+      building: '',
+    });
+    api.buildings.list().then(r => { setBuildings(r.results); setFile(null); }).catch(() => { setFile(null); });
+  }, [open, reset]);
 
-  const set = (field: keyof typeof form) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-      setForm(f => ({ ...f, [field]: e.target.value }));
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function onSubmit(data: DocumentFormData) {
     setSaving(true);
     try {
       const fd = new FormData();
-      fd.append('title', form.title);
-      fd.append('document_type', form.document_type);
-      if (form.description) fd.append('description', form.description);
-      if (form.building) fd.append('building', form.building);
+      fd.append('title', data.title);
+      fd.append('document_type', data.document_type);
+      if (data.description) fd.append('description', data.description);
+      if (data.building) fd.append('building', data.building);
       if (file) fd.append('file', file);
 
       await api.documents.upload(fd);
@@ -68,34 +81,46 @@ export function DocumentForm({ open, onClose, onSaved }: Props) {
 
   return (
     <Modal open={open} onClose={onClose} title="Загрузить документ" width={520}>
-      <form onSubmit={submit}>
+      <form onSubmit={handleSubmit(onSubmit)}>
         <Field
           label="Название"
           required
-          value={form.title}
-          onChange={set('title')}
+          {...register('title')}
           placeholder="Договор управления №123"
+          error={errors.title?.message}
         />
-        <SelectField
-          label="Тип документа"
-          required
-          value={form.document_type}
-          onChange={set('document_type')}
-          options={DOC_TYPE_OPTIONS}
+        <Controller
+          name="document_type"
+          control={control}
+          render={({ field }) => (
+            <SelectField
+              label="Тип документа"
+              required
+              {...field}
+              options={DOC_TYPE_OPTIONS}
+              error={errors.document_type?.message}
+            />
+          )}
         />
-        <SelectField
-          label="Здание"
-          value={form.building}
-          onChange={set('building')}
-          options={buildingOptions}
-          placeholder="Не привязан"
+        <Controller
+          name="building"
+          control={control}
+          render={({ field }) => (
+            <SelectField
+              label="Здание"
+              {...field}
+              options={buildingOptions}
+              placeholder="Не привязан"
+              error={errors.building?.message}
+            />
+          )}
         />
         <TextareaField
           label="Описание"
-          value={form.description}
-          onChange={set('description')}
+          {...register('description')}
           placeholder="Краткое описание документа..."
           rows={3}
+          error={errors.description?.message}
         />
 
         {/* File picker */}

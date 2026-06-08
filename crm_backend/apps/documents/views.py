@@ -6,7 +6,8 @@ from rest_framework import permissions, viewsets
 from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManagerOrResidentReadOwn
 from common.throttles import UserReadThrottle, UserWriteThrottle
-from core.mixins import CacheListRetrieveMixin, ResidentQuerySetMixin
+from core.mixins import CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin
+from core.permissions import BasePermissionMixin
 
 from .models import Document
 from .serializers import DocumentSerializer
@@ -109,7 +110,9 @@ from .serializers import DocumentSerializer
 class DocumentViewSet(
     AuditLogMixin,
     CacheListRetrieveMixin,
+    ManagerQuerySetMixin,
     ResidentQuerySetMixin,
+    BasePermissionMixin,
     viewsets.ModelViewSet[Document],
 ):
     queryset = Document.objects.select_related("building", "apartment", "resident", "uploaded_by").all()
@@ -119,6 +122,7 @@ class DocumentViewSet(
     search_fields = ["title", "description"]
     ordering_fields = ["created_at", "title"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "building__managers"
     resident_lookup = "apartment__ownerships__resident__user"
 
     def perform_create(self, serializer: DocumentSerializer) -> None:

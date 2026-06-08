@@ -14,15 +14,7 @@ setup('authenticate as admin', async ({ page }) => {
   await page.fill('#username', 'admin');
   await page.fill('#password', 'admin123!');
   await page.click('button[type="submit"]');
-
-  try {
-    await page.waitForURL(url => !url.pathname.includes('/login'), { timeout: 5000 });
-  } catch {
-    // Previous test run may have changed the password — try fallback
-    await page.fill('#password', 'NewPass123!');
-    await page.click('button[type="submit"]');
-    await page.waitForURL(url => !url.pathname.includes('/login'));
-  }
+  await page.waitForURL(url => !url.pathname.includes('/login'));
 
   await page.context().storageState({ path: adminFile });
 });

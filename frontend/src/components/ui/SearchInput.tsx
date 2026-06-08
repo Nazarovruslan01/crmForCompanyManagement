@@ -1,14 +1,15 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type CSSProperties } from 'react';
 import { Search, X } from 'lucide-react';
 
 interface SearchInputProps {
   placeholder?: string;
   onSearch: (value: string) => void;
   debounceMs?: number;
-  style?: React.CSSProperties;
+  className?: string;
+  style?: CSSProperties;
 }
 
-export function SearchInput({ placeholder = 'Поиск...', onSearch, debounceMs = 350, style }: SearchInputProps) {
+export function SearchInput({ placeholder = 'Поиск...', onSearch, debounceMs = 350, className = '', style }: SearchInputProps) {
   const [value, setValue] = useState('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onSearchRef = useRef(onSearch);
@@ -24,48 +25,23 @@ export function SearchInput({ placeholder = 'Поиск...', onSearch, debounceM
   }, [value]);
 
   return (
-    <div style={{ position: 'relative', marginBottom: 16, ...style }}>
+    <div className={`search-input-wrap ${className}`} style={style}>
       <Search
         size={16}
-        style={{
-          position: 'absolute', left: 12, top: '50%',
-          transform: 'translateY(-50%)',
-          color: 'var(--color-gray-6)', pointerEvents: 'none',
-        }}
+        className="search-input-icon"
       />
       <input
         type="text"
         value={value}
         onChange={e => setValue(e.target.value)}
         placeholder={placeholder}
-        style={{
-          width: '100%', boxSizing: 'border-box',
-          padding: '9px 36px 9px 36px',
-          borderRadius: 10, fontSize: 14,
-          border: '1.5px solid var(--color-gray-3)',
-          background: '#fff', color: 'var(--color-gray-9)',
-          outline: 'none', transition: 'border-color 150ms, box-shadow 150ms',
-        }}
-        onFocus={e => {
-          e.currentTarget.style.borderColor = 'var(--color-brand)';
-          e.currentTarget.style.boxShadow = '0 0 0 3px rgba(242,101,34,0.12)';
-        }}
-        onBlur={e => {
-          e.currentTarget.style.borderColor = 'var(--color-gray-3)';
-          e.currentTarget.style.boxShadow = 'none';
-        }}
+        className="search-input"
       />
       {value && (
         <button
           type="button"
           onClick={() => setValue('')}
-          style={{
-            position: 'absolute', right: 10, top: '50%',
-            transform: 'translateY(-50%)',
-            background: 'none', border: 'none', cursor: 'pointer',
-            color: 'var(--color-gray-6)', padding: 2, display: 'flex',
-            borderRadius: 4,
-          }}
+          className="search-input-clear"
         >
           <X size={14} />
         </button>

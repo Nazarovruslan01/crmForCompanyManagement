@@ -227,6 +227,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
+        "core.permissions.PasswordChangedPermission",
     ],
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
@@ -250,6 +251,7 @@ REST_FRAMEWORK = {
         "telegram_webhook": "10/m",
         "presigned_upload": "20/m",
         "mfa_verify": "5/m",
+        "iyzico_callback": "30/m",
     },
     "DEFAULT_VERSION": "v2",
     "ALLOWED_VERSIONS": ["v2"],

@@ -8,17 +8,18 @@ from rest_framework import generics, permissions, viewsets
 from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManager
 from common.throttles import UserReadThrottle, UserWriteThrottle
+from core.permissions import BasePermissionMixin
 
 from .serializers import UserCreateSerializer, UserMeSerializer, UserSerializer
 
 User = get_user_model()
 
 
-class UserViewSet(AuditLogMixin, viewsets.ModelViewSet[User]):
+class UserViewSet(AuditLogMixin, BasePermissionMixin, viewsets.ModelViewSet[User]):
     queryset = User.objects.filter(is_active=True)
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
-    filterset_fields = ["role", "is_active", "is_staff"]
+    filterset_fields = ["role", "is_active", "is_staff", "username"]
     search_fields = ["username", "email", "first_name", "last_name"]
     ordering_fields = ["username", "date_joined"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]

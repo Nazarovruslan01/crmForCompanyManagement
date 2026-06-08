@@ -8,6 +8,31 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 
+class ManagerQuerySetMixin:
+    """Filter queryset to manager-assigned buildings when user.role == 'manager'.
+
+    Set ``manager_lookup`` on the view to the Django ORM path from the
+    view's model to the ``Building`` whose ``managers`` M2M includes
+    the request user.
+    Example: ``"building__managers"``.
+
+    Admin users see the unfiltered queryset.
+    If a manager has no assigned buildings, returns ``.none()``.
+    """
+
+    manager_lookup: str = ""
+
+    def get_queryset(self) -> "models.QuerySet[Any]":
+        qs = super().get_queryset()  # type: ignore[misc]
+        user = self.request.user  # type: ignore[attr-defined]
+        if getattr(user, "role", None) != "manager":
+            return qs  # type: ignore[no-any-return]
+        if not self.manager_lookup:
+            return qs  # type: ignore[no-any-return]
+        filter_kwargs = {self.manager_lookup: user}
+        return qs.filter(**filter_kwargs).distinct()  # type: ignore[no-any-return]
+
+
 class ResidentQuerySetMixin:
     """Filter queryset to resident-owned objects when user.role == 'resident'.
 

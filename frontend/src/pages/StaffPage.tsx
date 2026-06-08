@@ -9,32 +9,8 @@ import { SearchInput } from '../components/ui/SearchInput';
 import { FilterSelect } from '../components/ui/FilterSelect';
 import { TabBar } from '../components/ui/TabBar';
 import { EmployeeForm } from '../components/forms/EmployeeForm';
+import { EMPLOYEE_ROLE_OPTIONS, TASK_STATUS_OPTIONS, TASK_STATUS_COLOR } from '../constants/options';
 import type { Employee, Task } from '../types';
-
-// ─── Options ─────────────────────────────────────────────────────────────────
-
-const ROLE_OPTIONS = [
-  { value: 'dispatcher', label: 'Диспетчер' },
-  { value: 'master',     label: 'Мастер' },
-  { value: 'accountant', label: 'Бухгалтер' },
-  { value: 'admin',      label: 'Управляющий' },
-  { value: 'security',   label: 'Охрана' },
-  { value: 'cleaning',   label: 'Уборка' },
-];
-
-const STATUS_OPTIONS = [
-  { value: 'pending',     label: 'Ожидает' },
-  { value: 'in_progress', label: 'В работе' },
-  { value: 'completed',   label: 'Выполнена' },
-  { value: 'cancelled',   label: 'Отменена' },
-];
-
-const TASK_STATUS_COLOR: Record<string, 'gray' | 'blue' | 'green' | 'red'> = {
-  pending:     'gray',
-  in_progress: 'blue',
-  completed:   'green',
-  cancelled:   'red',
-};
 
 // ─── Avatar ──────────────────────────────────────────────────────────────────
 
@@ -225,7 +201,7 @@ export function StaffPage() {
             <FilterSelect
               value={roleFilter}
               onChange={setRoleFilter}
-              options={ROLE_OPTIONS}
+              options={EMPLOYEE_ROLE_OPTIONS}
               placeholder="Должность"
             />
           </div>
@@ -254,7 +230,7 @@ export function StaffPage() {
             <FilterSelect
               value={statusFilter}
               onChange={setStatusFilter}
-              options={STATUS_OPTIONS}
+              options={TASK_STATUS_OPTIONS}
               placeholder="Статус"
             />
           </div>

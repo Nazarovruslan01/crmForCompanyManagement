@@ -31,14 +31,11 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "role_display",
             "phone",
-            "tc_kimlik_no",
             "is_active",
-            "is_staff",
-            "is_superuser",
             "date_joined",
             "last_login",
         ]
-        read_only_fields = ["is_staff", "is_superuser", "date_joined", "last_login"]
+        read_only_fields = ["date_joined", "last_login"]
 
 
 class UserMeSerializer(UserSerializer):

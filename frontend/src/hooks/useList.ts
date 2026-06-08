@@ -29,7 +29,7 @@ type AsyncAction<T> =
   | { type: 'failure'; error: string };
 
 export function useList<T>(
-  fetcher: (params?: Record<string, string>) => Promise<PaginatedResponse<T>>,
+  fetcher: (params?: Record<string, string>, signal?: AbortSignal) => Promise<PaginatedResponse<T>>,
   initialParams?: Record<string, string>,
 ): UseListResult<T> {
   const [asyncState, dispatch] = useReducer(
@@ -72,8 +72,9 @@ export function useList<T>(
   useEffect(() => {
     dispatch({ type: 'fetch' });
     let cancelled = false;
+    const controller = new AbortController();
 
-    fetcher(params)
+    fetcher(params, controller.signal)
       .then(res => {
         if (cancelled) return;
         dispatch({ type: 'success', results: res.results });
@@ -82,10 +83,11 @@ export function useList<T>(
       })
       .catch(err => {
         if (cancelled) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
         dispatch({ type: 'failure', error: (err as Error).message });
       });
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; controller.abort(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialParamsKey, cursor, refetchKey]);
 

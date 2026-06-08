@@ -26,4 +26,5 @@ REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"] = {  # type: ignore[name-defined]
     "telegram_webhook": "999999/min",
     "presigned_upload": "999999/min",
     "mfa_verify": "999999/min",
+    "iyzico_callback": "999999/min",
 }

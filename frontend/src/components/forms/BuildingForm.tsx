@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
 import type { Building } from '../../types';
+import { buildingSchema, type BuildingFormData } from '../../validation/schemas';
 import { Modal } from '../ui/Modal';
 import { Field, SelectField, FormActions } from '../ui/FormField';
 
@@ -20,29 +23,47 @@ const MANAGEMENT_TYPES = [
 export function BuildingForm({ open, onClose, onSaved, initial }: Props) {
   const isEdit = !!initial;
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    name: initial?.name ?? '',
-    address: initial?.address ?? '',
-    city: initial?.city ?? '',
-    district: initial?.district ?? '',
-    management_type: initial?.management_type ?? 'self_managed',
-    annual_budget: initial?.annual_budget ?? '',
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors },
+  } = useForm<BuildingFormData>({
+    resolver: zodResolver(buildingSchema),
+    defaultValues: {
+      name: initial?.name ?? '',
+      address: initial?.address ?? '',
+      city: initial?.city ?? '',
+      district: initial?.district ?? '',
+      management_type: initial?.management_type ?? 'self_managed',
+      annual_budget: initial?.annual_budget ?? '',
+    },
   });
 
-  const set = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm(f => ({ ...f, [field]: e.target.value }));
+  useEffect(() => {
+    if (!open) return;
+    reset({
+      name: initial?.name ?? '',
+      address: initial?.address ?? '',
+      city: initial?.city ?? '',
+      district: initial?.district ?? '',
+      management_type: initial?.management_type ?? 'self_managed',
+      annual_budget: initial?.annual_budget ?? '',
+    });
+  }, [open, initial, reset]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function onSubmit(data: BuildingFormData) {
     setSaving(true);
     try {
       const payload = {
-        name: form.name,
-        address: form.address,
-        city: form.city,
-        district: form.district,
-        management_type: form.management_type,
-        annual_budget: form.annual_budget || null,
+        name: data.name,
+        address: data.address,
+        city: data.city,
+        district: data.district,
+        management_type: data.management_type,
+        annual_budget: data.annual_budget || null,
       };
       if (isEdit) {
         await api.buildings.update(initial!.id, payload);
@@ -62,29 +83,64 @@ export function BuildingForm({ open, onClose, onSaved, initial }: Props) {
 
   return (
     <Modal open={open} onClose={onClose} title={isEdit ? 'Редактировать здание' : 'Новое здание'}>
-      <form onSubmit={submit}>
-        <Field label="Название" required value={form.name} onChange={set('name')} placeholder="ЖК Центральный" />
-        <Field label="Адрес" required value={form.address} onChange={set('address')} placeholder="ул. Ататюрка, 12" />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-          <Field label="Город" required value={form.city} onChange={set('city')} placeholder="Стамбул" />
-          <Field label="Район" required value={form.district} onChange={set('district')} placeholder="Кадыкёй" />
-        </div>
-        <SelectField
-          label="Тип управления"
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <Field
+          label="Название"
           required
-          value={form.management_type}
-          onChange={set('management_type')}
-          options={MANAGEMENT_TYPES}
+          {...register('name')}
+          placeholder="ЖК Центральный"
+          error={errors.name?.message}
         />
+
+        <Field
+          label="Адрес"
+          required
+          {...register('address')}
+          placeholder="ул. Ататюрка, 12"
+          error={errors.address?.message}
+        />
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+          <Field
+            label="Город"
+            required
+            {...register('city')}
+            placeholder="Стамбул"
+            error={errors.city?.message}
+          />
+          <Field
+            label="Район"
+            required
+            {...register('district')}
+            placeholder="Кадыкёй"
+            error={errors.district?.message}
+          />
+        </div>
+
+        <Controller
+          name="management_type"
+          control={control}
+          render={({ field }) => (
+            <SelectField
+              label="Тип управления"
+              required
+              {...field}
+              options={MANAGEMENT_TYPES}
+              error={errors.management_type?.message}
+            />
+          )}
+        />
+
         <Field
           label="Годовой бюджет (₺)"
           type="number"
           min="0"
           step="0.01"
-          value={form.annual_budget}
-          onChange={set('annual_budget')}
+          {...register('annual_budget')}
           placeholder="1000000"
+          error={errors.annual_budget?.message}
         />
+
         <FormActions>
           <button
             type="button"

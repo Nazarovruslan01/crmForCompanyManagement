@@ -16,7 +16,8 @@ from rest_framework.views import APIView
 from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManagerOrWorkerOrResidentReadOwn
 from common.throttles import PresignedUploadThrottle, UserReadThrottle, UserWriteThrottle
-from core.mixins import ResidentQuerySetMixin
+from core.mixins import ManagerQuerySetMixin, ResidentQuerySetMixin
+from core.permissions import BasePermissionMixin
 
 from .models import Ticket, TicketAttachment, TicketComment
 from .serializers import (
@@ -144,14 +145,17 @@ from .serializers import (
         },
     ),
 )
-class TicketViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[Ticket]):
+class TicketViewSet(
+    AuditLogMixin, ManagerQuerySetMixin, ResidentQuerySetMixin, BasePermissionMixin, viewsets.ModelViewSet[Ticket]
+):
     queryset = Ticket.objects.select_related("apartment__building", "assigned_worker__user", "created_by").all()
     serializer_class = TicketSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrWorkerOrResidentReadOwn]
-    filterset_fields = ["status", "priority", "category", "assigned_worker"]
+    filterset_fields = ["status", "priority", "category", "assigned_worker", "title"]
     search_fields = ["title", "description", "apartment__apartment_number"]
     ordering_fields = ["priority", "created_at", "updated_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "apartment__building__managers"
     resident_lookup = "apartment__ownerships__resident__user"
 
     def perform_create(self, serializer: serializers.BaseSerializer) -> None:  # type: ignore[override]
@@ -175,7 +179,7 @@ class TicketViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[
         """Mark ticket as resolved."""
         ticket = self.get_object()
         ticket.status = Ticket.Status.RESOLVED
-        ticket.save()
+        ticket.save(update_fields=["status", "updated_at"])
         serializer = self.get_serializer(ticket)
         return Response(serializer.data)
 
@@ -184,29 +188,43 @@ class TicketViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[
         """Mark ticket as closed."""
         ticket = self.get_object()
         ticket.status = Ticket.Status.CLOSED
-        ticket.save()
+        ticket.save(update_fields=["status", "updated_at"])
         serializer = self.get_serializer(ticket)
         return Response(serializer.data)
 
 
-class TicketCommentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[TicketComment]):
+class TicketCommentViewSet(
+    AuditLogMixin,
+    ManagerQuerySetMixin,
+    ResidentQuerySetMixin,
+    BasePermissionMixin,
+    viewsets.ModelViewSet[TicketComment],
+):
     queryset = TicketComment.objects.select_related("author", "ticket").all()
     serializer_class = TicketCommentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrWorkerOrResidentReadOwn]
     filterset_fields = ["ticket"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "ticket__apartment__building__managers"
     resident_lookup = "ticket__apartment__ownerships__resident__user"
 
     def perform_create(self, serializer: serializers.BaseSerializer) -> None:  # type: ignore[override]
         serializer.save(author=self.request.user)
 
 
-class TicketAttachmentViewSet(AuditLogMixin, ResidentQuerySetMixin, viewsets.ModelViewSet[TicketAttachment]):
+class TicketAttachmentViewSet(
+    AuditLogMixin,
+    ManagerQuerySetMixin,
+    ResidentQuerySetMixin,
+    BasePermissionMixin,
+    viewsets.ModelViewSet[TicketAttachment],
+):
     queryset = TicketAttachment.objects.select_related("uploaded_by", "ticket").all()
     serializer_class = TicketAttachmentSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManagerOrWorkerOrResidentReadOwn]
     filterset_fields = ["ticket", "file_type"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+    manager_lookup = "ticket__apartment__building__managers"
     resident_lookup = "ticket__apartment__ownerships__resident__user"
 
     def perform_create(self, serializer: serializers.BaseSerializer) -> None:  # type: ignore[override]

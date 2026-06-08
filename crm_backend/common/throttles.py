@@ -127,3 +127,16 @@ class MFAVerifyThrottle(SimpleRateThrottle):
 
     def get_cache_key(self, request: Request, view: APIView) -> str | None:
         return f"throttle_mfa_verify:{get_client_ip(request)}"
+
+
+class IyzicoCallbackThrottle(SimpleRateThrottle):
+    """
+    Rate limit Iyzico payment callback: 30 per minute per IP.
+    The callback endpoint uses AllowAny permission since Iyzico calls it
+    server-side, so regular user-scoped throttles don't apply.
+    """
+
+    scope = "iyzico_callback"
+
+    def get_cache_key(self, request: Request, view: APIView) -> str | None:
+        return f"throttle_iyzico_callback:{get_client_ip(request)}"

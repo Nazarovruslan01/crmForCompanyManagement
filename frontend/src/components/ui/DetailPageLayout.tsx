@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageLayout } from './PageLayout';
 import { ArrowLeft, AlertCircle, Loader2 } from 'lucide-react';
@@ -42,24 +41,12 @@ export function DetailPageLayout<T>({
   actions,
 }: DetailPageLayoutProps<T>) {
   const navigate = useNavigate();
-  const [backHover, setBackHover] = useState(false);
 
   if (loading) {
     return (
       <PageLayout title={fallbackTitle}>
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '80px 40px',
-          gap: 12,
-          color: 'var(--color-gray-6)',
-        }}>
-          <Loader2
-            size={32}
-            className="spinner"
-          />
+        <div className="detail-loading">
+          <Loader2 size={32} className="spinner" />
           <span style={{ fontSize: 14 }}>Загрузка...</span>
         </div>
       </PageLayout>
@@ -69,23 +56,12 @@ export function DetailPageLayout<T>({
   if (error || !data) {
     return (
       <PageLayout title="Ошибка">
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '80px 40px',
-          gap: 12,
-        }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: 16,
-            background: '#fff2f0',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
+        <div className="detail-error">
+          <div className="detail-error-icon-wrap">
             <AlertCircle size={28} color="#ff4d4f" strokeWidth={1.5} />
           </div>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#1f1f1f' }}>Не удалось загрузить</p>
-          <p style={{ margin: 0, fontSize: 13, color: 'var(--color-gray-7)', textAlign: 'center' }}>
+          <p className="detail-error-title">Не удалось загрузить</p>
+          <p className="detail-error-text">
             {error ?? `${fallbackTitle} не найдено`}
           </p>
           <button
@@ -108,42 +84,19 @@ export function DetailPageLayout<T>({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <button
           onClick={() => navigate(backPath)}
-          onMouseEnter={() => setBackHover(true)}
-          onMouseLeave={() => setBackHover(false)}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '6px 10px',
-            background: backHover ? 'var(--color-brand-light)' : 'none',
-            border: 'none',
-            borderRadius: 8,
-            cursor: 'pointer',
-            color: backHover ? 'var(--color-brand)' : 'var(--color-gray-7)',
-            fontSize: 13.5,
-            fontWeight: 500,
-            transition: 'background 150ms ease, color 150ms ease',
-          }}
+          className="detail-back-btn"
         >
           <ArrowLeft size={15} />
           {backLabel}
         </button>
-        {actions && <div style={{ display: 'flex', gap: 8 }}>{actions}</div>}
+        {actions && <div className="detail-actions">{actions}</div>}
       </div>
 
-      <div style={{ display: 'grid', gap: 16 }}>
+      <div className="detail-grid">
         {/* Main info card */}
         <div className="card">
           {headerRenderer(data)}
-          <div style={{
-            display: 'grid',
-            gap: 10,
-            fontSize: 14,
-            color: '#1f1f1f',
-            borderTop: '1px solid var(--color-gray-2)',
-            paddingTop: 16,
-            marginTop: 4,
-          }}>
+          <div className="detail-info-grid">
             {infoRenderer(data)}
           </div>
         </div>

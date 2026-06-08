@@ -7,8 +7,23 @@
  */
 import { test, expect } from '@playwright/test';
 
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+const API = `${BACKEND_URL}/api/v2`;
+
+/** Login via API and return the access token. */
+async function getAdminToken(request: import('@playwright/test').APIRequestContext): Promise<string> {
+  const res = await request.post(`${API}/accounts/login/`, {
+    data: { username: 'admin', password: 'admin123!' },
+  });
+  expect(res.ok()).toBeTruthy();
+  const data = (await res.json()) as { access: string };
+  return data.access;
+}
+
 test.describe('Ticket Mutations — Admin', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
+
+  let createdTicketTitle: string | null = null;
 
   test.beforeEach(async ({ page }) => {
     const ticketsLoaded = page.waitForResponse(
@@ -16,6 +31,30 @@ test.describe('Ticket Mutations — Admin', () => {
     );
     await page.goto('/tickets');
     await ticketsLoaded;
+  });
+
+  test.afterEach(async ({ request }) => {
+    if (!createdTicketTitle) return;
+
+    const adminToken = await getAdminToken(request);
+
+    const listRes = await request.get(
+      `${API}/tickets/?title=${encodeURIComponent(createdTicketTitle)}`,
+      { headers: { Authorization: `Bearer ${adminToken}` } },
+    );
+    if (!listRes.ok()) {
+      createdTicketTitle = null;
+      return;
+    }
+
+    const listData = (await listRes.json()) as { results: Array<{ id: number }> };
+    for (const ticket of listData.results) {
+      await request.delete(`${API}/tickets/${ticket.id}/`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+    }
+
+    createdTicketTitle = null;
   });
 
   test('admin can create a ticket', async ({ page }) => {
@@ -34,7 +73,8 @@ test.describe('Ticket Mutations — Admin', () => {
     await apartmentSelect.waitFor({ state: 'visible' });
     await apartmentSelect.selectOption({ index: 1 });
 
-    await page.getByPlaceholder('Течёт кран в ванной').fill('E2E Test Ticket');
+    createdTicketTitle = 'E2E Test Ticket';
+    await page.getByPlaceholder('Течёт кран в ванной').fill(createdTicketTitle);
     await page.getByPlaceholder('Подробно опишите проблему...').fill('Created by Playwright E2E test');
 
     // Category and priority selects — find by nearby label text
@@ -49,7 +89,7 @@ test.describe('Ticket Mutations — Admin', () => {
     await expect(page.getByText(/создана|успешно/i).first()).toBeVisible({ timeout: 10000 });
 
     // Verify ticket appears in list
-    await expect(page.locator('table').getByText('E2E Test Ticket').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('table').getByText(createdTicketTitle).first()).toBeVisible({ timeout: 10000 });
   });
 });
 

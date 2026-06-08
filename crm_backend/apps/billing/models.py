@@ -133,12 +133,21 @@ class Payment(models.Model):
         EXTRAORDINARY = "extraordinary", "Olağanüstü Aidat"
         OTHER = "other", "Diğer"
 
+    class Status(models.TextChoices):
+        PENDING = "pending", "Bekliyor"
+        COMPLETED = "completed", "Tamamlandı"
+        FAILED = "failed", "Başarısız"
+        REFUNDED = "refunded", "İade Edildi"
+
     apartment = models.ForeignKey("properties.Apartment", on_delete=models.PROTECT, related_name="payments")
     charge_type = models.CharField(max_length=20, choices=ChargeType.choices, help_text="Type of charge being paid")
-    charge_id = models.UUIDField(null=True, blank=True)
+    charge_id = models.BigIntegerField(
+        null=True, blank=True, help_text="ID of the charge being paid (AidatCharge, ExtraordinaryCharge, etc.)"
+    )
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     currency = models.CharField(max_length=3, default="TRY")
     payment_method = models.CharField(max_length=20, choices=PaymentMethod.choices)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     bank_reference = models.CharField(max_length=100, null=True, blank=True, verbose_name="Bank Reference (İşlem No)")
     receipt_number = models.CharField(
         max_length=20, unique=True, null=True, blank=True, verbose_name="Receipt Number (Makbuz No)"
@@ -169,6 +178,8 @@ class Payment(models.Model):
         max_length=255,
         null=True,
         blank=True,
+        db_index=True,
+        unique=True,
         verbose_name="Iyzico Checkout Token",
     )
     paid_at = models.DateTimeField(auto_now_add=True)
@@ -178,6 +189,13 @@ class Payment(models.Model):
         verbose_name = "Payment"
         verbose_name_plural = "Payments"
         ordering = ["-paid_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0),
+                name="payment_amount_positive",
+                violation_error_message="Payment amount must be greater than zero.",
+            ),
+        ]
         indexes = [
             models.Index(fields=["apartment", "paid_at"]),
             models.Index(fields=["idempotency_key"]),
@@ -254,7 +272,7 @@ class Receipt(models.Model):
 
     id = models.BigAutoField(primary_key=True)
     payment = models.OneToOneField(Payment, on_delete=models.CASCADE, related_name="receipt")
-    pdf_url = models.URLField(max_length=500)
+    pdf_url = models.URLField(max_length=500, blank=True, null=True)
     generated_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

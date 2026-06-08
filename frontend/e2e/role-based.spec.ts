@@ -46,22 +46,11 @@ test.describe('Role-based navigation', () => {
       await expect(page.getByRole('link', { name: 'Сотрудники' })).not.toBeVisible();
     });
 
-    test('resident accessing forbidden page shows error or redirects', async ({ page }) => {
+    test('resident accessing forbidden page redirects', async ({ page }) => {
       await page.goto('/buildings');
-
-      // The route may render but the API call will fail for residents.
-      // Wait for the page to settle
-      await page.waitForLoadState('networkidle');
-
-      const isLogin = page.url().includes('/login');
-      const isDashboard = page.url().includes('/dashboard');
-
-      if (!isLogin && !isDashboard) {
-        // If still on /buildings, the page should show an error from the API call
-        await expect(
-          page.getByText(/Ошибка|Доступ запрещен|403|Forbidden|permission|izniniz|bulunmuyor/i).first(),
-        ).toBeVisible({ timeout: 10000 });
-      }
+      await page.waitForURL(/\/(login|dashboard)/, { timeout: 10000 });
+      const url = page.url();
+      expect(url.includes('/login') || url.includes('/dashboard')).toBeTruthy();
     });
   });
 
@@ -83,16 +72,9 @@ test.describe('Role-based navigation', () => {
 
     test('worker may be blocked from buildings page', async ({ page }) => {
       await page.goto('/buildings');
-      await page.waitForLoadState('networkidle');
-
-      const isLogin = page.url().includes('/login');
-      const isDashboard = page.url().includes('/dashboard');
-
-      if (!isLogin && !isDashboard) {
-        await expect(
-          page.getByText(/Ошибка|Доступ запрещен|403|Forbidden|permission|izniniz|bulunmuyor/i).first(),
-        ).toBeVisible({ timeout: 10000 });
-      }
+      await page.waitForURL(/\/(login|dashboard)/, { timeout: 10000 });
+      const url = page.url();
+      expect(url.includes('/login') || url.includes('/dashboard')).toBeTruthy();
     });
   });
 });
