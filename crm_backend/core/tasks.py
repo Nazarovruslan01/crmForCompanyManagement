@@ -6,16 +6,26 @@ import os
 import shutil
 import subprocess
 from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import Any, TypedDict
 
 import requests
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
-from django.db import transaction
+from django.db import connection, transaction
+from django.db.models import DecimalField, ExpressionWrapper, F, Func, Sum, Value
+from django.db.models.functions import Greatest
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+
+class CurrentDate(Func):  # type: ignore[misc]
+    """Emit PostgreSQL CURRENT_DATE without parentheses."""
+
+    function = "CURRENT_DATE"
+    template = "%(function)s"
 
 
 class EmailResult(TypedDict):
@@ -673,15 +683,42 @@ def alert_failed_payments() -> SentryAlertResult:
     from apps.billing.models import AidatCharge
 
     today = timezone.now().date()
-    overdue_charges = AidatCharge.objects.filter(
-        status=AidatCharge.Status.OVERDUE,
-    ).select_related("apartment__building")
+    overdue_qs = AidatCharge.objects.filter(status=AidatCharge.Status.OVERDUE)
 
-    count = overdue_charges.count()
+    count = overdue_qs.count()
     if count == 0:
         return SentryAlertResult(alerts_sent=0)
 
-    total_debt = sum(c.total_due for c in overdue_charges)
+    # Compute total_debt at DB level (O(1) memory). Mirrors the formula in
+    # AidatCharge.total_due / late_fee_amount for OVERDUE rows:
+    #   base_amount + base_amount * late_fee_rate * days_overdue,
+    #   where days_overdue = GREATEST(0, CURRENT_DATE - due_date).
+    if connection.vendor == "postgresql":
+        total_debt = (
+            overdue_qs.annotate(
+                days_overdue=Greatest(
+                    ExpressionWrapper(
+                        CurrentDate() - F("due_date"),
+                        output_field=DecimalField(max_digits=10, decimal_places=0),
+                    ),
+                    Value(0),
+                ),
+            ).aggregate(
+                total=Sum(
+                    F("base_amount")
+                    + F("base_amount") * F("late_fee_rate") * F("days_overdue"),
+                    output_field=DecimalField(max_digits=15, decimal_places=2),
+                ),
+            )["total"]
+            or Decimal("0")
+        )
+    else:
+        # SQLite (tests + local dev): keep the Python-side sum. Acceptable —
+        # local datasets are small and the property is already memoised.
+        total_debt = sum(
+            (c.late_fee_amount + c.base_amount for c in overdue_qs),
+            Decimal("0"),
+        )
 
     sentry_sdk.capture_message(
         f"{count} overdue aidat charges (total debt {total_debt:.2f} TRY)",

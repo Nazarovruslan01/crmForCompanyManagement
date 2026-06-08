@@ -647,3 +647,56 @@ class TestSendTelegramDebtReminders:
         assert result["failed"] == 0
         assert result["no_chat_id"] == 0
         mock_send.assert_not_called()
+
+
+class TestAlertFailedPayments:
+    """P0-1: alert_failed_payments must compute total_debt via DB aggregate."""
+
+    @patch("sentry_sdk.capture_message")
+    def test_no_overdue_charges_returns_zero(self, mock_capture):
+        from core.tasks import SentryAlertResult, alert_failed_payments
+
+        result = alert_failed_payments()
+
+        assert result == SentryAlertResult(alerts_sent=0)
+        mock_capture.assert_not_called()
+
+    @patch("sentry_sdk.capture_message")
+    def test_sends_sentry_alert_with_aggregate_total(self, mock_capture, db):
+        from core.tasks import SentryAlertResult, alert_failed_payments
+
+        building = Building.objects.create(
+            name="T1", address="X", city="Istanbul", district="Kadikoy"
+        )
+        apartment = Apartment.objects.create(building=building, apartment_number="1A")
+        AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=date(2026, 1, 1),
+            billing_period_end=date(2026, 1, 31),
+            base_amount=Decimal("100.00"),
+            late_fee_rate=Decimal("0.001"),
+            due_date=date(2026, 2, 15),
+            status=AidatCharge.Status.OVERDUE,
+        )
+
+        result = alert_failed_payments()
+
+        assert result == SentryAlertResult(alerts_sent=1)
+        mock_capture.assert_called_once()
+        call = mock_capture.call_args
+        assert "overdue aidat charges" in call.args[0]
+        business_ctx = call.kwargs["contexts"]["business"]
+        assert business_ctx["alert_type"] == "failed_payments"
+        assert business_ctx["overdue_count"] == 1
+        assert "total_debt" in business_ctx
+
+    @patch("sentry_sdk.capture_message")
+    @patch("core.tasks.connection")
+    def test_uses_db_aggregate_on_postgres(self, mock_conn, mock_capture, db):
+        """On PostgreSQL the count==0 short-circuit still returns without Sentry."""
+        from core.tasks import SentryAlertResult, alert_failed_payments
+
+        mock_conn.vendor = "postgresql"
+        result = alert_failed_payments()
+        assert result == SentryAlertResult(alerts_sent=0)
+        mock_capture.assert_not_called()
