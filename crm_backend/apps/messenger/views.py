@@ -9,7 +9,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
-from common.throttles import TelegramWebhookThrottle
+from common.throttles import TelegramWebhookThrottle, get_client_ip
 
 from .handlers.callbacks import handle_callback, handle_command, handle_text
 from .models import BotMessage, MessengerUser
@@ -30,7 +30,7 @@ class TelegramWebhookView(View):
         if expected_token:
             received_token = request.META.get("HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN", "")
             if received_token != expected_token:
-                logger.warning("Telegram webhook: invalid secret token from IP %s", _get_client_ip(request))
+                logger.warning("Telegram webhook: invalid secret token from IP %s", get_client_ip(request))
                 return HttpResponse("Forbidden", status=403)
 
         try:
@@ -96,14 +96,6 @@ class TelegramWebhookView(View):
             handle_command(messenger_user, text, message)
         else:
             handle_text(messenger_user, text, message, contact)
-
-
-def _get_client_ip(request):
-    """Extract client IP for logging purposes."""
-    xff = request.META.get("HTTP_X_FORWARDED_FOR")
-    if xff:
-        return str(xff.split(",")[0].strip())
-    return request.META.get("REMOTE_ADDR", "unknown")
 
 
 def send_telegram_message(chat_id, text, parse_mode="", reply_markup=None):

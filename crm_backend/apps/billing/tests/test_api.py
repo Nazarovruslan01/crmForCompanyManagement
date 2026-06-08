@@ -665,3 +665,29 @@ class TestIyzicoViewSet:
         # Verify correct payment found; iyzico_conversation_id is not exposed in response
         payment = Payment.objects.get(iyzico_conversation_id="conv-status-1")
         assert response.data["id"] == payment.id
+
+
+class TestIyzicoViewSetClientIp:
+    """P0-2: IyzicoViewSet must rely on TRUSTED_PROXY_IPS-aware get_client_ip."""
+
+    def test_uses_common_get_client_ip(self):
+        # Method _get_client_ip is removed; the public function is used directly.
+        from apps.billing.views import IyzicoViewSet
+
+        assert not hasattr(IyzicoViewSet, "_get_client_ip")
+
+    def test_get_client_ip_respects_trusted_proxies(self):
+        # Behavioural guard mirrors common/tests/test_throttles.py — re-asserts
+        # that the public helper IyzicoViewSet now calls is the safe one.
+        from unittest.mock import MagicMock, patch
+
+        from common.throttles import get_client_ip
+
+        with patch("common.throttles.settings") as mock_settings:
+            mock_settings.TRUSTED_PROXY_IPS = {"10.0.0.1"}
+            request = MagicMock()
+            request.META = {
+                "REMOTE_ADDR": "10.0.0.1",
+                "HTTP_X_FORWARDED_FOR": "1.2.3.4, 5.6.7.8",
+            }
+            assert get_client_ip(request) == "5.6.7.8"
