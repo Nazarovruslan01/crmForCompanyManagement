@@ -693,10 +693,38 @@ class TestAlertFailedPayments:
     @patch("sentry_sdk.capture_message")
     @patch("core.tasks.connection")
     def test_uses_db_aggregate_on_postgres(self, mock_conn, mock_capture, db):
-        """On PostgreSQL the count==0 short-circuit still returns without Sentry."""
+        """On PostgreSQL the function must take the DB-aggregate branch and
+        the produced Sentry alert must include overdue_count and total_debt.
+
+        The test cannot assert the numeric ``total_debt`` value because it
+        runs against the SQLite test backend, where ``CURRENT_DATE - due_date``
+        evaluates to 0 (date arithmetic on stored text). The numerical
+        invariant must be verified on a real PostgreSQL run; here we only
+        guarantee the aggregate branch is reached and the Sentry context
+        carries the expected keys.
+        """
         from core.tasks import SentryAlertResult, alert_failed_payments
+
+        building = Building.objects.create(
+            name="PG", address="X", city="Istanbul", district="Kadikoy"
+        )
+        apartment = Apartment.objects.create(building=building, apartment_number="PG1")
+        AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=date(2026, 1, 1),
+            billing_period_end=date(2026, 1, 31),
+            base_amount=Decimal("100.00"),
+            late_fee_rate=Decimal("0.001"),
+            due_date=date(2026, 2, 15),
+            status=AidatCharge.Status.OVERDUE,
+        )
 
         mock_conn.vendor = "postgresql"
         result = alert_failed_payments()
-        assert result == SentryAlertResult(alerts_sent=0)
-        mock_capture.assert_not_called()
+
+        assert result == SentryAlertResult(alerts_sent=1)
+        mock_capture.assert_called_once()
+        business_ctx = mock_capture.call_args.kwargs["contexts"]["business"]
+        assert business_ctx["overdue_count"] == 1
+        assert "total_debt" in business_ctx
+

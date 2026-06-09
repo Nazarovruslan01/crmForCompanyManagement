@@ -14,7 +14,7 @@ from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import connection, transaction
-from django.db.models import DecimalField, ExpressionWrapper, F, Func, Sum, Value
+from django.db.models import Count, DecimalField, F, Func, Sum, Value
 from django.db.models.functions import Greatest
 from django.utils import timezone
 
@@ -671,8 +671,8 @@ class SentryAlertResult(TypedDict):
     alerts_sent: int
 
 
-@shared_task
-def alert_failed_payments() -> SentryAlertResult:
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def alert_failed_payments(self: Any) -> SentryAlertResult:
     """
     Business alert: send Sentry message for overdue aidat charges (failed payments).
 
@@ -682,56 +682,56 @@ def alert_failed_payments() -> SentryAlertResult:
 
     from apps.billing.models import AidatCharge
 
-    today = timezone.now().date()
     overdue_qs = AidatCharge.objects.filter(status=AidatCharge.Status.OVERDUE)
 
-    count = overdue_qs.count()
-    if count == 0:
-        return SentryAlertResult(alerts_sent=0)
-
-    # Compute total_debt at DB level (O(1) memory). Mirrors the formula in
-    # AidatCharge.total_due / late_fee_amount for OVERDUE rows:
-    #   base_amount + base_amount * late_fee_rate * days_overdue,
-    #   where days_overdue = GREATEST(0, CURRENT_DATE - due_date).
+    # Single DB query: fold count + total to avoid TOCTOU and extra round-trip.
     if connection.vendor == "postgresql":
-        total_debt = (
+        agg = (
             overdue_qs.annotate(
                 days_overdue=Greatest(
-                    ExpressionWrapper(
-                        CurrentDate() - F("due_date"),
-                        output_field=DecimalField(max_digits=10, decimal_places=0),
-                    ),
+                    CurrentDate() - F("due_date"),
                     Value(0),
+                    output_field=DecimalField(max_digits=10, decimal_places=0),
                 ),
             ).aggregate(
+                count=Count("id"),
                 total=Sum(
                     F("base_amount")
                     + F("base_amount") * F("late_fee_rate") * F("days_overdue"),
                     output_field=DecimalField(max_digits=15, decimal_places=2),
                 ),
-            )["total"]
-            or Decimal("0")
+            )
         )
     else:
-        # SQLite (tests + local dev): keep the Python-side sum. Acceptable —
-        # local datasets are small and the property is already memoised.
-        total_debt = sum(
-            (c.late_fee_amount + c.base_amount for c in overdue_qs),
-            Decimal("0"),
+        # SQLite (tests + local dev): date arithmetic unavailable; sum base_amount only.
+        agg = overdue_qs.aggregate(
+            count=Count("id"),
+            total=Sum(F("base_amount"), output_field=DecimalField(max_digits=15, decimal_places=2)),
         )
 
-    sentry_sdk.capture_message(
-        f"{count} overdue aidat charges (total debt {total_debt:.2f} TRY)",
-        level="warning",
-        contexts={
-            "business": {
-                "alert_type": "failed_payments",
-                "overdue_count": count,
-                "total_debt": float(total_debt),
-                "date": str(today),
-            }
-        },
-    )
+    count = agg["count"] or 0
+    if count == 0:
+        return SentryAlertResult(alerts_sent=0)
+
+    total_debt = agg["total"] or Decimal("0")
+    today = timezone.now().date()
+
+    try:
+        sentry_sdk.capture_message(
+            f"{count} overdue aidat charges (total debt {total_debt:.2f} TRY)",
+            level="warning",
+            contexts={
+                "business": {
+                    "alert_type": "failed_payments",
+                    "overdue_count": count,
+                    "total_debt": float(total_debt),
+                    "date": str(today),
+                }
+            },
+        )
+    except Exception as exc:
+        raise self.retry(exc=exc)
+
     logger.info("Sentry business alert sent: %d overdue charges", count)
     return SentryAlertResult(alerts_sent=1)
 

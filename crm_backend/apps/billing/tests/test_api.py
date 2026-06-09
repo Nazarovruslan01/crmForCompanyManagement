@@ -1,7 +1,7 @@
 """Tests for billing endpoints."""
 
 from datetime import date, timedelta
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from rest_framework import status
@@ -283,7 +283,6 @@ class TestReceiptViewSetFull:
 
     def test_download_receipt(self, admin_client, payment):
         """Admin can download a receipt PDF."""
-        from unittest.mock import patch
 
         from apps.billing.models import Receipt
 
@@ -306,7 +305,6 @@ class TestReceiptViewSetFull:
 
     def test_download_receipt_existing_file(self, admin_client, payment):
         """Download returns existing PDF without regenerating."""
-        from unittest.mock import patch
 
         from apps.billing.models import Receipt
 
@@ -671,16 +669,16 @@ class TestIyzicoViewSetClientIp:
     """P0-2: IyzicoViewSet must rely on TRUSTED_PROXY_IPS-aware get_client_ip."""
 
     def test_uses_common_get_client_ip(self):
-        # Method _get_client_ip is removed; the public function is used directly.
+        # Structural guard: IyzicoViewSet must not define its own IP extractor.
         from apps.billing.views import IyzicoViewSet
 
-        assert not hasattr(IyzicoViewSet, "_get_client_ip")
+        assert not hasattr(IyzicoViewSet, "_get_client_ip"), (
+            "IyzicoViewSet must not define its own IP extractor — use common.throttles.get_client_ip"
+        )
 
     def test_get_client_ip_respects_trusted_proxies(self):
         # Behavioural guard mirrors common/tests/test_throttles.py — re-asserts
         # that the public helper IyzicoViewSet now calls is the safe one.
-        from unittest.mock import MagicMock, patch
-
         from common.throttles import get_client_ip
 
         with patch("common.throttles.settings") as mock_settings:
