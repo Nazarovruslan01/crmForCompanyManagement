@@ -686,21 +686,18 @@ def alert_failed_payments(self: Any) -> SentryAlertResult:
 
     # Single DB query: fold count + total to avoid TOCTOU and extra round-trip.
     if connection.vendor == "postgresql":
-        agg = (
-            overdue_qs.annotate(
-                days_overdue=Greatest(
-                    CurrentDate() - F("due_date"),
-                    Value(0),
-                    output_field=DecimalField(max_digits=10, decimal_places=0),
-                ),
-            ).aggregate(
-                count=Count("id"),
-                total=Sum(
-                    F("base_amount")
-                    + F("base_amount") * F("late_fee_rate") * F("days_overdue"),
-                    output_field=DecimalField(max_digits=15, decimal_places=2),
-                ),
-            )
+        agg = overdue_qs.annotate(
+            days_overdue=Greatest(
+                CurrentDate() - F("due_date"),
+                Value(0),
+                output_field=DecimalField(max_digits=10, decimal_places=0),
+            ),
+        ).aggregate(
+            count=Count("id"),
+            total=Sum(
+                F("base_amount") + F("base_amount") * F("late_fee_rate") * F("days_overdue"),
+                output_field=DecimalField(max_digits=15, decimal_places=2),
+            ),
         )
     else:
         # SQLite (tests + local dev): date arithmetic unavailable; sum base_amount only.

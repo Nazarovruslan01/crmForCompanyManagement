@@ -665,9 +665,7 @@ class TestAlertFailedPayments:
     def test_sends_sentry_alert_with_aggregate_total(self, mock_capture, db):
         from core.tasks import SentryAlertResult, alert_failed_payments
 
-        building = Building.objects.create(
-            name="T1", address="X", city="Istanbul", district="Kadikoy"
-        )
+        building = Building.objects.create(name="T1", address="X", city="Istanbul", district="Kadikoy")
         apartment = Apartment.objects.create(building=building, apartment_number="1A")
         AidatCharge.objects.create(
             apartment=apartment,
@@ -705,9 +703,7 @@ class TestAlertFailedPayments:
         """
         from core.tasks import SentryAlertResult, alert_failed_payments
 
-        building = Building.objects.create(
-            name="PG", address="X", city="Istanbul", district="Kadikoy"
-        )
+        building = Building.objects.create(name="PG", address="X", city="Istanbul", district="Kadikoy")
         apartment = Apartment.objects.create(building=building, apartment_number="PG1")
         AidatCharge.objects.create(
             apartment=apartment,
@@ -727,4 +723,3 @@ class TestAlertFailedPayments:
         business_ctx = mock_capture.call_args.kwargs["contexts"]["business"]
         assert business_ctx["overdue_count"] == 1
         assert "total_debt" in business_ctx
-

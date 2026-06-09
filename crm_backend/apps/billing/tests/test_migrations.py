@@ -5,6 +5,7 @@ Two complementary checks:
 2. A migration file for the index exists and references the field with db_index=True
    (guards against setting the attribute without generating a migration).
 """
+
 import re
 from pathlib import Path
 
@@ -21,8 +22,7 @@ class TestIyzicoConversationIdIndex(SimpleTestCase):
     def test_field_has_db_index(self):
         field = Payment._meta.get_field("iyzico_conversation_id")
         assert field.db_index is True, (  # type: ignore[union-attr]
-            f"Expected db_index=True on Payment.iyzico_conversation_id; "
-            f"got db_index={field.db_index!r}"  # type: ignore[union-attr]
+            f"Expected db_index=True on Payment.iyzico_conversation_id; got db_index={field.db_index!r}"  # type: ignore[union-attr]
         )
 
     def test_migration_records_db_index(self):
