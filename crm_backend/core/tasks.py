@@ -13,9 +13,23 @@ from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
 from django.db import transaction
+from django.db.models import Func
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+
+class CurrentDate(Func):  # type: ignore[misc]
+    """Emit PostgreSQL CURRENT_DATE without parentheses.
+
+    Single source of truth. The dashboard and Sentry alert both use this
+    via the ``apps.billing.models.aggregate_total_due`` helper. Importing
+    in a function-local scope (``from core.tasks import CurrentDate``)
+    keeps ``apps/`` from pulling ``core/`` at module load.
+    """
+
+    function = "CURRENT_DATE"
+    template = "%(function)s"
 
 
 class EmailResult(TypedDict):
@@ -661,8 +675,8 @@ class SentryAlertResult(TypedDict):
     alerts_sent: int
 
 
-@shared_task
-def alert_failed_payments() -> SentryAlertResult:
+@shared_task(bind=True, max_retries=3, default_retry_delay=60)
+def alert_failed_payments(self: Any) -> SentryAlertResult:
     """
     Business alert: send Sentry message for overdue aidat charges (failed payments).
 
@@ -670,31 +684,34 @@ def alert_failed_payments() -> SentryAlertResult:
     """
     import sentry_sdk  # type: ignore[import]
 
-    from apps.billing.models import AidatCharge
+    from apps.billing.models import AidatCharge, aggregate_total_due
 
-    today = timezone.now().date()
-    overdue_charges = AidatCharge.objects.filter(
-        status=AidatCharge.Status.OVERDUE,
-    ).select_related("apartment__building")
+    overdue_qs = AidatCharge.objects.filter(status=AidatCharge.Status.OVERDUE)
 
-    count = overdue_charges.count()
+    # Single DB query on PostgreSQL; SQLite/test falls back to the Python
+    # property so late fees are included everywhere (matches the dashboard).
+    total_debt, count = aggregate_total_due(overdue_qs)
     if count == 0:
         return SentryAlertResult(alerts_sent=0)
 
-    total_debt = sum(c.total_due for c in overdue_charges)
+    today = timezone.now().date()
 
-    sentry_sdk.capture_message(
-        f"{count} overdue aidat charges (total debt {total_debt:.2f} TRY)",
-        level="warning",
-        contexts={
-            "business": {
-                "alert_type": "failed_payments",
-                "overdue_count": count,
-                "total_debt": float(total_debt),
-                "date": str(today),
-            }
-        },
-    )
+    try:
+        sentry_sdk.capture_message(
+            f"{count} overdue aidat charges (total debt {total_debt:.2f} TRY)",
+            level="warning",
+            contexts={
+                "business": {
+                    "alert_type": "failed_payments",
+                    "overdue_count": count,
+                    "total_debt": float(total_debt),
+                    "date": str(today),
+                }
+            },
+        )
+    except Exception as exc:
+        raise self.retry(exc=exc)
+
     logger.info("Sentry business alert sent: %d overdue charges", count)
     return SentryAlertResult(alerts_sent=1)
 

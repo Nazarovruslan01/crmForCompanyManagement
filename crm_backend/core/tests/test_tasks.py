@@ -647,3 +647,75 @@ class TestSendTelegramDebtReminders:
         assert result["failed"] == 0
         assert result["no_chat_id"] == 0
         mock_send.assert_not_called()
+
+
+class TestAlertFailedPayments:
+    """P0-1: alert_failed_payments must compute total_debt via DB aggregate."""
+
+    @patch("sentry_sdk.capture_message")
+    def test_no_overdue_charges_returns_zero(self, mock_capture):
+        from core.tasks import SentryAlertResult, alert_failed_payments
+
+        result = alert_failed_payments()
+
+        assert result == SentryAlertResult(alerts_sent=0)
+        mock_capture.assert_not_called()
+
+    @patch("sentry_sdk.capture_message")
+    def test_sends_sentry_alert_with_aggregate_total(self, mock_capture):
+        from core.tasks import SentryAlertResult, alert_failed_payments
+
+        building = Building.objects.create(name="T1", address="X", city="Istanbul", district="Kadikoy")
+        apartment = Apartment.objects.create(building=building, apartment_number="1A")
+        charge = AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=date(2026, 1, 1),
+            billing_period_end=date(2026, 1, 31),
+            base_amount=Decimal("100.00"),
+            late_fee_rate=Decimal("0.001"),
+            due_date=date(2026, 2, 15),
+            status=AidatCharge.Status.OVERDUE,
+        )
+
+        result = alert_failed_payments()
+
+        assert result == SentryAlertResult(alerts_sent=1)
+        mock_capture.assert_called_once()
+        call = mock_capture.call_args
+        assert "overdue aidat charges" in call.args[0]
+        business_ctx = call.kwargs["contexts"]["business"]
+        assert business_ctx["alert_type"] == "failed_payments"
+        assert business_ctx["overdue_count"] == 1
+        assert business_ctx["total_debt"] == float(charge.total_due)
+
+    @patch("apps.billing.models.aggregate_total_due")
+    @patch("sentry_sdk.capture_message")
+    def test_delegates_to_aggregate_total_due(self, mock_capture, mock_agg):
+        """alert_failed_payments must delegate total+count to aggregate_total_due
+        and carry the result correctly into the Sentry alert context.
+        """
+        from core.tasks import SentryAlertResult, alert_failed_payments
+
+        building = Building.objects.create(name="PG", address="X", city="Istanbul", district="Kadikoy")
+        apartment = Apartment.objects.create(building=building, apartment_number="PG1")
+        AidatCharge.objects.create(
+            apartment=apartment,
+            billing_period_start=date(2026, 1, 1),
+            billing_period_end=date(2026, 1, 31),
+            base_amount=Decimal("100.00"),
+            late_fee_rate=Decimal("0.001"),
+            due_date=date(2026, 2, 15),
+            status=AidatCharge.Status.OVERDUE,
+        )
+
+        mock_agg.return_value = (Decimal("123.45"), 1)
+        result = alert_failed_payments()
+
+        assert result == SentryAlertResult(alerts_sent=1)
+        mock_agg.assert_called_once()
+        mock_capture.assert_called_once()
+
+        # Verify the Sentry alert carries the aggregate result correctly
+        business_ctx = mock_capture.call_args.kwargs["contexts"]["business"]
+        assert business_ctx["overdue_count"] == 1
+        assert business_ctx["total_debt"] == 123.45
