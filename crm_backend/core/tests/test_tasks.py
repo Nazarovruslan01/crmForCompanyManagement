@@ -662,12 +662,12 @@ class TestAlertFailedPayments:
         mock_capture.assert_not_called()
 
     @patch("sentry_sdk.capture_message")
-    def test_sends_sentry_alert_with_aggregate_total(self, mock_capture, db):
+    def test_sends_sentry_alert_with_aggregate_total(self, mock_capture):
         from core.tasks import SentryAlertResult, alert_failed_payments
 
         building = Building.objects.create(name="T1", address="X", city="Istanbul", district="Kadikoy")
         apartment = Apartment.objects.create(building=building, apartment_number="1A")
-        AidatCharge.objects.create(
+        charge = AidatCharge.objects.create(
             apartment=apartment,
             billing_period_start=date(2026, 1, 1),
             billing_period_end=date(2026, 1, 31),
@@ -686,20 +686,13 @@ class TestAlertFailedPayments:
         business_ctx = call.kwargs["contexts"]["business"]
         assert business_ctx["alert_type"] == "failed_payments"
         assert business_ctx["overdue_count"] == 1
-        assert "total_debt" in business_ctx
+        assert business_ctx["total_debt"] == float(charge.total_due)
 
+    @patch("apps.billing.models.aggregate_total_due")
     @patch("sentry_sdk.capture_message")
-    @patch("core.tasks.connection")
-    def test_uses_db_aggregate_on_postgres(self, mock_conn, mock_capture, db):
-        """On PostgreSQL the function must take the DB-aggregate branch and
-        the produced Sentry alert must include overdue_count and total_debt.
-
-        The test cannot assert the numeric ``total_debt`` value because it
-        runs against the SQLite test backend, where ``CURRENT_DATE - due_date``
-        evaluates to 0 (date arithmetic on stored text). The numerical
-        invariant must be verified on a real PostgreSQL run; here we only
-        guarantee the aggregate branch is reached and the Sentry context
-        carries the expected keys.
+    def test_delegates_to_aggregate_total_due(self, mock_capture, mock_agg):
+        """alert_failed_payments must delegate total+count to aggregate_total_due
+        and carry the result correctly into the Sentry alert context.
         """
         from core.tasks import SentryAlertResult, alert_failed_payments
 
@@ -715,11 +708,14 @@ class TestAlertFailedPayments:
             status=AidatCharge.Status.OVERDUE,
         )
 
-        mock_conn.vendor = "postgresql"
+        mock_agg.return_value = (Decimal("123.45"), 1)
         result = alert_failed_payments()
 
         assert result == SentryAlertResult(alerts_sent=1)
+        mock_agg.assert_called_once()
         mock_capture.assert_called_once()
+
+        # Verify the Sentry alert carries the aggregate result correctly
         business_ctx = mock_capture.call_args.kwargs["contexts"]["business"]
         assert business_ctx["overdue_count"] == 1
-        assert "total_debt" in business_ctx
+        assert business_ctx["total_debt"] == 123.45

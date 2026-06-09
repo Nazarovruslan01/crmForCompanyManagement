@@ -6,23 +6,27 @@ import os
 import shutil
 import subprocess
 from datetime import datetime, timedelta
-from decimal import Decimal
 from typing import Any, TypedDict
 
 import requests
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
-from django.db import connection, transaction
-from django.db.models import Count, DecimalField, F, Func, Sum, Value
-from django.db.models.functions import Greatest
+from django.db import transaction
+from django.db.models import Func
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
 
 class CurrentDate(Func):  # type: ignore[misc]
-    """Emit PostgreSQL CURRENT_DATE without parentheses."""
+    """Emit PostgreSQL CURRENT_DATE without parentheses.
+
+    Single source of truth. The dashboard and Sentry alert both use this
+    via the ``apps.billing.models.aggregate_total_due`` helper. Importing
+    in a function-local scope (``from core.tasks import CurrentDate``)
+    keeps ``apps/`` from pulling ``core/`` at module load.
+    """
 
     function = "CURRENT_DATE"
     template = "%(function)s"
@@ -680,37 +684,16 @@ def alert_failed_payments(self: Any) -> SentryAlertResult:
     """
     import sentry_sdk  # type: ignore[import]
 
-    from apps.billing.models import AidatCharge
+    from apps.billing.models import AidatCharge, aggregate_total_due
 
     overdue_qs = AidatCharge.objects.filter(status=AidatCharge.Status.OVERDUE)
 
-    # Single DB query: fold count + total to avoid TOCTOU and extra round-trip.
-    if connection.vendor == "postgresql":
-        agg = overdue_qs.annotate(
-            days_overdue=Greatest(
-                CurrentDate() - F("due_date"),
-                Value(0),
-                output_field=DecimalField(max_digits=10, decimal_places=0),
-            ),
-        ).aggregate(
-            count=Count("id"),
-            total=Sum(
-                F("base_amount") + F("base_amount") * F("late_fee_rate") * F("days_overdue"),
-                output_field=DecimalField(max_digits=15, decimal_places=2),
-            ),
-        )
-    else:
-        # SQLite (tests + local dev): date arithmetic unavailable; sum base_amount only.
-        agg = overdue_qs.aggregate(
-            count=Count("id"),
-            total=Sum(F("base_amount"), output_field=DecimalField(max_digits=15, decimal_places=2)),
-        )
-
-    count = agg["count"] or 0
+    # Single DB query on PostgreSQL; SQLite/test falls back to the Python
+    # property so late fees are included everywhere (matches the dashboard).
+    total_debt, count = aggregate_total_due(overdue_qs)
     if count == 0:
         return SentryAlertResult(alerts_sent=0)
 
-    total_debt = agg["total"] or Decimal("0")
     today = timezone.now().date()
 
     try:
