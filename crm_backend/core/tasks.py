@@ -500,11 +500,6 @@ def generate_monthly_invoices(self: Any) -> InvoiceGenerationResult:
 
     try:
         with transaction.atomic():
-            # Snapshot count before creation to compute actual inserts.
-            before_count = AidatCharge.objects.filter(
-                billing_period_start=period_start,
-            ).count()
-
             # Pre-check existing charges inside the transaction to prevent races.
             existing_ids = set(
                 AidatCharge.objects.filter(
@@ -543,10 +538,7 @@ def generate_monthly_invoices(self: Any) -> InvoiceGenerationResult:
                 for bid in building_ids:
                     invalidate_building_chessboard(bid)
 
-            after_count = AidatCharge.objects.filter(
-                billing_period_start=period_start,
-            ).count()
-            created = after_count - before_count
+            created = len(charges_to_create)
 
     except Exception as exc:
         logger.error("Failed to generate monthly invoices: %s", exc)
