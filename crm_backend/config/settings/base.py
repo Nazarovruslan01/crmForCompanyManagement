@@ -355,7 +355,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "send-meeting-reminders": {
         "task": "core.tasks.send_meeting_reminders",
-        "schedule": crontab(hour=8, minute=0),
+        "schedule": crontab(hour=8, minute=15),
     },
 }
 

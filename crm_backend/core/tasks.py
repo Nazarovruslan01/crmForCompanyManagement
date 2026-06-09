@@ -7,6 +7,7 @@ import shutil
 import subprocess
 from datetime import datetime, timedelta
 from typing import Any, TypedDict
+from urllib.parse import urlparse
 
 import requests
 from celery import shared_task
@@ -591,12 +592,29 @@ def backup_database(self: Any) -> BackupResult:
     local_path = os.path.join(backup_dir, filename)
 
     try:
+        # Parse DATABASE_URL into components so the password is passed via
+        # PGPASSWORD env var instead of the process argument list (visible in ps aux).
+        parsed = urlparse(db_url)
+        pg_env = {**os.environ, "PGPASSWORD": parsed.password or ""}
+        pg_args = ["pg_dump"]
+        if parsed.hostname:
+            pg_args += ["-h", parsed.hostname]
+        if parsed.port:
+            pg_args += ["-p", str(parsed.port)]
+        if parsed.username:
+            pg_args += ["-U", parsed.username]
+        db_name = parsed.path.lstrip("/")
+        if not db_name:
+            return BackupResult(success=False, file_path="", size_bytes=0, error="DATABASE_URL has no database name")
+        pg_args.append(db_name)
+
         # Run pg_dump and pipe through gzip
         with open(local_path, "wb") as out_f:
             dump_proc = subprocess.Popen(
-                ["pg_dump", db_url],
+                pg_args,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                env=pg_env,
             )
             gzip_proc = subprocess.Popen(
                 ["gzip", "-c"],
@@ -612,10 +630,12 @@ def backup_database(self: Any) -> BackupResult:
 
             if dump_ret != 0:
                 stderr = dump_proc.stderr.read().decode("utf-8", errors="replace") if dump_proc.stderr else ""
-                raise RuntimeError(f"pg_dump failed (exit {dump_ret}): {stderr}")
+                logger.debug("pg_dump stderr: %s", stderr)
+                raise RuntimeError(f"pg_dump failed (exit {dump_ret})")
             if gzip_ret != 0:
                 stderr = gzip_proc.stderr.read().decode("utf-8", errors="replace") if gzip_proc.stderr else ""
-                raise RuntimeError(f"gzip failed (exit {gzip_ret}): {stderr}")
+                logger.debug("gzip stderr: %s", stderr)
+                raise RuntimeError(f"gzip failed (exit {gzip_ret})")
 
         size_bytes = os.path.getsize(local_path)
         logger.info("Database backup created: %s (%d bytes)", local_path, size_bytes)
