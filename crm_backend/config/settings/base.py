@@ -15,6 +15,15 @@ from celery.schedules import crontab  # type: ignore[import-untyped]
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+
+def _redis_url_with_db(url: str | None, db: int) -> str | None:
+    """Replace the DB number in a Redis URL. Returns None if url is None."""
+    if url is None:
+        return None
+    parsed = urlparse(url)
+    return parsed._replace(path=f"/{db}").geturl()
+
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
     raise RuntimeError("DJANGO_SECRET_KEY environment variable is required")
@@ -275,26 +284,32 @@ CORS_ALLOW_ALL_ORIGINS = os.getenv("CORS_ALLOW_ALL_ORIGINS", "").lower() == "tru
 CORS_ALLOWED_ORIGINS = [x for x in os.getenv("CORS_ALLOWED_ORIGINS", "").split(",") if x]
 CORS_ALLOW_CREDENTIALS = True
 
-# Cache (Redis)
+# Cache (Redis DB 1)
 CACHES = {
     "default": {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
-        "LOCATION": os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1"),
+        "LOCATION": os.getenv("REDIS_CACHE_URL")
+        or _redis_url_with_db(os.getenv("REDIS_URL"), 1)
+        or "redis://127.0.0.1:6379/1",
     }
 }
 
-# Channels (WebSocket)
+# Channels (Redis DB 2)
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")],
+            "hosts": [
+                os.getenv("REDIS_CHANNELS_URL")
+                or _redis_url_with_db(os.getenv("REDIS_URL"), 2)
+                or "redis://127.0.0.1:6379/2"
+            ],
         },
     },
 }
 
-# Celery
-CELERY_BROKER_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+# Celery (Redis DB 0)
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL") or os.getenv("REDIS_URL") or "redis://localhost:6379/0"
 CELERY_RESULT_BACKEND = CELERY_BROKER_URL
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"

@@ -169,15 +169,23 @@ def _cache_key(self, request, action):
 
 | ID | Приоритет | Файл | Сложность | Статус |
 |----|-----------|------|-----------|--------|
-| P0-1 | 🔴 | `core/tasks.py:684` | 5 мин | ☐ |
-| P0-2 | 🔴 | `billing/views.py:671` | 30 мин | ☐ |
-| P0-3 | 🔴 | Миграция | 20 мин | ☐ |
-| P1-1 | 🟡 | `core/tasks.py:375` | 5 мин | ☐ |
-| P1-2 | 🟡 | `core/tasks.py:959` | 15 мин | ☐ |
-| P1-3 | 🟡 | `core/tasks.py:787` | 5 мин | ☐ |
-| P1-4 | 🟡 | `settings/base.py` | 10 мин | ☐ |
+| P0-1 | 🔴 | `core/tasks.py:684` | 5 мин | ✅ |
+| P0-2 | 🔴 | `billing/views.py:671` | 30 мин | ✅ |
+| P0-3 | 🔴 | Миграция | 20 мин | ✅ |
+| P1-1 | 🟡 | `core/tasks.py:375` | 5 мин | ✅ |
+| P1-2 | 🟡 | `core/tasks.py:959` | 15 мин | ✅ |
+| P1-3 | 🟡 | `core/tasks.py:787` | 5 мин | ✅ |
+| P1-4 | 🟡 | `settings/base.py` | 10 мин | ✅ |
 | P2-1 | 🟠 | `settings/base.py` | 5 мин | ☐ |
 | P2-2 | 🟠 | `core/tasks.py:582` | 20 мин | ☐ |
 | P3-1 | 🟢 | `core/mixins.py` | 30 мин | ☐ |
 | P3-2 | 🟢 | `core/tasks.py:489` | 10 мин | ☐ |
 | P3-3 | 🟢 | Инфра | Инфра | ☐ |
+
+---
+
+## Codebase Scan Findings
+
+- [ ] `requests.post` found in `core/tasks.py:170` — external SMS call without CircuitBreaker | discovered 2026-06-09
+- [ ] `requests.post` found in `apps/messenger/telegram_client.py:37` — external Telegram call without CircuitBreaker | discovered 2026-06-09
+- [ ] `requests.post` found in `apps/billing/iyzico_client.py:75` — external Iyzico payment call without CircuitBreaker | discovered 2026-06-09

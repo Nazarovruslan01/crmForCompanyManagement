@@ -385,12 +385,13 @@ def send_telegram_debt_reminders() -> TelegramReminderResult:
         .order_by("due_date")
     )
 
-    if not overdue_charges.exists():
+    overdue_list = list(overdue_charges)
+    if not overdue_list:
         logger.info("No overdue charges found for Telegram reminders")
         return TelegramReminderResult(sent=0, failed=0, no_chat_id=0)
 
     # Step 3: Map apartments to residents
-    apartment_ids = [c.apartment.pk for c in overdue_charges]
+    apartment_ids = [c.apartment.pk for c in overdue_list]
     ownerships = Ownership.objects.filter(
         apartment__pk__in=apartment_ids,
         is_primary=True,
@@ -403,7 +404,7 @@ def send_telegram_debt_reminders() -> TelegramReminderResult:
 
     # Group charges by resident
     resident_charges: dict[int, list[AidatCharge]] = {}
-    for charge in overdue_charges:
+    for charge in overdue_list:
         resident = apartment_to_resident.get(charge.apartment.pk)
         if not resident:
             continue
@@ -801,8 +802,8 @@ class ReceiptGenerationResult(TypedDict):
     error: str | None
 
 
-@shared_task
-def generate_receipt_pdf(payment_id: int) -> ReceiptGenerationResult:
+@shared_task(bind=True, max_retries=3, default_retry_delay=120)
+def generate_receipt_pdf(self: Any, payment_id: int) -> ReceiptGenerationResult:
     """Generate a PDF receipt for a Payment and store it in MEDIA_ROOT.
 
     Creates or updates the linked Receipt record with the PDF file path.
@@ -823,16 +824,20 @@ def generate_receipt_pdf(payment_id: int) -> ReceiptGenerationResult:
         pdf_bytes = generate_payment_receipt(payment)
     except Exception as exc:
         logger.error("generate_receipt_pdf: PDF generation failed for payment %s: %s", payment_id, exc)
-        return ReceiptGenerationResult(receipt_id=0, success=False, error=f"PDF generation failed: {exc}")
+        if self.request.retries >= self.max_retries:
+            return ReceiptGenerationResult(receipt_id=0, success=False, error=f"PDF generation failed: {exc}")
+        raise self.retry(exc=exc)
 
-    filename = f"receipts/payment_{payment_id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    filename = f"receipts/payment_{payment_id}.pdf"
 
     try:
         path = default_storage.save(filename, ContentFile(pdf_bytes))
         pdf_url = default_storage.url(path)
     except Exception as exc:
         logger.error("generate_receipt_pdf: Storage failed for payment %s: %s", payment_id, exc)
-        return ReceiptGenerationResult(receipt_id=0, success=False, error=f"Storage failed: {exc}")
+        if self.request.retries >= self.max_retries:
+            return ReceiptGenerationResult(receipt_id=0, success=False, error=f"Storage failed: {exc}")
+        raise self.retry(exc=exc)
 
     receipt, _created = Receipt.objects.update_or_create(
         payment=payment,
@@ -876,7 +881,8 @@ def send_meeting_reminders() -> MeetingReminderResult:
         reminder_sent_at__isnull=True,
     ).select_related("building")
 
-    if not meetings.exists():
+    meeting_list = list(meetings)
+    if not meeting_list:
         logger.info("No upcoming meetings require reminders")
         return MeetingReminderResult(meetings_found=0, emails_queued=0, telegrams_sent=0, failed=0)
 
@@ -893,7 +899,7 @@ def send_meeting_reminders() -> MeetingReminderResult:
     telegrams_sent = 0
     failed = 0
 
-    for meeting in meetings:
+    for meeting in meeting_list:
         building = meeting.building
 
         # Gather all residents for this building
@@ -962,6 +968,9 @@ def send_meeting_reminders() -> MeetingReminderResult:
                     is_active=True,
                 ).select_related("resident")
 
+                telegram_logs_sent: list[NotificationLog] = []
+                telegram_logs_failed: list[NotificationLog] = []
+
                 for mu in messenger_users:
                     body = telegram_template.body_template.format(
                         meeting_title=meeting.title,
@@ -970,27 +979,41 @@ def send_meeting_reminders() -> MeetingReminderResult:
                         description=meeting.description or "",
                     )
 
-                    result = send_telegram_message(mu.telegram_chat_id, body)
+                    try:
+                        result = send_telegram_message(mu.telegram_chat_id, body)
+                    except Exception as exc:
+                        logger.warning("Telegram send failed for resident %s: %s", mu.resident.pk, exc)
+                        result = False
+
                     if result:
                         telegrams_sent += 1
-                        NotificationLog.objects.create(
-                            template=telegram_template,
-                            recipient=mu.resident,
-                            channel="telegram",
-                            subject="",
-                            body=body,
-                            status=NotificationLog.Status.SENT,
+                        telegram_logs_sent.append(
+                            NotificationLog(
+                                template=telegram_template,
+                                recipient=mu.resident,
+                                channel="telegram",
+                                subject="",
+                                body=body,
+                                status=NotificationLog.Status.SENT,
+                            )
                         )
                     else:
                         failed += 1
-                        NotificationLog.objects.create(
-                            template=telegram_template,
-                            recipient=mu.resident,
-                            channel="telegram",
-                            subject="",
-                            body=body,
-                            status=NotificationLog.Status.FAILED,
+                        telegram_logs_failed.append(
+                            NotificationLog(
+                                template=telegram_template,
+                                recipient=mu.resident,
+                                channel="telegram",
+                                subject="",
+                                body=body,
+                                status=NotificationLog.Status.FAILED,
+                            )
                         )
+
+                if telegram_logs_sent:
+                    NotificationLog.objects.bulk_create(telegram_logs_sent, batch_size=500)
+                if telegram_logs_failed:
+                    NotificationLog.objects.bulk_create(telegram_logs_failed, batch_size=500)
             except Exception as exc:
                 logger.error("Failed to send Telegram reminders for meeting %s: %s", meeting.pk, exc)
                 failed += 1
@@ -1001,13 +1024,13 @@ def send_meeting_reminders() -> MeetingReminderResult:
 
     logger.info(
         "Meeting reminders: %d meetings, %d emails queued, %d telegrams sent, %d failed",
-        meetings.count(),
+        len(meeting_list),
         emails_queued,
         telegrams_sent,
         failed,
     )
     return MeetingReminderResult(
-        meetings_found=meetings.count(),
+        meetings_found=len(meeting_list),
         emails_queued=emails_queued,
         telegrams_sent=telegrams_sent,
         failed=failed,
