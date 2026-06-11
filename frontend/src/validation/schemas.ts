@@ -125,3 +125,57 @@ export const meetingSchema = z.object({
 });
 
 export type MeetingFormData = z.infer<typeof meetingSchema>;
+
+// ─── Extraordinary Charges ──────────────────────────────────────────────────────
+
+export const extraordinaryChargeSchema = z.object({
+  building: z.string().min(1, 'Выберите здание'),
+  description: z.string().min(3, 'Минимум 3 символа').max(2000, 'Максимум 2000 символов'),
+  total_amount: z.string().min(1, 'Введите сумму'),
+  assembly_resolution_number: z.string().optional(),
+  approval_date: z.string().optional(),
+  status: z.enum(['proposed', 'approved', 'rejected', 'collecting', 'collected'], { error: 'Выберите статус' }),
+  due_date: z.string().optional(),
+});
+
+export type ExtraordinaryChargeFormData = z.infer<typeof extraordinaryChargeSchema>;
+
+// ─── Tasks ──────────────────────────────────────────────────────────────────────
+
+export const taskSchema = z.object({
+  title: z.string().min(3, 'Минимум 3 символа').max(200, 'Максимум 200 символов'),
+  description: z.string().optional(),
+  assigned_to: z.string().min(1, 'Выберите сотрудника'),
+  status: z.string().min(1, 'Выберите статус'),
+  due_date: z.string().min(1, 'Выберите дату'),
+  ticket: z.string().optional(),
+});
+
+export type TaskFormData = z.infer<typeof taskSchema>;
+
+// ─── Departments ────────────────────────────────────────────────────────────────
+
+export const departmentSchema = z.object({
+  name: z.string().min(1, 'Введите название').max(100, 'Максимум 100 символов'),
+  description: z.string().optional(),
+});
+
+export type DepartmentFormData = z.infer<typeof departmentSchema>;
+
+// ─── Agenda Items ───────────────────────────────────────────────────────────────
+
+export const agendaItemSchema = z.object({
+  title: z.string().min(3, 'Минимум 3 символа').max(200, 'Максимум 200 символов'),
+  description: z.string().optional(),
+  order: z.string().optional(),
+});
+
+export type AgendaItemFormData = z.infer<typeof agendaItemSchema>;
+
+// ─── Meeting Protocols ──────────────────────────────────────────────────────────
+
+export const protocolSchema = z.object({
+  content: z.string().min(1, 'Введите текст протокола').max(10000, 'Максимум 10000 символов'),
+});
+
+export type ProtocolFormData = z.infer<typeof protocolSchema>;

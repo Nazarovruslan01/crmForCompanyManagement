@@ -389,3 +389,95 @@ export interface DashboardSummary {
   occupancy_rate: number;
   recent_tickets: Ticket[];
 }
+
+export interface BuildingBreakdownItem {
+  building: {
+    id: number;
+    name: string;
+  };
+  residents_count: number;
+  apartments_count: number;
+  occupancy_rate: number;
+}
+
+export interface BuildingBreakdown {
+  buildings: BuildingBreakdownItem[];
+}
+
+export interface TicketMetricsCategory {
+  category: string;
+  count: number;
+  percentage: number;
+}
+
+export interface TicketMetrics {
+  average_closure_time_hours: number;
+  by_category: TicketMetricsCategory[];
+}
+
+export interface PaymentMetricsTrend {
+  month: string;
+  collected: string;
+  total: string;
+}
+
+export interface PaymentMetrics {
+  collection_rate: number;
+  monthly_trend: PaymentMetricsTrend[];
+}
+
+export interface AidatTimeseriesData {
+  month: string;
+  building_name: string;
+  amount: string;
+}
+
+export interface AidatTimeseries {
+  data: AidatTimeseriesData[];
+}
+
+// ─── Reports ──────────────────────────────────────────────────────────────────
+
+export type ExportReportType = 'payments' | 'aidat_charges' | 'meetings' | 'residents' | 'apartments';
+export type ExportFormat     = 'csv' | 'xlsx' | 'pdf';
+export type ExportStatus     = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface ExportReport {
+  id: number;
+  report_type: ExportReportType;
+  format: ExportFormat;
+  status: ExportStatus;
+  filters: Record<string, unknown>;
+  file: string | null;
+  error_message: string;
+  created_at: string;
+  completed_at: string | null;
+}
+
+// ─── Billing Receipts ─────────────────────────────────────────────────────────
+
+export interface Receipt {
+  id: number;
+  payment: number;
+  pdf_url: string | null;
+  generated_at: string;
+}
+
+// ─── Extraordinary Charges ────────────────────────────────────────────────
+
+export type ExtraordinaryChargeStatus = 'proposed' | 'approved' | 'rejected' | 'collecting' | 'collected';
+
+export interface ExtraordinaryCharge {
+  id: number;
+  building: number;
+  building_display: string;
+  description: string;
+  total_amount: string;
+  assembly_resolution_number: string | null;
+  approval_date: string | null;
+  status: ExtraordinaryChargeStatus;
+  status_display: string;
+  due_date: string | null;
+  created_at: string;
+  updated_at: string;
+}

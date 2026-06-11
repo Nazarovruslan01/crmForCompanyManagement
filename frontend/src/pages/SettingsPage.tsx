@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
@@ -11,8 +12,9 @@ import { SearchInput } from '../components/ui/SearchInput';
 import { FilterSelect } from '../components/ui/FilterSelect';
 import { TabBar } from '../components/ui/TabBar';
 import { UserForm } from '../components/forms/UserForm';
+import { DepartmentForm } from '../components/forms/DepartmentForm';
 import { LogOut, Lock, Mail, Phone, Shield, User, Calendar, Eye, EyeOff } from 'lucide-react';
-import type { User as UserType } from '../types';
+import type { User as UserType, Department } from '../types';
 
 // ─── Profile Card ──────────────────────────────────────────────────────────
 
@@ -329,11 +331,108 @@ function UsersTab() {
   );
 }
 
+// ─── Departments Tab ───────────────────────────────────────────────────────
+
+const departmentColumns: Column<Department>[] = [
+  {
+    key: 'name',
+    label: 'Название',
+    render: d => <span className="text-semi">{d.name}</span>,
+  },
+  {
+    key: 'description',
+    label: 'Описание',
+    render: d => d.description ?? '—',
+  },
+];
+
+const departmentColumnsWithActions = (onEdit: (d: Department) => void, onDelete: (id: number) => void): Column<Department>[] => [
+  ...departmentColumns,
+  {
+    key: 'actions',
+    label: 'Действия',
+    render: d => (
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button
+          onClick={() => onEdit(d)}
+          style={{
+            background: 'none', border: 'none', color: 'var(--color-brand)',
+            cursor: 'pointer', fontSize: 14, padding: '4px 8px',
+          }}
+        >
+          ✎
+        </button>
+        <button
+          onClick={() => onDelete(d.id)}
+          style={{
+            background: 'none', border: 'none', color: '#ef4444',
+            cursor: 'pointer', fontSize: 14, padding: '4px 8px',
+          }}
+        >
+          ✕
+        </button>
+      </div>
+    ),
+  },
+];
+
+function DepartmentsTab() {
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Department | undefined>();
+
+  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious, refetch } =
+    useList<Department>(p => api.departments.list(p), undefined);
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Удалить отдел?')) return;
+    try {
+      await api.departments.delete(id);
+      toast.success('Отдел удалён');
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка удаления');
+    }
+  };
+
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <button
+          className="btn-primary"
+          onClick={() => { setEditing(undefined); setFormOpen(true); }}
+          style={{ padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
+        >
+          + Добавить отдел
+        </button>
+      </div>
+      <DataTable
+        columns={departmentColumnsWithActions(
+          d => { setEditing(d); setFormOpen(true); },
+          handleDelete
+        )}
+        rows={data}
+        loading={loading}
+        error={error}
+        keyExtractor={d => d.id}
+        emptyText="Нет отделов"
+      />
+      <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
+      <DepartmentForm
+        open={formOpen}
+        onClose={() => { setFormOpen(false); setEditing(undefined); }}
+        onSaved={refetch}
+        initial={editing}
+      />
+    </>
+  );
+}
+
 // ─── Page ──────────────────────────────────────────────────────────────────
 
 const TABS = [
   { value: 'profile', label: 'Профиль' },
   { value: 'users',   label: 'Пользователи' },
+  { value: 'departments', label: 'Отделы' },
 ] as const;
 
 type Tab = typeof TABS[number]['value'];
@@ -363,6 +462,8 @@ export function SettingsPage() {
       )}
 
       {tab === 'users' && isAdmin && <UsersTab />}
+
+      {tab === 'departments' && isAdmin && <DepartmentsTab />}
     </PageLayout>
   );
 }
