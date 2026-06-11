@@ -13,8 +13,9 @@ import { FilterSelect } from '../components/ui/FilterSelect';
 import { TabBar } from '../components/ui/TabBar';
 import { UserForm } from '../components/forms/UserForm';
 import { DepartmentForm } from '../components/forms/DepartmentForm';
+import { TemplateForm } from '../components/forms/TemplateForm';
 import { LogOut, Lock, Mail, Phone, Shield, User, Calendar, Eye, EyeOff } from 'lucide-react';
-import type { User as UserType, Department } from '../types';
+import type { User as UserType, Department, NotificationTemplate } from '../types';
 
 // ─── Profile Card ──────────────────────────────────────────────────────────
 
@@ -427,12 +428,130 @@ function DepartmentsTab() {
   );
 }
 
+// ─── Templates Tab ─────────────────────────────────────────────────────────────
+
+const CHANNEL_BADGE: Record<string, { bg: string; color: string }> = {
+  push:     { bg: '#e6f4ff', color: '#1677ff' },
+  sms:      { bg: '#fff7e6', color: '#d46b08' },
+  email:    { bg: '#f6ffed', color: '#389e0d' },
+  telegram: { bg: '#e6f7ff', color: '#0096c7' },
+};
+
+const templateColumns = (
+  onEdit: (t: NotificationTemplate) => void,
+  onDelete: (id: number) => void,
+): Column<NotificationTemplate>[] => [
+  {
+    key: 'name',
+    label: 'Название',
+    render: t => <span className="text-semi">{t.name}</span>,
+  },
+  {
+    key: 'notification_type',
+    label: 'Тип',
+    render: t => <span style={{ fontSize: 12, color: 'var(--color-gray-7)' }}>{t.notification_type_display}</span>,
+  },
+  {
+    key: 'channel',
+    label: 'Канал',
+    render: t => {
+      const s = CHANNEL_BADGE[t.channel] ?? { bg: 'var(--color-gray-2)', color: 'var(--color-gray-7)' };
+      return (
+        <span style={{
+          display: 'inline-block', padding: '2px 8px', borderRadius: 12,
+          fontSize: 12, fontWeight: 500, background: s.bg, color: s.color,
+        }}>
+          {t.channel_display}
+        </span>
+      );
+    },
+  },
+  {
+    key: 'is_active',
+    label: 'Статус',
+    render: t => <Badge label={t.is_active ? 'Активен' : 'Неактивен'} color={t.is_active ? 'green' : 'gray'} />,
+  },
+  {
+    key: 'actions',
+    label: 'Действия',
+    render: t => (
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={e => { e.stopPropagation(); onEdit(t); }}
+          style={{ background: 'none', border: 'none', color: 'var(--color-brand)', cursor: 'pointer', fontSize: 14, padding: '4px 8px' }}
+        >
+          ✎
+        </button>
+        <button
+          onClick={e => { e.stopPropagation(); onDelete(t.id); }}
+          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 14, padding: '4px 8px' }}
+        >
+          ✕
+        </button>
+      </div>
+    ),
+  },
+];
+
+function TemplatesTab() {
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<NotificationTemplate | undefined>();
+
+  const { data, loading, error, hasNext, hasPrevious, goNext, goPrevious, refetch } =
+    useList<NotificationTemplate>(p => api.notificationTemplates.list(p), undefined);
+
+  const handleDelete = async (id: number) => {
+    if (!confirm('Удалить шаблон?')) return;
+    try {
+      await api.notificationTemplates.delete(id);
+      toast.success('Шаблон удалён');
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка удаления');
+    }
+  };
+
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+        <button
+          className="btn-primary"
+          onClick={() => { setEditing(undefined); setFormOpen(true); }}
+          style={{ padding: '8px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500 }}
+        >
+          + Добавить шаблон
+        </button>
+      </div>
+      <DataTable
+        columns={templateColumns(
+          t => { setEditing(t); setFormOpen(true); },
+          handleDelete,
+        )}
+        rows={data}
+        loading={loading}
+        error={error}
+        keyExtractor={t => t.id}
+        emptyText="Нет шаблонов уведомлений"
+      />
+      <Pagination hasPrevious={hasPrevious} hasNext={hasNext} onPrevious={goPrevious} onNext={goNext} />
+      <TemplateForm
+        key={String(formOpen) + '-' + (editing?.id ?? 'new')}
+        open={formOpen}
+        onClose={() => { setFormOpen(false); setEditing(undefined); }}
+        onSaved={refetch}
+        initial={editing}
+      />
+    </>
+  );
+}
+
 // ─── Page ──────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { value: 'profile', label: 'Профиль' },
-  { value: 'users',   label: 'Пользователи' },
+  { value: 'profile',   label: 'Профиль' },
+  { value: 'users',     label: 'Пользователи' },
   { value: 'departments', label: 'Отделы' },
+  { value: 'templates', label: 'Шаблоны уведомлений' },
 ] as const;
 
 type Tab = typeof TABS[number]['value'];
@@ -464,6 +583,8 @@ export function SettingsPage() {
       {tab === 'users' && isAdmin && <UsersTab />}
 
       {tab === 'departments' && isAdmin && <DepartmentsTab />}
+
+      {tab === 'templates' && isAdmin && <TemplatesTab />}
     </PageLayout>
   );
 }

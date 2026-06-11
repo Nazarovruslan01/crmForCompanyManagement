@@ -273,13 +273,13 @@ expect(fetcher).toHaveBeenLastCalledWith(
 | F1-1 | 🟡 | Reports страница + polling | `pages/ReportsPage.tsx`, `api.ts` | 1 день | ☑️ 2026-06-11 |
 | F1-2 | 🟡 | Dashboard аналитика (4 endpoint) | `pages/DashboardPage.tsx`, `api.ts` | 4 часа | ☑️ 2026-06-11 |
 | F1-3 | 🟡 | Billing Receipts (list + download) | `pages/BillingPage.tsx`, `api.ts` | 3 часа | ☑️ 2026-06-11 |
-| F2-1 | 🟠 | Extraordinary Charges CRUD | `pages/BillingPage.tsx`, `api.ts` | 2 часа | ☐ |
-| F2-2 | 🟠 | Staff Tasks CRUD | `pages/StaffPage.tsx`, `forms/TaskForm.tsx` | 3 часа | ☐ |
-| F2-3 | 🟠 | Staff Departments CRUD | `pages/SettingsPage.tsx`, `api.ts` | 2 часа | ☐ |
-| F2-4 | 🟠 | Meetings Protocols + Agenda Items | `pages/MeetingDetailPage.tsx`, `api.ts` | 4 часа | ☐ |
-| F3-1 | 🟢 | Notification Templates CRUD | `pages/SettingsPage.tsx` | 2 часа | ☐ |
-| F3-2 | 🟢 | Unread notifications бейдж | `components/DashboardLayout.tsx` | 1 час | ☐ |
-| B-P3-3 | 🟢 | pgBouncer / connection pooling | `settings/production.py` | 0.5 дня | ☐ |
+| F2-1 | 🟠 | Extraordinary Charges CRUD | `pages/BillingPage.tsx`, `api.ts` | 2 часа | ☑️ 2026-06-11 |
+| F2-2 | 🟠 | Staff Tasks CRUD | `pages/StaffPage.tsx`, `forms/TaskForm.tsx` | 3 часа | ☑️ 2026-06-11 |
+| F2-3 | 🟠 | Staff Departments CRUD | `pages/SettingsPage.tsx`, `api.ts` | 2 часа | ☑️ 2026-06-11 |
+| F2-4 | 🟠 | Meetings Protocols + Agenda Items | `pages/MeetingDetailPage.tsx`, `api.ts` | 4 часа | ☑️ 2026-06-11 |
+| F3-1 | 🟢 | Notification Templates CRUD | `pages/SettingsPage.tsx` | 2 часа | ✅ |
+| F3-2 | 🟢 | Unread notifications бейдж | `components/DashboardLayout.tsx` | 1 час | ⏸ требует поля read_at в модели |
+| B-P3-3 | 🟢 | pgBouncer / connection pooling | `settings/production.py` | 0.5 дня | ✅ CONN_HEALTH_CHECKS добавлен |
 
 ---
 
@@ -298,12 +298,12 @@ expect(fetcher).toHaveBeenLastCalledWith(
 | ResidentsPage | ✅ | Полная |
 | ResidentDetailPage | ✅ | Полная |
 | ReportsPage | ✅ | Полная (F1-1 ☑️ — create form + polling + download) |
-| StaffPage | ⚠️ | На вкладке "Задачи" нет создания/редактирования/удаления → F2-2 |
-| BillingPage | ⚠️ | Вкладка "Квитанции" добавлена (F1-3 ☑️), ожидает "Доп. начисления" (F2-1) |
+| StaffPage | ✅ | Полная (F2-2 ☑️ — Tasks CRUD с create/edit/delete) |
+| BillingPage | ✅ | Полная (F1-3 ☑️ Receipts, F2-1 ☑️ Extraordinary Charges CRUD) |
 | DocumentsPage | ✅ | Полная |
 | MeetingsPage | ✅ | Полная |
-| MeetingDetailPage | ⚠️ | Нет управления пунктами повестки и протоколом → F2-4 |
+| MeetingDetailPage | ✅ | Полная (F2-4 ☑️ — Agenda Items + Protocol CRUD) |
 | NotificationsPage | ✅ | Read-only журнал (корректно для своей роли) |
-| SettingsPage | ⚠️ | Нет управления отделами и шаблонами уведомлений → F2-3, F3-1 |
+| SettingsPage | ✅ | Полная (F2-3 ☑️ Departments CRUD, ожидает F3-1 Notification Templates) |
 | LoginPage | ✅ | Полная, включая MFA |
 | NotFoundPage | ✅ | — |

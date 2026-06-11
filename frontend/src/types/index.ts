@@ -454,6 +454,26 @@ export interface ExportReport {
   completed_at: string | null;
 }
 
+// ─── Notification Templates ───────────────────────────────────────────────────
+
+export type NotificationChannel = 'push' | 'sms' | 'email' | 'telegram';
+export type NotificationEventType =
+  | 'aidat_reminder' | 'aidat_overdue' | 'payment_confirmation'
+  | 'ticket_created' | 'ticket_assigned' | 'ticket_resolved'
+  | 'meeting_reminder' | 'general';
+
+export interface NotificationTemplate {
+  id: number;
+  name: string;
+  notification_type: NotificationEventType;
+  notification_type_display: string;
+  channel: NotificationChannel;
+  channel_display: string;
+  subject: string;
+  body_template: string;
+  is_active: boolean;
+}
+
 // ─── Billing Receipts ─────────────────────────────────────────────────────────
 
 export interface Receipt {

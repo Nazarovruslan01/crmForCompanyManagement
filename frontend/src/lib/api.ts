@@ -31,6 +31,7 @@ import type {
   ExtraordinaryCharge,
   AgendaItem,
   MeetingProtocol,
+  NotificationTemplate,
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v2';
@@ -260,9 +261,10 @@ class ApiClient {
 
   // ─── Notifications ───────────────────────────────────────────────────────────
 
-  notificationLogs = {
+  notificationLogs      = {
     list: (params?: Record<string, string>, signal?: AbortSignal) => this.list<NotificationLog>('/notifications/logs/', params, signal),
   };
+  notificationTemplates = this.crud<NotificationTemplate>('/notifications/templates');
 
   // ─── Documents ───────────────────────────────────────────────────────────────
 

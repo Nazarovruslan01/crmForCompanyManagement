@@ -162,6 +162,19 @@ export const departmentSchema = z.object({
 
 export type DepartmentFormData = z.infer<typeof departmentSchema>;
 
+// ─── Notification Templates ─────────────────────────────────────────────────────
+
+export const notificationTemplateSchema = z.object({
+  name: z.string().min(1, 'Введите название').max(100, 'Максимум 100 символов'),
+  notification_type: z.string().min(1, 'Выберите тип уведомления'),
+  channel: z.string().min(1, 'Выберите канал'),
+  subject: z.string().max(255, 'Максимум 255 символов').optional().or(z.literal('')),
+  body_template: z.string().min(1, 'Введите шаблон сообщения'),
+  is_active: z.boolean(),
+});
+
+export type NotificationTemplateFormData = z.infer<typeof notificationTemplateSchema>;
+
 // ─── Agenda Items ───────────────────────────────────────────────────────────────
 
 export const agendaItemSchema = z.object({
