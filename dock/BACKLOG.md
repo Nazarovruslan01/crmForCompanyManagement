@@ -178,8 +178,8 @@ def _cache_key(self, request, action):
 | P1-4 | 🟡 | `settings/base.py` | 10 мин | ✅ |
 | P2-1 | 🟠 | `settings/base.py` | 5 мин | ✅ |
 | P2-2 | 🟠 | `core/tasks.py:582` | 20 мин | ✅ |
-| P3-1 | 🟢 | `core/mixins.py` | 30 мин | ☐ |
-| P3-2 | 🟢 | `core/tasks.py:489` | 10 мин | ☐ |
+| P3-1 | 🟢 | `core/mixins.py` | 30 мин | ✅ |
+| P3-2 | 🟢 | `core/tasks.py:489` | 10 мин | ✅ |
 | P3-3 | 🟢 | Инфра | Инфра | ☐ |
 
 ---
@@ -189,5 +189,5 @@ def _cache_key(self, request, action):
 - [x] `requests.post` found in `core/tasks.py:170` — external SMS call without CircuitBreaker | fixed 2026-06-09
 - [x] `requests.post` found in `apps/messenger/telegram_client.py:37` — external Telegram call without CircuitBreaker | fixed 2026-06-09
 - [x] `requests.post` found in `apps/billing/iyzico_client.py:75` — external Iyzico payment call without CircuitBreaker | fixed 2026-06-09
-- [ ] `sum(...for...in)` found in `apps/residents/models.py:101` — Python-side aggregation of AidatCharge queryset, OOM risk | discovered 2026-06-09
-- [ ] `sum(...for...in)` found in `apps/properties/serializers.py:109` — Python-side aggregation of aidat_charges queryset, OOM risk | discovered 2026-06-09
+- [x] `sum(...for...in)` found in `apps/residents/models.py:101` — Python-side aggregation of AidatCharge queryset, OOM risk | fixed 2026-06-11
+- [x] `sum(...for...in)` found in `apps/properties/serializers.py:109` — Python-side aggregation of aidat_charges queryset, OOM risk | fixed 2026-06-11

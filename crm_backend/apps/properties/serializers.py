@@ -106,13 +106,13 @@ class ApartmentChessboardSerializer(serializers.ModelSerializer):
         return str(first_charge.status) if first_charge else None
 
     def get_total_debt(self, obj: Apartment) -> Decimal:
-        """Sum of total_due (base + late fee) for all pending/overdue aidat charges."""
+        """Sum of total_due (base + late fee) for all pending/overdue aidat charges.
+
+        aidat_charges is prefetched via Prefetch in the view — sum() iterates in-memory, not a DB query.
+        """
         return sum(
-            (
-                charge.total_due
-                for charge in obj.aidat_charges.all()  # type: ignore[attr-defined]
-                if charge.status in (AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE)
-            ),
+            (c.total_due for c in obj.aidat_charges.all()  # type: ignore[attr-defined]
+             if c.status in (AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE)),
             Decimal("0"),
         )
 

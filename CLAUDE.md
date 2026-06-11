@@ -20,9 +20,3 @@ Settings: `config/settings/{base,local,production}.py`
 - Client IP: use `TRUSTED_PROXY_IPS` whitelist, never raw `X-Forwarded-For`
 - Cache invalidation: `CacheListRetrieveMixin` uses version-bump via `cache.incr()`
 - Audit log: `AuditLogMixin` masks sensitive fields (password, token_hash, tc_kimlik_no)
-
-## Known issues (backlog)
-- `alert_failed_payments`: sum() in Python — needs DB aggregate
-- `IyzicoViewSet._get_client_ip`: bypasses TRUSTED_PROXY_IPS
-- Missing composite indexes: AidatCharge(status, due_date), Payment(iyzico_token)
-- Celery and Channels share Redis DB 0 — should be separated
