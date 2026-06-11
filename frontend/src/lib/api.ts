@@ -28,6 +28,9 @@ import type {
   ExportReportType,
   ExportFormat,
   Receipt,
+  ExtraordinaryCharge,
+  AgendaItem,
+  MeetingProtocol,
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v2';
@@ -240,6 +243,8 @@ class ApiClient {
     download: (id: number, signal?: AbortSignal) => this.downloadFile(`/billing/receipts/${id}/download/`, signal),
   };
 
+  extraordinaryCharges = this.crud<ExtraordinaryCharge>('/billing/extraordinary-charges');
+
   reports = {
     list:     (params?: Record<string, string>, signal?: AbortSignal) => this.list<ExportReport>('/reports/exports/', params, signal),
     create:   (data: { report_type: ExportReportType; format: ExportFormat; filters?: Record<string, unknown> }, signal?: AbortSignal) =>
@@ -250,8 +255,8 @@ class ApiClient {
   // ─── Staff ──────────────────────────────────────────────────────────────────
 
   employees    = this.crud<Employee>      ('/staff/employees');
-  departments  = { list: (params?: Record<string, string>, signal?: AbortSignal) => this.list<Department>('/staff/departments/', params, signal) };
-  tasks        = { list: (params?: Record<string, string>, signal?: AbortSignal) => this.list<Task>('/staff/tasks/', params, signal) };
+  departments  = this.crud<Department>    ('/staff/departments');
+  tasks        = this.crud<Task>          ('/staff/tasks');
 
   // ─── Notifications ───────────────────────────────────────────────────────────
 
@@ -280,6 +285,9 @@ class ApiClient {
         signal,
       }),
   };
+
+  agendaItems = this.crud<AgendaItem>('/meetings/agenda-items');
+  protocols   = this.crud<MeetingProtocol>('/meetings/protocols');
 
   // ─── File download ───────────────────────────────────────────────────────────
 

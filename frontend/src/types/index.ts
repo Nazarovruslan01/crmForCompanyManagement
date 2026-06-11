@@ -462,3 +462,22 @@ export interface Receipt {
   pdf_url: string | null;
   generated_at: string;
 }
+
+// ─── Extraordinary Charges ────────────────────────────────────────────────
+
+export type ExtraordinaryChargeStatus = 'proposed' | 'approved' | 'rejected' | 'collecting' | 'collected';
+
+export interface ExtraordinaryCharge {
+  id: number;
+  building: number;
+  building_display: string;
+  description: string;
+  total_amount: string;
+  assembly_resolution_number: string | null;
+  approval_date: string | null;
+  status: ExtraordinaryChargeStatus;
+  status_display: string;
+  due_date: string | null;
+  created_at: string;
+  updated_at: string;
+}

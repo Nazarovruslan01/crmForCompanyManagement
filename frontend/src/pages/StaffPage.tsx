@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
@@ -9,6 +10,7 @@ import { SearchInput } from '../components/ui/SearchInput';
 import { FilterSelect } from '../components/ui/FilterSelect';
 import { TabBar } from '../components/ui/TabBar';
 import { EmployeeForm } from '../components/forms/EmployeeForm';
+import { TaskForm } from '../components/forms/TaskForm';
 import { EMPLOYEE_ROLE_OPTIONS, TASK_STATUS_OPTIONS, TASK_STATUS_COLOR } from '../constants/options';
 import type { Employee, Task } from '../types';
 
@@ -75,7 +77,7 @@ const employeeColumns: Column<Employee>[] = [
   },
 ];
 
-const taskColumns: Column<Task>[] = [
+const taskColumns = (onEdit: (t: Task) => void, onDelete: (id: number) => void): Column<Task>[] => [
   {
     key: 'title',
     label: 'Задача',
@@ -123,6 +125,32 @@ const taskColumns: Column<Task>[] = [
       );
     },
   },
+  {
+    key: 'actions',
+    label: 'Действия',
+    render: t => (
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button
+          onClick={() => onEdit(t)}
+          style={{
+            background: 'none', border: 'none', color: 'var(--color-brand)',
+            cursor: 'pointer', fontSize: 14, padding: '4px 8px',
+          }}
+        >
+          ✎
+        </button>
+        <button
+          onClick={() => onDelete(t.id)}
+          style={{
+            background: 'none', border: 'none', color: '#ef4444',
+            cursor: 'pointer', fontSize: 14, padding: '4px 8px',
+          }}
+        >
+          ✕
+        </button>
+      </div>
+    ),
+  },
 ];
 
 // ─── Tabs ────────────────────────────────────────────────────────────────────
@@ -148,6 +176,8 @@ export function StaffPage() {
   // Tasks state
   const [taskSearch, setTaskSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | undefined>();
 
   const empParams = useMemo(() => {
     const p: Record<string, string> = {};
@@ -171,7 +201,19 @@ export function StaffPage() {
   const {
     data: tasks, loading: taskLoading, error: taskError,
     hasNext: taskNext, hasPrevious: taskPrev, goNext: taskGoNext, goPrevious: taskGoPrev,
+    refetch: refetchTasks,
   } = useList<Task>(p => api.tasks.list(p), taskParams);
+
+  const handleTaskDelete = async (id: number) => {
+    if (!confirm('Удалить задачу?')) return;
+    try {
+      await api.tasks.delete(id);
+      toast.success('Задача удалена');
+      refetchTasks();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Ошибка удаления');
+    }
+  };
 
   return (
     <PageLayout
@@ -183,6 +225,13 @@ export function StaffPage() {
             onClick={() => { setEditing(undefined); setFormOpen(true); }}
           >
             + Добавить сотрудника
+          </button>
+        ) : tab === 'tasks' ? (
+          <button
+            className="btn-primary btn-sm"
+            onClick={() => { setEditingTask(undefined); setTaskFormOpen(true); }}
+          >
+            + Добавить задачу
           </button>
         ) : undefined
       }
@@ -235,7 +284,10 @@ export function StaffPage() {
             />
           </div>
           <DataTable
-            columns={taskColumns}
+            columns={taskColumns(
+              t => { setEditingTask(t); setTaskFormOpen(true); },
+              handleTaskDelete
+            )}
             rows={tasks}
             loading={taskLoading}
             error={taskError}
@@ -251,6 +303,13 @@ export function StaffPage() {
         onClose={() => setFormOpen(false)}
         onSaved={refetch}
         initial={editing}
+      />
+
+      <TaskForm
+        open={taskFormOpen}
+        onClose={() => { setTaskFormOpen(false); setEditingTask(undefined); }}
+        onSaved={refetchTasks}
+        initial={editingTask}
       />
     </PageLayout>
   );

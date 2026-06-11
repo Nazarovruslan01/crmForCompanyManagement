@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { useDetail } from '../hooks/useDetail';
 import { useAuth } from '../hooks/useAuth';
 import { DetailPageLayout } from '../components/ui/DetailPageLayout';
 import { Badge } from '../components/ui/Badge';
+import { AgendaItemForm } from '../components/forms/AgendaItemForm';
+import { MeetingProtocolForm } from '../components/forms/MeetingProtocolForm';
 import type { BadgeColor } from '../components/ui/Badge';
 import type { Meeting, Vote, AgendaItem } from '../types';
 import {
@@ -53,14 +56,21 @@ function AgendaItemCard({
   existingVote,
   onVote,
   voteLoading,
+  isManager,
+  onEdit,
+  onDelete,
 }: {
   item: AgendaItem;
   meetingStatus: string;
   existingVote: Vote | undefined;
   onVote: (choice: 'yes' | 'no' | 'abstain') => void;
   voteLoading: boolean;
+  isManager?: boolean;
+  onEdit?: (item: AgendaItem) => void;
+  onDelete?: (id: number) => void;
 }) {
   const canVote = meetingStatus === 'active' && !existingVote;
+  const canEdit = isManager && meetingStatus === 'scheduled';
 
   return (
     <div style={{
@@ -76,12 +86,36 @@ function AgendaItemCard({
             <p style={{ margin: 0, fontSize: 13, color: 'var(--color-gray-7)' }}>{item.description}</p>
           )}
         </div>
-        {existingVote && (
-          <Badge
-            label={existingVote.vote_choice_display ?? existingVote.vote_choice}
-            color={voteChoiceColor[existingVote.vote_choice] ?? 'blue'}
-          />
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {existingVote && (
+            <Badge
+              label={existingVote.vote_choice_display ?? existingVote.vote_choice}
+              color={voteChoiceColor[existingVote.vote_choice] ?? 'blue'}
+            />
+          )}
+          {canEdit && (
+            <>
+              <button
+                onClick={() => onEdit?.(item)}
+                style={{
+                  background: 'none', border: 'none', color: 'var(--color-brand)',
+                  cursor: 'pointer', fontSize: 14, padding: '4px 8px',
+                }}
+              >
+                ✎
+              </button>
+              <button
+                onClick={() => onDelete?.(item.id)}
+                style={{
+                  background: 'none', border: 'none', color: '#ef4444',
+                  cursor: 'pointer', fontSize: 14, padding: '4px 8px',
+                }}
+              >
+                ✕
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {canVote && (
@@ -123,10 +157,34 @@ export function MeetingDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [voteLoadingId, setVoteLoadingId] = useState<number | null>(null);
   const [localMeeting, setLocalMeeting] = useState<Meeting | null>(null);
+  const [agendaFormOpen, setAgendaFormOpen] = useState(false);
+  const [editingAgenda, setEditingAgenda] = useState<AgendaItem | undefined>();
+  const [protocolFormOpen, setProtocolFormOpen] = useState(false);
 
   const currentMeeting = localMeeting ?? meeting;
 
   const isManager = user?.role === 'admin' || user?.role === 'manager';
+
+  const refetchMeeting = async () => {
+    if (!meetingId) return;
+    try {
+      const updated = await api.meetings.get(meetingId);
+      setLocalMeeting(updated);
+    } catch {
+      toast.error('Ошибка обновления собрания');
+    }
+  };
+
+  const handleAgendaDelete = async (id: number) => {
+    if (!confirm('Удалить пункт повестки?')) return;
+    try {
+      await api.agendaItems.delete(id);
+      toast.success('Пункт удалён');
+      await refetchMeeting();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Ошибка удаления');
+    }
+  };
 
   const handleStart = async () => {
     if (!meetingId) return;
@@ -135,8 +193,8 @@ export function MeetingDetailPage() {
     try {
       const updated = await api.meetings.start(meetingId);
       setLocalMeeting(updated);
-    } catch (err) {
-      setActionError((err as Error).message);
+    } catch (error) {
+      setActionError((error as Error).message);
     } finally {
       setActionLoading(false);
     }
@@ -149,8 +207,8 @@ export function MeetingDetailPage() {
     try {
       const updated = await api.meetings.close(meetingId);
       setLocalMeeting(updated);
-    } catch (err) {
-      setActionError((err as Error).message);
+    } catch (error) {
+      setActionError((error as Error).message);
     } finally {
       setActionLoading(false);
     }
@@ -164,8 +222,8 @@ export function MeetingDetailPage() {
       await api.meetings.vote(meetingId, agendaItemId, choice);
       const updated = await api.meetings.get(meetingId);
       setLocalMeeting(updated);
-    } catch (err) {
-      setActionError((err as Error).message);
+    } catch (error) {
+      setActionError((error as Error).message);
     } finally {
       setVoteLoadingId(null);
     }
@@ -278,7 +336,20 @@ export function MeetingDetailPage() {
 
         {/* Agenda items */}
         <div className="card">
-          <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600 }}>Повестка дня</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>Повестка дня</h2>
+            {isManager && currentMeeting?.status === 'scheduled' && (
+              <button
+                onClick={() => { setEditingAgenda(undefined); setAgendaFormOpen(true); }}
+                style={{
+                  padding: '6px 12px', borderRadius: 6, fontSize: 13, fontWeight: 500,
+                  background: 'var(--color-brand)', color: '#fff', border: 'none', cursor: 'pointer',
+                }}
+              >
+                + Добавить пункт
+              </button>
+            )}
+          </div>
           {currentMeeting && currentMeeting.agenda_items.length > 0 ? (
             <div style={{ display: 'grid', gap: 12 }}>
               {currentMeeting.agenda_items.map(item => (
@@ -289,6 +360,9 @@ export function MeetingDetailPage() {
                   existingVote={myVotesByAgenda.get(item.id)}
                   onVote={choice => handleVote(item.id, choice)}
                   voteLoading={voteLoadingId === item.id}
+                  isManager={isManager}
+                  onEdit={i => { setEditingAgenda(i); setAgendaFormOpen(true); }}
+                  onDelete={handleAgendaDelete}
                 />
               ))}
             </div>
@@ -327,37 +401,80 @@ export function MeetingDetailPage() {
         )}
 
         {/* Protocol */}
-        {currentMeeting?.protocol && (
-          <div className="card">
-            <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
               <FileText size={18} /> Протокол
             </h2>
-            {currentMeeting.protocol.approved_at && (
-              <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-gray-7)' }}>
-                Утвержден: {new Date(currentMeeting.protocol.approved_at).toLocaleString('ru-RU')}
-              </p>
-            )}
-            <div style={{
-              padding: 16, borderRadius: 8, background: 'var(--color-gray-1)',
-              fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap',
-            }}>
-              {currentMeeting.protocol.content}
-            </div>
-            {currentMeeting.protocol.file && (
-              <a
-                href={currentMeeting.protocol.file}
-                target="_blank"
-                rel="noopener noreferrer"
+            {isManager && !currentMeeting?.protocol && (
+              <button
+                onClick={() => setProtocolFormOpen(true)}
                 style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  marginTop: 12, color: '#F26522', fontSize: 13, textDecoration: 'none',
+                  padding: '6px 12px', borderRadius: 6, fontSize: 13, fontWeight: 500,
+                  background: 'var(--color-brand)', color: '#fff', border: 'none', cursor: 'pointer',
                 }}
               >
-                <FileText size={14} /> Скачать файл протокола
-              </a>
+                + Создать протокол
+              </button>
+            )}
+            {isManager && currentMeeting?.protocol && (
+              <button
+                onClick={() => setProtocolFormOpen(true)}
+                style={{
+                  padding: '6px 12px', borderRadius: 6, fontSize: 13, fontWeight: 500,
+                  background: 'var(--color-brand)', color: '#fff', border: 'none', cursor: 'pointer',
+                }}
+              >
+                Редактировать
+              </button>
             )}
           </div>
-        )}
+          {currentMeeting?.protocol ? (
+            <>
+              {currentMeeting.protocol.approved_at && (
+                <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--color-gray-7)' }}>
+                  Утвержден: {new Date(currentMeeting.protocol.approved_at).toLocaleString('ru-RU')}
+                </p>
+              )}
+              <div style={{
+                padding: 16, borderRadius: 8, background: 'var(--color-gray-1)',
+                fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap',
+              }}>
+                {currentMeeting.protocol.content}
+              </div>
+              {currentMeeting.protocol.file && (
+                <a
+                  href={currentMeeting.protocol.file}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    marginTop: 12, color: '#F26522', fontSize: 13, textDecoration: 'none',
+                  }}
+                >
+                  <FileText size={14} /> Скачать файл протокола
+                </a>
+              )}
+            </>
+          ) : (
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--color-gray-7)' }}>Протокол не создан</p>
+          )}
+        </div>
+        <AgendaItemForm
+          open={agendaFormOpen}
+          onClose={() => { setAgendaFormOpen(false); setEditingAgenda(undefined); }}
+          onSaved={refetchMeeting}
+          meetingId={meetingId ?? 0}
+          initial={editingAgenda}
+        />
+
+        <MeetingProtocolForm
+          open={protocolFormOpen}
+          onClose={() => setProtocolFormOpen(false)}
+          onSaved={refetchMeeting}
+          meetingId={meetingId ?? 0}
+          initial={currentMeeting?.protocol ?? undefined}
+        />
       </>
     </DetailPageLayout>
   );
