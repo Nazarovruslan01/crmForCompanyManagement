@@ -12,8 +12,8 @@
 ### Фронтенд
 - TypeScript: ✅ 0 ошибок
 - ESLint: ✅ 0 предупреждений
-- Тесты: ❌ 2 упавших в `useList.test.ts`
-- Страниц реализовано: 20/20 (все роуты работают)
+- Тесты: ✅ 51/51 passed
+- Страниц реализовано: 21/21 (ReportsPage добавлена)
 
 ---
 
@@ -269,10 +269,10 @@ expect(fetcher).toHaveBeenLastCalledWith(
 
 | ID | Приоритет | Описание | Файлы | Оценка | Статус |
 |----|-----------|----------|-------|--------|--------|
-| F0-1 | 🔴 | Починить тесты useList (AbortSignal) | `hooks/useList.test.ts` | 30 мин | ☐ |
-| F1-1 | 🟡 | Reports страница + polling | `pages/ReportsPage.tsx`, `api.ts` | 1 день | ☐ |
-| F1-2 | 🟡 | Dashboard аналитика (4 endpoint) | `pages/DashboardPage.tsx`, `api.ts` | 4 часа | ☐ |
-| F1-3 | 🟡 | Billing Receipts (list + download) | `pages/BillingPage.tsx`, `api.ts` | 3 часа | ☐ |
+| F0-1 | 🔴 | Починить тесты useList (AbortSignal) | `hooks/useList.test.ts` | 30 мин | ☑️ 2026-06-10 |
+| F1-1 | 🟡 | Reports страница + polling | `pages/ReportsPage.tsx`, `api.ts` | 1 день | ☑️ 2026-06-11 |
+| F1-2 | 🟡 | Dashboard аналитика (4 endpoint) | `pages/DashboardPage.tsx`, `api.ts` | 4 часа | ☑️ 2026-06-11 |
+| F1-3 | 🟡 | Billing Receipts (list + download) | `pages/BillingPage.tsx`, `api.ts` | 3 часа | ☑️ 2026-06-11 |
 | F2-1 | 🟠 | Extraordinary Charges CRUD | `pages/BillingPage.tsx`, `api.ts` | 2 часа | ☐ |
 | F2-2 | 🟠 | Staff Tasks CRUD | `pages/StaffPage.tsx`, `forms/TaskForm.tsx` | 3 часа | ☐ |
 | F2-3 | 🟠 | Staff Departments CRUD | `pages/SettingsPage.tsx`, `api.ts` | 2 часа | ☐ |
@@ -287,7 +287,7 @@ expect(fetcher).toHaveBeenLastCalledWith(
 
 | Страница | Статус | Замечания |
 |----------|--------|-----------|
-| DashboardPage | ⚠️ | Таблицы фиксированного размера (8 записей), используется только `/summary` из 5 доступных endpoint |
+| DashboardPage | ✅ | Все 5 endpoint интегрированы (summary + buildingBreakdown + ticketMetrics + paymentMetrics + aidatTimeseries) |
 | BuildingsPage | ✅ | Полная |
 | BuildingDetailPage | ✅ | Список квартир без прямых действий (нормально, есть шахматная доска) |
 | BuildingSetupPage | ✅ | Отличный мастер настройки (3 шага) |
@@ -297,8 +297,9 @@ expect(fetcher).toHaveBeenLastCalledWith(
 | TicketDetailPage | ✅ | Rich: комментарии, вложения, смена статуса, назначение исполнителя |
 | ResidentsPage | ✅ | Полная |
 | ResidentDetailPage | ✅ | Полная |
+| ReportsPage | ✅ | Полная (F1-1 ☑️ — create form + polling + download) |
 | StaffPage | ⚠️ | На вкладке "Задачи" нет создания/редактирования/удаления → F2-2 |
-| BillingPage | ⚠️ | Нет вкладок "Квитанции" и "Доп. начисления" → F1-3, F2-1 |
+| BillingPage | ⚠️ | Вкладка "Квитанции" добавлена (F1-3 ☑️), ожидает "Доп. начисления" (F2-1) |
 | DocumentsPage | ✅ | Полная |
 | MeetingsPage | ✅ | Полная |
 | MeetingDetailPage | ⚠️ | Нет управления пунктами повестки и протоколом → F2-4 |
