@@ -391,13 +391,16 @@ export interface DashboardSummary {
 }
 
 export interface BuildingBreakdownItem {
-  building: {
-    id: number;
-    name: string;
-  };
-  residents_count: number;
-  apartments_count: number;
+  building_id: number;
+  building_name: string;
+  apartment_count: number;
+  occupied_count: number;
   occupancy_rate: number;
+  pending_charges_count: number;
+  overdue_charges_count: number;
+  total_debt: string;
+  active_tickets_count: number;
+  resolved_tickets_count: number;
 }
 
 export interface BuildingBreakdown {
@@ -411,8 +414,9 @@ export interface TicketMetricsCategory {
 }
 
 export interface TicketMetrics {
-  average_closure_time_hours: number;
-  by_category: TicketMetricsCategory[];
+  avg_resolution_time_hours: number | null;
+  by_category: Record<string, number>;
+  by_status: Record<string, number>;
 }
 
 export interface PaymentMetricsTrend {
@@ -422,6 +426,9 @@ export interface PaymentMetricsTrend {
 }
 
 export interface PaymentMetrics {
+  total_collected: string;
+  total_billed: string;
+  total_due: string;
   collection_rate: number;
   monthly_trend: PaymentMetricsTrend[];
 }

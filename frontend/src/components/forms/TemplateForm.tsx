@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
-import type { NotificationTemplate } from '../../types';
+import type { NotificationTemplate, NotificationEventType, NotificationChannel } from '../../types';
 import { notificationTemplateSchema, type NotificationTemplateFormData } from '../../validation/schemas';
 import { Modal } from '../ui/Modal';
 import { Field, SelectField, TextareaField, CheckboxField, FormActions } from '../ui/FormField';
@@ -47,8 +47,8 @@ export function TemplateForm({ open, onClose, onSaved, initial }: Props) {
     resolver: zodResolver(notificationTemplateSchema),
     defaultValues: {
       name: initial?.name ?? '',
-      notification_type: initial?.notification_type ?? '',
-      channel: initial?.channel ?? '',
+      notification_type: (initial?.notification_type ?? '') as NotificationEventType,
+      channel: (initial?.channel ?? '') as NotificationChannel,
       subject: initial?.subject ?? '',
       body_template: initial?.body_template ?? '',
       is_active: initial?.is_active ?? true,
@@ -59,8 +59,8 @@ export function TemplateForm({ open, onClose, onSaved, initial }: Props) {
     if (!open) return;
     reset({
       name: initial?.name ?? '',
-      notification_type: initial?.notification_type ?? '',
-      channel: initial?.channel ?? '',
+      notification_type: (initial?.notification_type ?? '') as NotificationEventType,
+      channel: (initial?.channel ?? '') as NotificationChannel,
       subject: initial?.subject ?? '',
       body_template: initial?.body_template ?? '',
       is_active: initial?.is_active ?? true,
@@ -70,11 +70,16 @@ export function TemplateForm({ open, onClose, onSaved, initial }: Props) {
   async function onSubmit(data: NotificationTemplateFormData) {
     setSaving(true);
     try {
+      const payload = {
+        ...data,
+        notification_type: data.notification_type as NotificationEventType,
+        channel: data.channel as NotificationChannel,
+      };
       if (isEdit) {
-        await api.notificationTemplates.update(initial!.id, data);
+        await api.notificationTemplates.update(initial!.id, payload);
         toast.success('Шаблон обновлён');
       } else {
-        await api.notificationTemplates.create(data);
+        await api.notificationTemplates.create(payload);
         toast.success('Шаблон создан');
       }
       onSaved();

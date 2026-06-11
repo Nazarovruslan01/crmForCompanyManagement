@@ -386,13 +386,14 @@ def send_telegram_debt_reminders() -> TelegramReminderResult:
         .order_by("due_date")
     )
 
-    overdue_list = list(overdue_charges)
-    if not overdue_list:
+    # Check existence without materializing the queryset
+    if not overdue_charges.exists():
         logger.info("No overdue charges found for Telegram reminders")
         return TelegramReminderResult(sent=0, failed=0, no_chat_id=0)
 
     # Step 3: Map apartments to residents
-    apartment_ids = [c.apartment.pk for c in overdue_list]
+    # Collect apartment IDs using values_list() to avoid materializing full objects
+    apartment_ids = list(overdue_charges.values_list("apartment__pk", flat=True))
     ownerships = Ownership.objects.filter(
         apartment__pk__in=apartment_ids,
         is_primary=True,
@@ -405,7 +406,7 @@ def send_telegram_debt_reminders() -> TelegramReminderResult:
 
     # Group charges by resident
     resident_charges: dict[int, list[AidatCharge]] = {}
-    for charge in overdue_list:
+    for charge in overdue_charges.select_related("apartment"):
         resident = apartment_to_resident.get(charge.apartment.pk)
         if not resident:
             continue

@@ -310,10 +310,10 @@ export function DashboardPage() {
             </thead>
             <tbody>
               {buildingBreakdown?.buildings.map((item, idx) => (
-                <tr key={item.building.id} style={{ borderBottom: idx < (buildingBreakdown.buildings.length - 1) ? '1px solid var(--color-gray-2)' : 'none' }}>
-                  <td style={{ padding: '12px 0', color: 'var(--color-gray-8)', fontWeight: 500 }}>{item.building.name}</td>
-                  <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.residents_count}</td>
-                  <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.apartments_count}</td>
+                <tr key={item.building_id} style={{ borderBottom: idx < (buildingBreakdown.buildings.length - 1) ? '1px solid var(--color-gray-2)' : 'none' }}>
+                  <td style={{ padding: '12px 0', color: 'var(--color-gray-8)', fontWeight: 500 }}>{item.building_name}</td>
+                  <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.occupied_count}</td>
+                  <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.apartment_count}</td>
                   <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.occupancy_rate}%</td>
                 </tr>
               ))}
@@ -336,14 +336,14 @@ export function DashboardPage() {
             <div>
               <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--color-gray-6)' }}>Среднее время закрытия</p>
               <p style={{ margin: '0 0 20px', fontSize: 32, fontWeight: 700, color: 'var(--color-brand)' }}>
-                {ticketMetrics?.average_closure_time_hours ?? 0}
+                {ticketMetrics?.avg_resolution_time_hours ?? 0}
                 <span style={{ fontSize: 16, marginLeft: 4, fontWeight: 500, color: 'var(--color-gray-6)' }}>часов</span>
               </p>
               <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 600, color: 'var(--color-gray-8)' }}>По категориям</p>
-              {ticketMetrics?.by_category.map((cat) => (
-                <div key={cat.category} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: 13 }}>
-                  <span style={{ color: 'var(--color-gray-7)' }}>{cat.category}</span>
-                  <span style={{ color: 'var(--color-gray-8)', fontWeight: 500 }}>{cat.count} ({cat.percentage}%)</span>
+              {ticketMetrics && Object.entries(ticketMetrics.by_category).map(([category, count]) => (
+                <div key={category} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: 13 }}>
+                  <span style={{ color: 'var(--color-gray-7)' }}>{category}</span>
+                  <span style={{ color: 'var(--color-gray-8)', fontWeight: 500 }}>{count}</span>
                 </div>
               ))}
             </div>
