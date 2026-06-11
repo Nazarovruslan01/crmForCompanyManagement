@@ -1,6 +1,7 @@
 """DRF mixins for caching and common patterns."""
 
 from typing import Any, cast
+from urllib.parse import parse_qs, urlencode, urlparse
 
 from django.core.cache import cache
 from django.db import models
@@ -89,7 +90,11 @@ class CacheListRetrieveMixin:
         """Build a cache key scoped to the model version and authenticated user."""
         version = self._cache_version()
         user_id = getattr(request.user, "id", "anon") if getattr(request.user, "is_authenticated", False) else "anon"
-        return f"{self.__class__.__name__}:v{version}:u{user_id}:{action}:{request.build_absolute_uri()}"
+        parsed = urlparse(request.build_absolute_uri())
+        # Sort query params so ?a=1&b=2 and ?b=2&a=1 map to the same cache key.
+        sorted_params = urlencode(sorted(parse_qs(parsed.query, keep_blank_values=True).items()), doseq=True)
+        normalized_uri = f"{parsed.scheme}://{parsed.netloc}{parsed.path}?{sorted_params}"
+        return f"{self.__class__.__name__}:v{version}:u{user_id}:{action}:{normalized_uri}"
 
     def _bump_cache_version(self) -> None:
         """Invalidate all cached list/retrieve entries for this model."""
