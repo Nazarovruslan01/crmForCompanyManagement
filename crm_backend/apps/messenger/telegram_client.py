@@ -6,9 +6,13 @@ from typing import Any, cast
 import requests
 from django.conf import settings
 
+from core.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
+
 logger = logging.getLogger(__name__)
 
 TELEGRAM_API_BASE = "https://api.telegram.org/bot"
+
+_telegram_breaker = CircuitBreaker("telegram_api", failure_threshold=5, recovery_timeout=120)
 
 
 def get_bot_token() -> str:
@@ -35,9 +39,13 @@ def send_telegram_message(
         payload["reply_markup"] = reply_markup
 
     try:
-        response = requests.post(url, json=payload, timeout=30)
-        response.raise_for_status()
-        return cast(dict[str, Any], response.json())
-    except requests.RequestException as exc:
+        with _telegram_breaker:
+            response = requests.post(url, json=payload, timeout=30)
+            response.raise_for_status()
+            return cast(dict[str, Any], response.json())
+    except CircuitBreakerOpenError as exc:
+        logger.warning("Telegram circuit breaker open: %s", exc)
+        return None
+    except (requests.RequestException, ValueError) as exc:
         logger.error("Failed to send Telegram message to %s: %s", chat_id, exc)
         return None

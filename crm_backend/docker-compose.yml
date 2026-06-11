@@ -46,6 +46,8 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.base
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
+      REDIS_CHANNELS_URL: ${REDIS_CHANNELS_URL:-redis://redis:6379/2}
+      REDIS_CACHE_URL: ${REDIS_CACHE_URL:-redis://redis:6379/1}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DEBUG: "True"
       CELERY_BROKER_URL: ${CELERY_BROKER_URL}
@@ -74,6 +76,8 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.base
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
+      REDIS_CHANNELS_URL: ${REDIS_CHANNELS_URL:-redis://redis:6379/2}
+      REDIS_CACHE_URL: ${REDIS_CACHE_URL:-redis://redis:6379/1}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DEBUG: "True"
       CELERY_BROKER_URL: ${CELERY_BROKER_URL}
@@ -95,6 +99,8 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.base
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
+      REDIS_CHANNELS_URL: ${REDIS_CHANNELS_URL:-redis://redis:6379/2}
+      REDIS_CACHE_URL: ${REDIS_CACHE_URL:-redis://redis:6379/1}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DEBUG: "True"
       CELERY_BROKER_URL: ${CELERY_BROKER_URL}
@@ -117,6 +123,8 @@ services:
       DJANGO_SETTINGS_MODULE: config.settings.base
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL}
+      REDIS_CHANNELS_URL: ${REDIS_CHANNELS_URL:-redis://redis:6379/2}
+      REDIS_CACHE_URL: ${REDIS_CACHE_URL:-redis://redis:6379/1}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DEBUG: "True"
       CELERY_BROKER_URL: ${CELERY_BROKER_URL}

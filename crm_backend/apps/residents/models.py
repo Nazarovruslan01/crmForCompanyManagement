@@ -97,18 +97,13 @@ class PersonalAccount(models.Model):
         Balance = sum of all charge amounts (base + late fees) - sum of all payments.
         Positive balance = resident owes money. Negative = overpaid.
         """
-        from apps.billing.models import AidatCharge, Payment
+        from apps.billing.models import AidatCharge, Payment, aggregate_total_due
 
-        total_charges = sum(
-            (
-                charge.total_due
-                for charge in AidatCharge.objects.filter(
-                    apartment=self.apartment,
-                    status__in=(AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE),
-                )
-            ),
-            Decimal("0"),
+        charges_qs = AidatCharge.objects.filter(
+            apartment=self.apartment,
+            status__in=(AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE),
         )
+        total_charges, _ = aggregate_total_due(charges_qs)
         total_payments = Payment.objects.filter(apartment=self.apartment, status=Payment.Status.COMPLETED).aggregate(
             total=models.Sum("amount")
         )["total"] or Decimal("0")

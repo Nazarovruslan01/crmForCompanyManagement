@@ -83,6 +83,61 @@ class AidatCharge(models.Model):
         return self.base_amount + self.late_fee_amount
 
 
+def aggregate_total_due(
+    qs: models.QuerySet["AidatCharge"],
+) -> tuple[Decimal, int]:
+    """Return (total, count) of base + late fees for an AidatCharge queryset.
+
+    Late fee model (mirrors ``AidatCharge.calculate_late_fee``):
+        late_fee = base_amount * late_fee_rate * days_overdue
+    where ``late_fee_rate`` is daily (default 0.001 = 0.1%/day) and
+    ``days_overdue = max(0, CURRENT_DATE - due_date)``.
+
+    PostgreSQL: folded into a single ``SUM(...)`` aggregate (O(1) memory).
+    SQLite/tests: iterates with ``total_due`` property. For PENDING/OVERDUE
+    querysets both paths produce identical results; for querysets including
+    PAID charges, the PostgreSQL aggregate includes late fees for all
+    statuses while the Python property returns 0 late fees for PAID charges.
+
+    The caller owns the queryset filter (e.g. status__in=(PENDING, OVERDUE)
+    for total debt, status=OVERDUE for overdue-only).
+    """
+    if connection.vendor == "postgresql":
+        # Function-local imports keep models.py free of ORM expression API
+        # at module load; CurrentDate lives in core.tasks to avoid the
+        # reverse import (core/ must not depend on apps/ at load time).
+        from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum, Value
+        from django.db.models.functions import Greatest
+
+        from core.tasks import CurrentDate
+
+        annotated = qs.annotate(
+            days_overdue=Greatest(
+                ExpressionWrapper(
+                    CurrentDate() - F("due_date"),
+                    output_field=DecimalField(max_digits=10, decimal_places=0),
+                ),
+                Value(0),
+            ),
+        )
+        res = annotated.aggregate(
+            total=Sum(
+                F("base_amount") + F("base_amount") * F("late_fee_rate") * F("days_overdue"),
+                output_field=DecimalField(max_digits=15, decimal_places=2),
+            ),
+            count=Count("id"),
+        )
+        return res["total"] or Decimal("0"), res["count"] or 0
+
+    # Fallback for SQLite/tests: single pass with iterator() for O(1) memory
+    total = Decimal("0")
+    count = 0
+    for c in qs.iterator():
+        total += c.total_due
+        count += 1
+    return total, count
+
+
 class ExtraordinaryCharge(models.Model):
     """Экстраординарный сбор (Olağanüstü Aidat) - e.g. for elevator repair"""
 
@@ -172,6 +227,7 @@ class Payment(models.Model):
         max_length=100,
         null=True,
         blank=True,
+        db_index=True,
         verbose_name="Iyzico Conversation ID",
     )
     iyzico_token = models.CharField(
