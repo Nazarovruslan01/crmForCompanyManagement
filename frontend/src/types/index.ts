@@ -435,3 +435,30 @@ export interface AidatTimeseriesData {
 export interface AidatTimeseries {
   data: AidatTimeseriesData[];
 }
+
+// ─── Reports ──────────────────────────────────────────────────────────────────
+
+export type ExportReportType = 'payments' | 'aidat_charges' | 'meetings' | 'residents' | 'apartments';
+export type ExportFormat     = 'csv' | 'xlsx' | 'pdf';
+export type ExportStatus     = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface ExportReport {
+  id: number;
+  report_type: ExportReportType;
+  format: ExportFormat;
+  status: ExportStatus;
+  filters: Record<string, unknown>;
+  file: string | null;
+  error_message: string;
+  created_at: string;
+  completed_at: string | null;
+}
+
+// ─── Billing Receipts ─────────────────────────────────────────────────────────
+
+export interface Receipt {
+  id: number;
+  payment: number;
+  pdf_url: string | null;
+  generated_at: string;
+}

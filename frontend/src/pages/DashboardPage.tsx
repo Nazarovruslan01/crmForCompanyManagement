@@ -3,7 +3,7 @@ import {
   Building2, ClipboardList, Users, Wallet,
   TrendingUp, AlertTriangle, ArrowRight,
 } from 'lucide-react';
-import { useDashboardSummary, useBuildingBreakdown, useTicketMetrics, usePaymentMetrics } from '../hooks/queries/useDashboard';
+import { useDashboardSummary, useBuildingBreakdown, useTicketMetrics, usePaymentMetrics, useAidatTimeseries } from '../hooks/queries/useDashboard';
 import { useAidatOverdue } from '../hooks/queries/useAidat';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
@@ -198,6 +198,7 @@ export function DashboardPage() {
   const { data: buildingBreakdown, isLoading: buildingLoading } = useBuildingBreakdown();
   const { data: ticketMetrics, isLoading: ticketMetricsLoading } = useTicketMetrics();
   const { data: paymentMetrics, isLoading: paymentMetricsLoading } = usePaymentMetrics();
+  const { data: aidatTimeseries, isLoading: aidatTimeseriesLoading } = useAidatTimeseries();
 
   const stats = summary ? {
     buildings: summary.buildings_count,
@@ -380,6 +381,36 @@ export function DashboardPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Aidat timeseries */}
+      <div style={{ ...CARD_STYLE, marginTop: 20 }}>
+        <SectionHeader title="Тренд айдат по зданиям" />
+        {aidatTimeseriesLoading ? (
+          <div style={{ color: 'var(--color-gray-6)', fontSize: 13 }}>Загрузка...</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--color-gray-3)' }}>
+                <th style={{ textAlign: 'left',  padding: '10px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Месяц</th>
+                <th style={{ textAlign: 'left',  padding: '10px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Здание</th>
+                <th style={{ textAlign: 'right', padding: '10px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Сумма</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(aidatTimeseries?.data ?? []).map((row, idx) => (
+                <tr key={`${row.month}-${row.building_name}-${idx}`} style={{ borderBottom: idx < (aidatTimeseries?.data?.length ?? 0) - 1 ? '1px solid var(--color-gray-2)' : 'none' }}>
+                  <td style={{ padding: '10px 0', color: 'var(--color-gray-7)' }}>{row.month}</td>
+                  <td style={{ padding: '10px 0', color: 'var(--color-gray-8)', fontWeight: 500 }}>{row.building_name}</td>
+                  <td style={{ padding: '10px 0', textAlign: 'right', color: 'var(--color-gray-8)', fontWeight: 500 }}>₺{Number(row.amount).toLocaleString('ru-RU')}</td>
+                </tr>
+              ))}
+              {(aidatTimeseries?.data.length ?? 0) === 0 && (
+                <tr><td colSpan={3} style={{ padding: '14px 0', color: 'var(--color-gray-5)', textAlign: 'center' }}>Нет данных</td></tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </PageLayout>
   );

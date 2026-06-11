@@ -24,6 +24,10 @@ import type {
   TicketMetrics,
   PaymentMetrics,
   AidatTimeseries,
+  ExportReport,
+  ExportReportType,
+  ExportFormat,
+  Receipt,
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v2';
@@ -230,6 +234,19 @@ class ApiClient {
       }),
   };
 
+  receipts = {
+    list:     (params?: Record<string, string>, signal?: AbortSignal) => this.list<Receipt>('/billing/receipts/', params, signal),
+    get:      (id: number, signal?: AbortSignal) => this.request<Receipt>(`/billing/receipts/${id}/`, { signal }),
+    download: (id: number, signal?: AbortSignal) => this.downloadFile(`/billing/receipts/${id}/download/`, signal),
+  };
+
+  reports = {
+    list:     (params?: Record<string, string>, signal?: AbortSignal) => this.list<ExportReport>('/reports/exports/', params, signal),
+    create:   (data: { report_type: ExportReportType; format: ExportFormat; filters?: Record<string, unknown> }, signal?: AbortSignal) =>
+                this.request<ExportReport>('/reports/exports/', { method: 'POST', body: JSON.stringify(data), signal }),
+    download: (id: number, signal?: AbortSignal) => this.downloadFile(`/reports/exports/${id}/download/`, signal),
+  };
+
   // ─── Staff ──────────────────────────────────────────────────────────────────
 
   employees    = this.crud<Employee>      ('/staff/employees');
@@ -263,6 +280,42 @@ class ApiClient {
         signal,
       }),
   };
+
+  // ─── File download ───────────────────────────────────────────────────────────
+
+  async downloadFile(endpoint: string, signal?: AbortSignal): Promise<{ blob: Blob; filename?: string }> {
+    const url = `${API_BASE}${endpoint}`;
+    const headers: Record<string, string> = {};
+    const token = this.getAccessToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    let response = await fetch(url, { headers, credentials: 'include', signal });
+
+    if (response.status === 401) {
+      const refreshed = await this.refreshAccessToken();
+      if (refreshed) {
+        headers['Authorization'] = `Bearer ${this.accessToken}`;
+        response = await fetch(url, { headers, credentials: 'include', signal });
+      }
+    }
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      const isJson = response.headers.get('content-type')?.includes('application/json');
+      let body: Record<string, unknown> = {};
+      if (isJson) { try { body = JSON.parse(text) as Record<string, unknown>; } catch { /* ignore */ } }
+      const message = (body.detail ?? body.error ?? (text.slice(0, 120) || `HTTP ${response.status}`)) as string;
+      throw new Error(message);
+    }
+
+    const disposition = response.headers.get('Content-Disposition');
+    const filenameMatch = disposition?.match(/filename="?([^";\n]+)"?/);
+    const rawFilename = filenameMatch?.[1];
+    const safeFilename = rawFilename
+      ? rawFilename.replace(/[^a-zA-Z0-9._\-() ]/g, '_').replace(/^\.+/, '')
+      : undefined;
+    return { blob: await response.blob(), filename: safeFilename };
+  }
 
   // ─── Dashboard ───────────────────────────────────────────────────────────────
 
