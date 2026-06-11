@@ -3,7 +3,7 @@ import {
   Building2, ClipboardList, Users, Wallet,
   TrendingUp, AlertTriangle, ArrowRight,
 } from 'lucide-react';
-import { useDashboardSummary } from '../hooks/queries/useDashboard';
+import { useDashboardSummary, useBuildingBreakdown, useTicketMetrics, usePaymentMetrics, useAidatTimeseries } from '../hooks/queries/useDashboard';
 import { useAidatOverdue } from '../hooks/queries/useAidat';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
@@ -185,6 +185,10 @@ export function DashboardPage() {
   const navigate = useNavigate();
   const { data: summary, isLoading: statsLoading, error: statsError } = useDashboardSummary();
   const { data: overdueData, isLoading: overdueLoading, error: overdueError } = useAidatOverdue({ page_size: '8' });
+  const { data: buildingBreakdown, isLoading: buildingLoading } = useBuildingBreakdown();
+  const { data: ticketMetrics, isLoading: ticketMetricsLoading } = useTicketMetrics();
+  const { data: paymentMetrics, isLoading: paymentMetricsLoading } = usePaymentMetrics();
+  useAidatTimeseries();
 
   const stats = summary ? {
     buildings: summary.buildings_count,
@@ -287,6 +291,112 @@ export function DashboardPage() {
           />
         </div>
 
+      </div>
+
+      {/* Building breakdown section */}
+      <div style={{
+        background: '#fff', borderRadius: 14,
+        border: '1px solid var(--color-gray-3)',
+        padding: 20,
+        marginTop: 20,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+      }}>
+        <SectionHeader title="Статистика по зданиям" />
+        {buildingLoading ? (
+          <div style={{ color: 'var(--color-gray-6)', fontSize: 13 }}>Загрузка...</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--color-gray-3)' }}>
+                <th style={{ textAlign: 'left', padding: '12px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Здание</th>
+                <th style={{ textAlign: 'right', padding: '12px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Жильцов</th>
+                <th style={{ textAlign: 'right', padding: '12px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Квартир</th>
+                <th style={{ textAlign: 'right', padding: '12px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Заполненность</th>
+              </tr>
+            </thead>
+            <tbody>
+              {buildingBreakdown?.buildings.map((item, idx) => (
+                <tr key={idx} style={{ borderBottom: idx < (buildingBreakdown.buildings.length - 1) ? '1px solid var(--color-gray-2)' : 'none' }}>
+                  <td style={{ padding: '12px 0', color: 'var(--color-gray-8)', fontWeight: 500 }}>{item.building.name}</td>
+                  <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.residents_count}</td>
+                  <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.apartments_count}</td>
+                  <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.occupancy_rate}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Ticket metrics section */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20,
+        marginTop: 20,
+      }}>
+        {/* Average closure time */}
+        <div style={{
+          background: '#fff', borderRadius: 14,
+          border: '1px solid var(--color-gray-3)',
+          padding: 20,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        }}>
+          <SectionHeader title="Заявки" />
+          {ticketMetricsLoading ? (
+            <div style={{ color: 'var(--color-gray-6)', fontSize: 13 }}>Загрузка...</div>
+          ) : (
+            <div>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--color-gray-6)' }}>Среднее время закрытия</p>
+              <p style={{ margin: '0 0 20px', fontSize: 32, fontWeight: 700, color: 'var(--color-brand)' }}>
+                {ticketMetrics?.average_closure_time_hours ?? 0}
+                <span style={{ fontSize: 16, marginLeft: 4, fontWeight: 500, color: 'var(--color-gray-6)' }}>часов</span>
+              </p>
+              <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 600, color: 'var(--color-gray-8)' }}>По категориям</p>
+              {ticketMetrics?.by_category.map((cat, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: 13 }}>
+                  <span style={{ color: 'var(--color-gray-7)' }}>{cat.category}</span>
+                  <span style={{ color: 'var(--color-gray-8)', fontWeight: 500 }}>{cat.count} ({cat.percentage}%)</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Payment metrics */}
+        <div style={{
+          background: '#fff', borderRadius: 14,
+          border: '1px solid var(--color-gray-3)',
+          padding: 20,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        }}>
+          <SectionHeader title="Платежи" />
+          {paymentMetricsLoading ? (
+            <div style={{ color: 'var(--color-gray-6)', fontSize: 13 }}>Загрузка...</div>
+          ) : (
+            <div>
+              <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-gray-6)' }}>Коэффициент сбора</p>
+              <div style={{
+                background: '#ECFDF5', borderRadius: 10, padding: '12px 16px',
+                marginBottom: 20, textAlign: 'center',
+              }}>
+                <p style={{ margin: 0, fontSize: 28, fontWeight: 700, color: '#10b981' }}>
+                  {paymentMetrics?.collection_rate ?? 0}%
+                </p>
+              </div>
+              <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 600, color: 'var(--color-gray-8)' }}>Месячный тренд</p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <tbody>
+                  {paymentMetrics?.monthly_trend.map((trend, idx) => (
+                    <tr key={idx} style={{ borderBottom: idx < (paymentMetrics.monthly_trend.length - 1) ? '1px solid var(--color-gray-2)' : 'none' }}>
+                      <td style={{ padding: '8px 0', color: 'var(--color-gray-7)' }}>{trend.month}</td>
+                      <td style={{ padding: '8px 0', textAlign: 'right', color: 'var(--color-gray-8)', fontWeight: 500 }}>₺{Number(trend.collected).toLocaleString('ru-RU')}</td>
+                      <td style={{ padding: '8px 0 8px 12px', textAlign: 'right', color: 'var(--color-gray-6)', fontSize: 11 }}>/ ₺{Number(trend.total).toLocaleString('ru-RU')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </PageLayout>
   );

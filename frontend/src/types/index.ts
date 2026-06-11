@@ -389,3 +389,49 @@ export interface DashboardSummary {
   occupancy_rate: number;
   recent_tickets: Ticket[];
 }
+
+export interface BuildingBreakdownItem {
+  building: {
+    id: number;
+    name: string;
+  };
+  residents_count: number;
+  apartments_count: number;
+  occupancy_rate: number;
+}
+
+export interface BuildingBreakdown {
+  buildings: BuildingBreakdownItem[];
+}
+
+export interface TicketMetricsCategory {
+  category: string;
+  count: number;
+  percentage: number;
+}
+
+export interface TicketMetrics {
+  average_closure_time_hours: number;
+  by_category: TicketMetricsCategory[];
+}
+
+export interface PaymentMetricsTrend {
+  month: string;
+  collected: string;
+  total: string;
+}
+
+export interface PaymentMetrics {
+  collection_rate: number;
+  monthly_trend: PaymentMetricsTrend[];
+}
+
+export interface AidatTimeseriesData {
+  month: string;
+  building_name: string;
+  amount: string;
+}
+
+export interface AidatTimeseries {
+  data: AidatTimeseriesData[];
+}

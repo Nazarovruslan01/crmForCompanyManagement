@@ -20,6 +20,10 @@ import type {
   User,
   ChessboardResponse,
   DashboardSummary,
+  BuildingBreakdown,
+  TicketMetrics,
+  PaymentMetrics,
+  AidatTimeseries,
 } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api/v2';
@@ -264,6 +268,10 @@ class ApiClient {
 
   dashboard = {
     summary: (signal?: AbortSignal) => this.request<DashboardSummary>('/dashboard/summary/', { signal }),
+    buildingBreakdown: (signal?: AbortSignal) => this.request<BuildingBreakdown>('/dashboard/building-breakdown/', { signal }),
+    ticketMetrics: (signal?: AbortSignal) => this.request<TicketMetrics>('/dashboard/ticket-metrics/', { signal }),
+    paymentMetrics: (signal?: AbortSignal) => this.request<PaymentMetrics>('/dashboard/payment-metrics/', { signal }),
+    aidatTimeseries: (signal?: AbortSignal) => this.request<AidatTimeseries>('/dashboard/aidat-timeseries/', { signal }),
   };
 }
 
