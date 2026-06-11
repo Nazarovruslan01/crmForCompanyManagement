@@ -277,9 +277,9 @@ expect(fetcher).toHaveBeenLastCalledWith(
 | F2-2 | 🟠 | Staff Tasks CRUD | `pages/StaffPage.tsx`, `forms/TaskForm.tsx` | 3 часа | ☑️ 2026-06-11 |
 | F2-3 | 🟠 | Staff Departments CRUD | `pages/SettingsPage.tsx`, `api.ts` | 2 часа | ☑️ 2026-06-11 |
 | F2-4 | 🟠 | Meetings Protocols + Agenda Items | `pages/MeetingDetailPage.tsx`, `api.ts` | 4 часа | ☑️ 2026-06-11 |
-| F3-1 | 🟢 | Notification Templates CRUD | `pages/SettingsPage.tsx` | 2 часа | ✅ |
+| F3-1 | 🟢 | Notification Templates CRUD | `pages/SettingsPage.tsx` | 2 часа | ☑️ 2026-06-11 |
 | F3-2 | 🟢 | Unread notifications бейдж | `components/DashboardLayout.tsx` | 1 час | ⏸ требует поля read_at в модели |
-| B-P3-3 | 🟢 | pgBouncer / connection pooling | `settings/production.py` | 0.5 дня | ✅ CONN_HEALTH_CHECKS добавлен |
+| B-P3-3 | 🟢 | pgBouncer / connection pooling | `settings/production.py` | 0.5 дня | ☑️ 2026-06-11 CONN_HEALTH_CHECKS |
 
 ---
 
@@ -304,6 +304,6 @@ expect(fetcher).toHaveBeenLastCalledWith(
 | MeetingsPage | ✅ | Полная |
 | MeetingDetailPage | ✅ | Полная (F2-4 ☑️ — Agenda Items + Protocol CRUD) |
 | NotificationsPage | ✅ | Read-only журнал (корректно для своей роли) |
-| SettingsPage | ✅ | Полная (F2-3 ☑️ Departments CRUD, ожидает F3-1 Notification Templates) |
+| SettingsPage | ✅ | Полная (F2-3 ☑️ Departments CRUD, F3-1 ☑️ Notification Templates CRUD) |
 | LoginPage | ✅ | Полная, включая MFA |
 | NotFoundPage | ✅ | — |
