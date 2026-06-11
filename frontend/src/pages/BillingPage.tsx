@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import toast from 'react-hot-toast';
+import { triggerDownload } from '../lib/download';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
@@ -9,13 +11,14 @@ import { SearchInput } from '../components/ui/SearchInput';
 import { FilterSelect } from '../components/ui/FilterSelect';
 import { TabBar } from '../components/ui/TabBar';
 import { AIDAT_STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS } from '../constants/options';
-import type { AidatCharge, Payment } from '../types';
+import type { AidatCharge, Payment, Receipt } from '../types';
 
-type Tab = 'aidat' | 'payments';
+type Tab = 'aidat' | 'payments' | 'receipts';
 
 const TABS: { value: Tab; label: string }[] = [
   { value: 'aidat',    label: 'Айдат (квартплата)' },
   { value: 'payments', label: 'История платежей' },
+  { value: 'receipts', label: 'Квитанции' },
 ];
 
 // ─── Columns ─────────────────────────────────────────────────────────────────
@@ -107,6 +110,43 @@ const paymentColumns: Column<Payment>[] = [
   },
 ];
 
+const receiptColumns = (onDownload: (id: number) => void, downloadingIds: Set<number>): Column<Receipt>[] => [
+  {
+    key: 'id',
+    label: '#',
+    render: r => <span style={{ color: 'var(--color-gray-6)', fontSize: 12 }}>#{r.id}</span>,
+  },
+  {
+    key: 'payment',
+    label: 'Платёж',
+    render: r => <span className="text-semi text-mono" style={{ fontSize: 12.5 }}>#{r.payment}</span>,
+  },
+  {
+    key: 'generated_at',
+    label: 'Сформирован',
+    render: r => new Date(r.generated_at).toLocaleDateString('ru-RU'),
+  },
+  {
+    key: 'pdf',
+    label: 'PDF',
+    render: r => (
+      <button
+        onClick={() => onDownload(r.id)}
+        disabled={downloadingIds.has(r.id)}
+        style={{
+          background: 'none', border: '1px solid var(--color-brand)',
+          color: 'var(--color-brand)', borderRadius: 6,
+          padding: '4px 10px', fontSize: 12, fontWeight: 500,
+          cursor: downloadingIds.has(r.id) ? 'not-allowed' : 'pointer',
+          opacity: downloadingIds.has(r.id) ? 0.6 : 1,
+        }}
+      >
+        {downloadingIds.has(r.id) ? 'Загрузка...' : 'Скачать'}
+      </button>
+    ),
+  },
+];
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export function BillingPage() {
@@ -133,6 +173,22 @@ export function BillingPage() {
 
   const aidat    = useList<AidatCharge>(p => api.aidatCharges.list(p), aidatParams);
   const payments = useList<Payment>(p => api.payments.list(p), payParams);
+  const receipts = useList<Receipt>(p => api.receipts.list(p), undefined);
+  const [downloadingReceiptIds, setDownloadingReceiptIds] = useState<Set<number>>(new Set());
+
+  const handleReceiptDownload = async (id: number) => {
+    if (downloadingReceiptIds.has(id)) return;
+    setDownloadingReceiptIds(prev => new Set(prev).add(id));
+    try {
+      const { blob, filename } = await api.receipts.download(id);
+      triggerDownload(blob, filename);
+    } catch (err) {
+      console.error('Receipt download failed:', err);
+      toast.error(err instanceof Error ? err.message : 'Не удалось скачать квитанцию');
+    } finally {
+      setDownloadingReceiptIds(prev => { const s = new Set(prev); s.delete(id); return s; });
+    }
+  };
 
   return (
     <PageLayout title="Платежи">
@@ -200,6 +256,24 @@ export function BillingPage() {
             hasNext={payments.hasNext}
             onPrevious={payments.goPrevious}
             onNext={payments.goNext}
+          />
+        </>
+      )}
+      {tab === 'receipts' && (
+        <>
+          <DataTable
+            columns={receiptColumns(handleReceiptDownload, downloadingReceiptIds)}
+            rows={receipts.data}
+            loading={receipts.loading}
+            error={receipts.error}
+            keyExtractor={r => r.id}
+            emptyText="Нет квитанций"
+          />
+          <Pagination
+            hasPrevious={receipts.hasPrevious}
+            hasNext={receipts.hasNext}
+            onPrevious={receipts.goPrevious}
+            onNext={receipts.goNext}
           />
         </>
       )}

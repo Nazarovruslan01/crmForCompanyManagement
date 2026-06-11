@@ -73,6 +73,7 @@ describe('useList', () => {
     expect(result.current.hasNext).toBe(false);
     expect(fetcher).toHaveBeenLastCalledWith(
       expect.objectContaining({ cursor: 'abc123' }),
+      expect.any(AbortSignal),
     );
   });
 
@@ -103,6 +104,7 @@ describe('useList', () => {
     await waitFor(() => expect(result.current.data).toEqual([{ id: 1 }]));
     expect(fetcher).toHaveBeenLastCalledWith(
       expect.objectContaining({ cursor: 'prev1' }),
+      expect.any(AbortSignal),
     );
   });
 

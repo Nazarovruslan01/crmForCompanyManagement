@@ -1,4 +1,5 @@
-import type { TicketCategory, TicketPriority, TicketStatus, MeetingStatus, AidatStatus, NotificationLog } from '../types';
+import type { TicketCategory, TicketPriority, TicketStatus, MeetingStatus, AidatStatus, NotificationLog, ExportReportType, ExportFormat, ExportStatus } from '../types';
+import type { BadgeColor } from '../components/ui/Badge';
 
 export type Option<T extends string = string> = { value: T; label: string };
 
@@ -130,3 +131,26 @@ export const APARTMENT_STATUS_OPTIONS: Option<'active' | 'inactive' | 'pending_h
   { value: 'inactive',        label: 'Неактивна' },
   { value: 'pending_handover', label: 'Ожидает сдачи' },
 ];
+
+// ─── Reports ──────────────────────────────────────────────────────────────────
+
+export const REPORT_TYPE_OPTIONS: Option<ExportReportType>[] = [
+  { value: 'payments',      label: 'Платежи' },
+  { value: 'aidat_charges', label: 'Айдат' },
+  { value: 'meetings',      label: 'Собрания' },
+  { value: 'residents',     label: 'Жильцы' },
+  { value: 'apartments',    label: 'Квартиры' },
+];
+
+export const REPORT_FORMAT_OPTIONS: Option<ExportFormat>[] = [
+  { value: 'csv',  label: 'CSV' },
+  { value: 'xlsx', label: 'XLSX' },
+  { value: 'pdf',  label: 'PDF' },
+];
+
+export const EXPORT_STATUS_COLOR: Record<ExportStatus, BadgeColor> = {
+  pending:    'blue',
+  processing: 'orange',
+  completed:  'green',
+  failed:     'red',
+};

@@ -15,7 +15,7 @@ from rest_framework.response import Response
 
 from apps.accounts.audit import AuditLogMixin
 from common.permissions import IsAdminOrManager, IsAdminOrManagerOrResidentReadOwn
-from common.throttles import IyzicoCallbackThrottle, UserReadThrottle, UserWriteThrottle
+from common.throttles import IyzicoCallbackThrottle, UserReadThrottle, UserWriteThrottle, get_client_ip
 from core.mixins import CacheListRetrieveMixin, ManagerQuerySetMixin, ResidentQuerySetMixin
 from core.permissions import BasePermissionMixin
 
@@ -423,7 +423,7 @@ class IyzicoViewSet(BasePermissionMixin, viewsets.ViewSet):
                 else timezone.now().strftime("%Y-%m-%d %H:%M:%S")
             ),
             "registrationAddress": building.address or "Istanbul",
-            "ip": self._get_client_ip(request),
+            "ip": get_client_ip(request),
             "city": building.city or "Istanbul",
             "country": "Turkey",
             "zipCode": "34000",
@@ -515,7 +515,7 @@ class IyzicoViewSet(BasePermissionMixin, viewsets.ViewSet):
                 secret_key,
             ):
                 logger.warning(
-                    "Iyzico callback: invalid signature for token %s from IP %s", token, self._get_client_ip(request)
+                    "Iyzico callback: invalid signature for token %s from IP %s", token, get_client_ip(request)
                 )
                 return Response({"detail": "Invalid signature."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -666,11 +666,3 @@ class IyzicoViewSet(BasePermissionMixin, viewsets.ViewSet):
 
         serializer = PaymentSerializer(payment)
         return Response(serializer.data)
-
-    @staticmethod
-    def _get_client_ip(request: Request) -> str:
-        """Extract client IP from request headers."""
-        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
-        if x_forwarded_for:
-            return x_forwarded_for.split(",")[0].strip()
-        return request.META.get("REMOTE_ADDR", "127.0.0.1")

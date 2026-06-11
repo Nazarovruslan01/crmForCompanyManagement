@@ -26,6 +26,7 @@ const MeetingsPage = lazy(() => import('./pages/MeetingsPage').then(m => ({ defa
 const MeetingDetailPage = lazy(() => import('./pages/MeetingDetailPage').then(m => ({ default: m.MeetingDetailPage })));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const ReportsPage  = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -93,6 +94,7 @@ export function AppRoutes() {
         <Route path="meetings/:id"  element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><MeetingDetailPage /></AuthorizeRoute>} />
         <Route path="notifications" element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><NotificationsPage /></AuthorizeRoute>} />
         <Route path="settings"      element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><SettingsPage /></AuthorizeRoute>} />
+        <Route path="reports"       element={<AuthorizeRoute allowedRoles={['admin', 'manager']}><ReportsPage /></AuthorizeRoute>} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
