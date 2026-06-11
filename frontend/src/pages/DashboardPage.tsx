@@ -3,7 +3,7 @@ import {
   Building2, ClipboardList, Users, Wallet,
   TrendingUp, AlertTriangle, ArrowRight,
 } from 'lucide-react';
-import { useDashboardSummary, useBuildingBreakdown, useTicketMetrics, usePaymentMetrics, useAidatTimeseries } from '../hooks/queries/useDashboard';
+import { useDashboardSummary, useBuildingBreakdown, useTicketMetrics, usePaymentMetrics } from '../hooks/queries/useDashboard';
 import { useAidatOverdue } from '../hooks/queries/useAidat';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
@@ -179,6 +179,16 @@ const overdueColumns: Column<AidatCharge>[] = [
   },
 ];
 
+// ─── Shared styles ───────────────────────────────────────────────────────────
+
+const CARD_STYLE = {
+  background: '#fff',
+  borderRadius: 14,
+  border: '1px solid var(--color-gray-3)',
+  padding: 20,
+  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+} as const;
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
@@ -188,7 +198,6 @@ export function DashboardPage() {
   const { data: buildingBreakdown, isLoading: buildingLoading } = useBuildingBreakdown();
   const { data: ticketMetrics, isLoading: ticketMetricsLoading } = useTicketMetrics();
   const { data: paymentMetrics, isLoading: paymentMetricsLoading } = usePaymentMetrics();
-  useAidatTimeseries();
 
   const stats = summary ? {
     buildings: summary.buildings_count,
@@ -255,12 +264,7 @@ export function DashboardPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
 
         {/* Recent tickets */}
-        <div style={{
-          background: '#fff', borderRadius: 14,
-          border: '1px solid var(--color-gray-3)',
-          padding: 20,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        }}>
+        <div style={CARD_STYLE}>
           <SectionHeader title="Последние заявки" linkTo="/tickets" linkLabel="Все заявки" />
           <DataTable
             columns={ticketColumns}
@@ -274,12 +278,7 @@ export function DashboardPage() {
         </div>
 
         {/* Overdue charges */}
-        <div style={{
-          background: '#fff', borderRadius: 14,
-          border: '1px solid var(--color-gray-3)',
-          padding: 20,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        }}>
+        <div style={CARD_STYLE}>
           <SectionHeader title="Просроченные платежи" linkTo="/billing" linkLabel="Все платежи" />
           <DataTable
             columns={overdueColumns}
@@ -294,13 +293,7 @@ export function DashboardPage() {
       </div>
 
       {/* Building breakdown section */}
-      <div style={{
-        background: '#fff', borderRadius: 14,
-        border: '1px solid var(--color-gray-3)',
-        padding: 20,
-        marginTop: 20,
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-      }}>
+      <div style={{ ...CARD_STYLE, marginTop: 20 }}>
         <SectionHeader title="Статистика по зданиям" />
         {buildingLoading ? (
           <div style={{ color: 'var(--color-gray-6)', fontSize: 13 }}>Загрузка...</div>
@@ -316,7 +309,7 @@ export function DashboardPage() {
             </thead>
             <tbody>
               {buildingBreakdown?.buildings.map((item, idx) => (
-                <tr key={idx} style={{ borderBottom: idx < (buildingBreakdown.buildings.length - 1) ? '1px solid var(--color-gray-2)' : 'none' }}>
+                <tr key={item.building.id} style={{ borderBottom: idx < (buildingBreakdown.buildings.length - 1) ? '1px solid var(--color-gray-2)' : 'none' }}>
                   <td style={{ padding: '12px 0', color: 'var(--color-gray-8)', fontWeight: 500 }}>{item.building.name}</td>
                   <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.residents_count}</td>
                   <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.apartments_count}</td>
@@ -334,12 +327,7 @@ export function DashboardPage() {
         marginTop: 20,
       }}>
         {/* Average closure time */}
-        <div style={{
-          background: '#fff', borderRadius: 14,
-          border: '1px solid var(--color-gray-3)',
-          padding: 20,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        }}>
+        <div style={CARD_STYLE}>
           <SectionHeader title="Заявки" />
           {ticketMetricsLoading ? (
             <div style={{ color: 'var(--color-gray-6)', fontSize: 13 }}>Загрузка...</div>
@@ -351,8 +339,8 @@ export function DashboardPage() {
                 <span style={{ fontSize: 16, marginLeft: 4, fontWeight: 500, color: 'var(--color-gray-6)' }}>часов</span>
               </p>
               <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 600, color: 'var(--color-gray-8)' }}>По категориям</p>
-              {ticketMetrics?.by_category.map((cat, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: 13 }}>
+              {ticketMetrics?.by_category.map((cat) => (
+                <div key={cat.category} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: 13 }}>
                   <span style={{ color: 'var(--color-gray-7)' }}>{cat.category}</span>
                   <span style={{ color: 'var(--color-gray-8)', fontWeight: 500 }}>{cat.count} ({cat.percentage}%)</span>
                 </div>
@@ -362,12 +350,7 @@ export function DashboardPage() {
         </div>
 
         {/* Payment metrics */}
-        <div style={{
-          background: '#fff', borderRadius: 14,
-          border: '1px solid var(--color-gray-3)',
-          padding: 20,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        }}>
+        <div style={CARD_STYLE}>
           <SectionHeader title="Платежи" />
           {paymentMetricsLoading ? (
             <div style={{ color: 'var(--color-gray-6)', fontSize: 13 }}>Загрузка...</div>
@@ -386,7 +369,7 @@ export function DashboardPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <tbody>
                   {paymentMetrics?.monthly_trend.map((trend, idx) => (
-                    <tr key={idx} style={{ borderBottom: idx < (paymentMetrics.monthly_trend.length - 1) ? '1px solid var(--color-gray-2)' : 'none' }}>
+                    <tr key={trend.month} style={{ borderBottom: idx < (paymentMetrics.monthly_trend.length - 1) ? '1px solid var(--color-gray-2)' : 'none' }}>
                       <td style={{ padding: '8px 0', color: 'var(--color-gray-7)' }}>{trend.month}</td>
                       <td style={{ padding: '8px 0', textAlign: 'right', color: 'var(--color-gray-8)', fontWeight: 500 }}>₺{Number(trend.collected).toLocaleString('ru-RU')}</td>
                       <td style={{ padding: '8px 0 8px 12px', textAlign: 'right', color: 'var(--color-gray-6)', fontSize: 11 }}>/ ₺{Number(trend.total).toLocaleString('ru-RU')}</td>

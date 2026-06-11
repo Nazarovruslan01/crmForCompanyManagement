@@ -266,12 +266,16 @@ class ApiClient {
 
   // ─── Dashboard ───────────────────────────────────────────────────────────────
 
+  private dashboardEndpoint<T>(key: string) {
+    return (signal?: AbortSignal) => this.request<T>(`/dashboard/${key}/`, { signal });
+  }
+
   dashboard = {
-    summary: (signal?: AbortSignal) => this.request<DashboardSummary>('/dashboard/summary/', { signal }),
-    buildingBreakdown: (signal?: AbortSignal) => this.request<BuildingBreakdown>('/dashboard/building-breakdown/', { signal }),
-    ticketMetrics: (signal?: AbortSignal) => this.request<TicketMetrics>('/dashboard/ticket-metrics/', { signal }),
-    paymentMetrics: (signal?: AbortSignal) => this.request<PaymentMetrics>('/dashboard/payment-metrics/', { signal }),
-    aidatTimeseries: (signal?: AbortSignal) => this.request<AidatTimeseries>('/dashboard/aidat-timeseries/', { signal }),
+    summary: this.dashboardEndpoint<DashboardSummary>('summary'),
+    buildingBreakdown: this.dashboardEndpoint<BuildingBreakdown>('building-breakdown'),
+    ticketMetrics: this.dashboardEndpoint<TicketMetrics>('ticket-metrics'),
+    paymentMetrics: this.dashboardEndpoint<PaymentMetrics>('payment-metrics'),
+    aidatTimeseries: this.dashboardEndpoint<AidatTimeseries>('aidat-timeseries'),
   };
 }
 
