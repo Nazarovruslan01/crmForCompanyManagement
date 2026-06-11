@@ -111,8 +111,11 @@ class ApartmentChessboardSerializer(serializers.ModelSerializer):
         aidat_charges is prefetched via Prefetch in the view — sum() iterates in-memory, not a DB query.
         """
         return sum(
-            (c.total_due for c in obj.aidat_charges.all()  # type: ignore[attr-defined]
-             if c.status in (AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE)),
+            (
+                c.total_due
+                for c in obj.aidat_charges.all()  # type: ignore[attr-defined]
+                if c.status in (AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE)
+            ),
             Decimal("0"),
         )
 
