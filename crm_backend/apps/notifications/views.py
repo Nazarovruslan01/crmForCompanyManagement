@@ -42,7 +42,7 @@ class NotificationLogViewSet(AuditLogMixin, BasePermissionMixin, viewsets.ModelV
     queryset = NotificationLog.objects.select_related("recipient", "template").all()
     serializer_class = NotificationLogSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
-    filterset_fields = ["status", "channel", "recipient"]
+    filterset_fields = ["status", "channel", "recipient", "read_at"]
     search_fields = ["recipient__name", "external_id"]
     ordering_fields = ["created_at", "sent_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]

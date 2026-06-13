@@ -58,36 +58,30 @@ export function NotificationsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [channelFilter, setChannelFilter] = useState('');
-  const [markedUnread, setMarkedUnread] = useState<Set<number>>(new Set());
-
   // Mark unread notifications as read when page is opened
   useEffect(() => {
+    const controller = new AbortController();
+
     const markUnreadAsRead = async () => {
       try {
-        const result = await api.notificationLogs.unread();
-        if (result.count > 0) {
-          // Fetch unread notifications and mark them as read
-          const response = await api.notificationLogs.list({ 'read_at__isnull': 'true' });
-          if (response.results) {
-            for (const notification of response.results) {
-              if (!markedUnread.has(notification.id)) {
-                try {
-                  await api.notificationLogs.markRead(notification.id);
-                  setMarkedUnread(prev => new Set(prev).add(notification.id));
-                } catch (err) {
-                  console.error(`Failed to mark notification ${notification.id} as read:`, err);
-                }
-              }
-            }
-          }
+        const response = await api.notificationLogs.list({ 'read_at__isnull': 'True' });
+        if (response.results && response.results.length > 0) {
+          await Promise.all(
+            response.results.map(notification =>
+              api.notificationLogs.markRead(notification.id, controller.signal)
+            )
+          );
         }
       } catch (error) {
-        console.error('Failed to mark notifications as read:', error);
+        if ((error as { name?: string }).name !== 'AbortError') {
+          console.error('Failed to mark notifications as read:', error);
+        }
       }
     };
 
     markUnreadAsRead();
-  }, [markedUnread]);
+    return () => controller.abort();
+  }, []);
 
   const params = useMemo(() => {
     const p: Record<string, string> = {};
