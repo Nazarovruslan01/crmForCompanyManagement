@@ -405,12 +405,6 @@ export interface BuildingBreakdownItem {
 
 export type BuildingBreakdown = BuildingBreakdownItem[];
 
-export interface TicketMetricsCategory {
-  category: string;
-  count: number;
-  percentage: number;
-}
-
 export interface TicketMetrics {
   avg_resolution_time_hours: number | null;
   by_category: Record<string, number>;
