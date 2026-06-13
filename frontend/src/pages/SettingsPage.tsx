@@ -157,20 +157,20 @@ function PasswordForm() {
         <div>
           <label className="form-label">Текущий пароль</label>
           <div style={{ position: 'relative' }}>
-            <input type={showOld ? 'text' : 'password'} value={oldPassword} onChange={e => setOldPassword(e.target.value)} className="form-input" style={{ paddingRight: 40 }} placeholder="••••••••" />
+            <input id="old-password" name="old-password" type={showOld ? 'text' : 'password'} value={oldPassword} onChange={e => setOldPassword(e.target.value)} className="form-input" style={{ paddingRight: 40 }} placeholder="••••••••" />
             {eyeBtn(showOld, () => setShowOld(!showOld))}
           </div>
         </div>
         <div>
           <label className="form-label">Новый пароль</label>
           <div style={{ position: 'relative' }}>
-            <input type={showNew ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} className="form-input" style={{ paddingRight: 40 }} placeholder="••••••••" />
+            <input id="new-password" name="new-password" type={showNew ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)} className="form-input" style={{ paddingRight: 40 }} placeholder="••••••••" />
             {eyeBtn(showNew, () => setShowNew(!showNew))}
           </div>
         </div>
         <div>
           <label className="form-label">Подтвердите новый пароль</label>
-          <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="form-input" placeholder="••••••••" />
+          <input id="confirm-password" name="confirm-password" type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="form-input" placeholder="••••••••" />
         </div>
         <button type="submit" disabled={loading} className="btn-primary" style={{ justifySelf: 'start' }}>
           {loading ? 'Сохранение...' : 'Изменить пароль'}

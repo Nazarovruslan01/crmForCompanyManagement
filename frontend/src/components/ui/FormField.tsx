@@ -12,7 +12,7 @@ type InputProps = BaseProps & InputHTMLAttributes<HTMLInputElement>;
 export function Field({ label, required, hint, error, className = '', ...input }: InputProps) {
   return (
     <div className="form-field-wrap">
-      <label className="form-label">
+      <label htmlFor={input.name} className="form-label">
         {label} {required && <span className="required-asterisk">*</span>}
       </label>
       <input
@@ -77,10 +77,11 @@ export function CheckboxField({ label, hint, error, className = '', ...input }: 
     <div className={`checkbox-field ${className}`}>
       <input
         type="checkbox"
+        id={input.name}
         {...input}
       />
       <div>
-        <label className="form-label" style={{ marginBottom: 0 }}>{label}</label>
+        <label htmlFor={input.name} className="form-label" style={{ marginBottom: 0 }}>{label}</label>
         {hint && <p className="form-hint" style={{ margin: '2px 0 0' }}>{hint}</p>}
         {error && <p className="form-error" style={{ margin: '2px 0 0' }}>{error}</p>}
       </div>

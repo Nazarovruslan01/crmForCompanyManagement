@@ -54,6 +54,11 @@ class User(AbstractUser):
     def is_resident(self) -> bool:
         return self.role == self.Role.RESIDENT
 
+    def save(self, *args, **kwargs):
+        if self.is_superuser:
+            self.role = self.Role.ADMIN
+        super().save(*args, **kwargs)
+
     def delete(self, using: Any = None, keep_parents: bool = False) -> tuple[int, dict[str, int]]:
         """Soft delete: deactivate instead of hard-deleting.
 

@@ -309,8 +309,8 @@ export function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {buildingBreakdown?.buildings.map((item, idx) => (
-                <tr key={item.building_id} style={{ borderBottom: idx < (buildingBreakdown.buildings.length - 1) ? '1px solid var(--color-gray-2)' : 'none' }}>
+              {(buildingBreakdown ?? []).map((item, idx) => (
+                <tr key={item.building_id} style={{ borderBottom: idx < ((buildingBreakdown?.length ?? 0) - 1) ? '1px solid var(--color-gray-2)' : 'none' }}>
                   <td style={{ padding: '12px 0', color: 'var(--color-gray-8)', fontWeight: 500 }}>{item.building_name}</td>
                   <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.occupied_count}</td>
                   <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.apartment_count}</td>
@@ -394,19 +394,28 @@ export function DashboardPage() {
               <tr style={{ borderBottom: '1px solid var(--color-gray-3)' }}>
                 <th style={{ textAlign: 'left',  padding: '10px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Месяц</th>
                 <th style={{ textAlign: 'left',  padding: '10px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Здание</th>
-                <th style={{ textAlign: 'right', padding: '10px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Сумма</th>
+                <th style={{ textAlign: 'right', padding: '10px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Начислено</th>
+                <th style={{ textAlign: 'right', padding: '10px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Оплачено</th>
+                <th style={{ textAlign: 'right', padding: '10px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Сбор</th>
               </tr>
             </thead>
             <tbody>
-              {(aidatTimeseries?.data ?? []).map((row, idx) => (
-                <tr key={`${row.month}-${row.building_name}-${idx}`} style={{ borderBottom: idx < (aidatTimeseries?.data?.length ?? 0) - 1 ? '1px solid var(--color-gray-2)' : 'none' }}>
-                  <td style={{ padding: '10px 0', color: 'var(--color-gray-7)' }}>{row.month}</td>
-                  <td style={{ padding: '10px 0', color: 'var(--color-gray-8)', fontWeight: 500 }}>{row.building_name}</td>
-                  <td style={{ padding: '10px 0', textAlign: 'right', color: 'var(--color-gray-8)', fontWeight: 500 }}>₺{Number(row.amount).toLocaleString('ru-RU')}</td>
-                </tr>
-              ))}
-              {(aidatTimeseries?.data.length ?? 0) === 0 && (
-                <tr><td colSpan={3} style={{ padding: '14px 0', color: 'var(--color-gray-5)', textAlign: 'center' }}>Нет данных</td></tr>
+              {(aidatTimeseries ?? []).flatMap((b, bi) =>
+                b.months.map((m, mi) => {
+                  const isLast = bi === (aidatTimeseries?.length ?? 0) - 1 && mi === b.months.length - 1;
+                  return (
+                    <tr key={`${b.building_id}-${m.month}`} style={{ borderBottom: isLast ? 'none' : '1px solid var(--color-gray-2)' }}>
+                      <td style={{ padding: '10px 0', color: 'var(--color-gray-7)' }}>{m.month}</td>
+                      <td style={{ padding: '10px 0', color: 'var(--color-gray-8)', fontWeight: 500 }}>{b.building_name}</td>
+                      <td style={{ padding: '10px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{m.billed}</td>
+                      <td style={{ padding: '10px 0', textAlign: 'right', color: 'var(--color-gray-8)', fontWeight: 500 }}>{m.paid}</td>
+                      <td style={{ padding: '10px 0', textAlign: 'right', color: 'var(--color-gray-8)', fontWeight: 500 }}>{m.collection_rate}%</td>
+                    </tr>
+                  );
+                })
+              )}
+              {(aidatTimeseries?.length ?? 0) === 0 && (
+                <tr><td colSpan={5} style={{ padding: '14px 0', color: 'var(--color-gray-5)', textAlign: 'center' }}>Нет данных</td></tr>
               )}
             </tbody>
           </table>

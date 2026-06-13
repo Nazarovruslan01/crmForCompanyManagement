@@ -403,9 +403,7 @@ export interface BuildingBreakdownItem {
   resolved_tickets_count: number;
 }
 
-export interface BuildingBreakdown {
-  buildings: BuildingBreakdownItem[];
-}
+export type BuildingBreakdown = BuildingBreakdownItem[];
 
 export interface TicketMetricsCategory {
   category: string;
@@ -433,15 +431,21 @@ export interface PaymentMetrics {
   monthly_trend: PaymentMetricsTrend[];
 }
 
-export interface AidatTimeseriesData {
+export interface AidatTimeseriesMonth {
   month: string;
-  building_name: string;
-  amount: string;
+  billed: number;
+  paid: number;
+  overdue: number;
+  collection_rate: number;
 }
 
-export interface AidatTimeseries {
-  data: AidatTimeseriesData[];
+export interface AidatTimeseriesBuilding {
+  building_id: number;
+  building_name: string;
+  months: AidatTimeseriesMonth[];
 }
+
+export type AidatTimeseries = AidatTimeseriesBuilding[];
 
 // ─── Reports ──────────────────────────────────────────────────────────────────
 

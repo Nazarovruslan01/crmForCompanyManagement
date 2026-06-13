@@ -415,6 +415,8 @@ export function TicketDetailPage() {
 
             <form onSubmit={handleAddComment} style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
               <input
+                id="new-comment"
+                name="new-comment"
                 type="text"
                 value={newComment}
                 onChange={e => setNewComment(e.target.value)}

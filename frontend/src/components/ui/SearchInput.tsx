@@ -32,6 +32,7 @@ export function SearchInput({ placeholder = 'Поиск...', onSearch, debounceM
       />
       <input
         type="text"
+        name="search"
         value={value}
         onChange={e => setValue(e.target.value)}
         placeholder={placeholder}
