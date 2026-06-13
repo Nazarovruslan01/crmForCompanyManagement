@@ -23,9 +23,7 @@ def create_index(_apps, schema_editor):
 
 def drop_index(_apps, schema_editor):
     if schema_editor.connection.vendor == "postgresql":
-        schema_editor.execute(
-            "DROP INDEX CONCURRENTLY IF EXISTS payment_iyzico_conversation_id_idx;"
-        )
+        schema_editor.execute("DROP INDEX CONCURRENTLY IF EXISTS payment_iyzico_conversation_id_idx;")
 
 
 class Migration(migrations.Migration):

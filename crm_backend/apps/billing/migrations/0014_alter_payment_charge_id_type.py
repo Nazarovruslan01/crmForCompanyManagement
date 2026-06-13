@@ -11,9 +11,7 @@ from django.db import migrations, models
 
 def alter_charge_id_type(_apps, schema_editor):
     if schema_editor.connection.vendor == "postgresql":
-        schema_editor.execute(
-            'ALTER TABLE "billing_payment" ALTER COLUMN "charge_id" TYPE bigint USING NULL;'
-        )
+        schema_editor.execute('ALTER TABLE "billing_payment" ALTER COLUMN "charge_id" TYPE bigint USING NULL;')
 
 
 class Migration(migrations.Migration):
