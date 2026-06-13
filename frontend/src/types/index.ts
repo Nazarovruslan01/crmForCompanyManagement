@@ -333,6 +333,7 @@ export interface NotificationLog {
   error_message: string | null;
   sent_at: string | null;
   delivered_at: string | null;
+  read_at: string | null;
   created_at: string;
 }
 

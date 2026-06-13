@@ -44,6 +44,7 @@ class NotificationLogSerializer(serializers.ModelSerializer):
             "error_message",
             "sent_at",
             "delivered_at",
+            "read_at",
             "created_at",
         ]
         read_only_fields = [
@@ -52,6 +53,7 @@ class NotificationLogSerializer(serializers.ModelSerializer):
             "status",
             "sent_at",
             "delivered_at",
+            "read_at",
             "external_id",
             "error_message",
         ]

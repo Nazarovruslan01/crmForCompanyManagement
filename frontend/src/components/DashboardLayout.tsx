@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { api } from '../lib/api';
 import type { User } from '../types';
 import {
   BarChart2,
@@ -47,11 +48,29 @@ export function DashboardLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
+
+  // Poll unread notifications every 60 seconds
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const result = await api.notificationLogs.unread();
+        setUnreadCount(result.count);
+      } catch (error) {
+        // Silent fail on unread count fetch
+        console.error('Failed to fetch unread count:', error);
+      }
+    };
+
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const toggleLeft = collapsed
     ? 'calc(var(--collapsed-side-menu-width) - 12px)'
@@ -80,9 +99,31 @@ export function DashboardLayout() {
                 to={to}
                 className={({ isActive }) => `menu-item${isActive ? ' active' : ''}`}
                 title={collapsed ? label : undefined}
+                style={{ position: 'relative' }}
               >
                 <Icon size={20} />
                 <span>{label}</span>
+                {label === 'Уведомления' && unreadCount > 0 && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 8,
+                      right: 8,
+                      background: '#ff4d4f',
+                      color: '#fff',
+                      borderRadius: '50%',
+                      width: 20,
+                      height: 20,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 11,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </div>
+                )}
               </NavLink>
             ))}
         </nav>

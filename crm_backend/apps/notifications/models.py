@@ -61,6 +61,9 @@ class NotificationLog(models.Model):
     error_message = models.TextField(null=True, blank=True)
     sent_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
+    read_at = models.DateTimeField(
+        null=True, blank=True, help_text="Timestamp when the notification was read by the recipient"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
