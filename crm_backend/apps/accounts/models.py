@@ -54,7 +54,7 @@ class User(AbstractUser):
     def is_resident(self) -> bool:
         return self.role == self.Role.RESIDENT
 
-    def save(self, *args, **kwargs):
+    def save(self, *args: Any, **kwargs: Any) -> None:
         if self.is_superuser:
             self.role = self.Role.ADMIN
         super().save(*args, **kwargs)
