@@ -5,9 +5,8 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.core.cache import cache
-from django.db import connection
-from django.db.models import Avg, Count, DecimalField, DurationField, ExpressionWrapper, F, Func, Q, Sum, Value
-from django.db.models.functions import Greatest, TruncMonth
+from django.db.models import Avg, Count, DurationField, ExpressionWrapper, F, Q, Sum
+from django.db.models.functions import TruncMonth
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema
 from rest_framework import permissions, status
@@ -16,7 +15,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.audit import AuditLogMixin
-from apps.billing.models import AidatCharge, Payment
+from apps.billing.models import AidatCharge, Payment, aggregate_total_due
 from apps.properties.models import Apartment, Building
 from apps.residents.models import Ownership
 from apps.tickets.models import Ticket
@@ -33,13 +32,6 @@ from .serializers import (
 logger = logging.getLogger(__name__)
 
 DASHBOARD_CACHE_TTL = 60  # 1 minute
-
-
-class CurrentDate(Func):  # type: ignore[misc]
-    """Emit PostgreSQL CURRENT_DATE without parentheses."""
-
-    function = "CURRENT_DATE"
-    template = "%(function)s"
 
 
 def _get_managed_building_ids(user: object) -> list[int] | None:
@@ -164,28 +156,7 @@ class DashboardSummaryView(AuditLogMixin, APIView):
         # where days_overdue = GREATEST(0, CURRENT_DATE - due_date)
         # Only PENDING and OVERDUE charges contribute to debt.
         pending_charges = aidat_qs.filter(status__in=(AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE))
-        if connection.vendor == "postgresql":
-            # PostgreSQL: compute entirely in DB using ORM Greatest + CURRENT_DATE Func
-            total_debt = pending_charges.annotate(
-                days_overdue=Greatest(
-                    ExpressionWrapper(
-                        CurrentDate() - F("due_date"),
-                        output_field=DecimalField(max_digits=10, decimal_places=0),
-                    ),
-                    Value(0),
-                ),
-            ).aggregate(
-                total=Sum(
-                    F("base_amount") + F("base_amount") * F("late_fee_rate") * F("days_overdue"),
-                    output_field=DecimalField(max_digits=15, decimal_places=2),
-                )
-            )["total"]
-        else:
-            # SQLite fallback: compute in Python (acceptable for local dev)
-            total_debt = sum(
-                (charge.total_due for charge in pending_charges.select_related("apartment")),
-                Decimal("0"),
-            )
+        total_debt, _ = aggregate_total_due(pending_charges)
 
         # Occupancy rate
         total_apartments = buildings_qs.count()
@@ -251,26 +222,7 @@ class BuildingBreakdownView(AuditLogMixin, APIView):
             overdue = aidat_qs.filter(status=AidatCharge.Status.OVERDUE).count()
 
             pending_charges = aidat_qs.filter(status__in=(AidatCharge.Status.PENDING, AidatCharge.Status.OVERDUE))
-            if connection.vendor == "postgresql":
-                total_debt = pending_charges.annotate(
-                    days_overdue=Greatest(
-                        ExpressionWrapper(
-                            CurrentDate() - F("due_date"),
-                            output_field=DecimalField(max_digits=10, decimal_places=0),
-                        ),
-                        Value(0),
-                    ),
-                ).aggregate(
-                    total=Sum(
-                        F("base_amount") + F("base_amount") * F("late_fee_rate") * F("days_overdue"),
-                        output_field=DecimalField(max_digits=15, decimal_places=2),
-                    )
-                )["total"]
-            else:
-                total_debt = sum(
-                    (c.total_due for c in pending_charges),
-                    Decimal("0"),
-                )
+            total_debt, _ = aggregate_total_due(pending_charges)
 
             tickets_qs = Ticket.objects.filter(apartment__building=building)
             results.append(
@@ -394,25 +346,7 @@ class PaymentMetricsView(AuditLogMixin, APIView):
         ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
         # Use total_due (base + late fees) for collection rate comparison
         # to avoid rate exceeding 100% when late fees are collected
-        total_due = (
-            aidat_qs.annotate(
-                days_overdue=Greatest(
-                    ExpressionWrapper(
-                        CurrentDate() - F("due_date"),
-                        output_field=DecimalField(max_digits=10, decimal_places=0),
-                    ),
-                    Value(0),
-                ),
-            ).aggregate(
-                total=Sum(
-                    F("base_amount") + F("base_amount") * F("late_fee_rate") * F("days_overdue"),
-                    output_field=DecimalField(max_digits=15, decimal_places=2),
-                )
-            )["total"]
-            or Decimal("0")
-            if connection.vendor == "postgresql"
-            else sum(c.total_due for c in aidat_qs) or Decimal("0")
-        )
+        total_due, _ = aggregate_total_due(aidat_qs)
         collection_rate = round(float(total_collected / total_due * 100), 1) if total_due > 0 else 0.0
 
         # Monthly trend

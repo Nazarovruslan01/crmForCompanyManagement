@@ -3,7 +3,7 @@ import {
   Building2, ClipboardList, Users, Wallet,
   TrendingUp, AlertTriangle, ArrowRight,
 } from 'lucide-react';
-import { useDashboardSummary } from '../hooks/queries/useDashboard';
+import { useDashboardSummary, useBuildingBreakdown, useTicketMetrics, usePaymentMetrics, useAidatTimeseries } from '../hooks/queries/useDashboard';
 import { useAidatOverdue } from '../hooks/queries/useAidat';
 import { PageLayout } from '../components/ui/PageLayout';
 import { DataTable, type Column } from '../components/ui/DataTable';
@@ -179,12 +179,26 @@ const overdueColumns: Column<AidatCharge>[] = [
   },
 ];
 
+// ─── Shared styles ───────────────────────────────────────────────────────────
+
+const CARD_STYLE = {
+  background: '#fff',
+  borderRadius: 14,
+  border: '1px solid var(--color-gray-3)',
+  padding: 20,
+  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+} as const;
+
 // ─── Page ────────────────────────────────────────────────────────────────────
 
 export function DashboardPage() {
   const navigate = useNavigate();
   const { data: summary, isLoading: statsLoading, error: statsError } = useDashboardSummary();
   const { data: overdueData, isLoading: overdueLoading, error: overdueError } = useAidatOverdue({ page_size: '8' });
+  const { data: buildingBreakdown, isLoading: buildingLoading } = useBuildingBreakdown();
+  const { data: ticketMetrics, isLoading: ticketMetricsLoading } = useTicketMetrics();
+  const { data: paymentMetrics, isLoading: paymentMetricsLoading } = usePaymentMetrics();
+  const { data: aidatTimeseries, isLoading: aidatTimeseriesLoading } = useAidatTimeseries();
 
   const stats = summary ? {
     buildings: summary.buildings_count,
@@ -251,12 +265,7 @@ export function DashboardPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
 
         {/* Recent tickets */}
-        <div style={{
-          background: '#fff', borderRadius: 14,
-          border: '1px solid var(--color-gray-3)',
-          padding: 20,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        }}>
+        <div style={CARD_STYLE}>
           <SectionHeader title="Последние заявки" linkTo="/tickets" linkLabel="Все заявки" />
           <DataTable
             columns={ticketColumns}
@@ -270,12 +279,7 @@ export function DashboardPage() {
         </div>
 
         {/* Overdue charges */}
-        <div style={{
-          background: '#fff', borderRadius: 14,
-          border: '1px solid var(--color-gray-3)',
-          padding: 20,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-        }}>
+        <div style={CARD_STYLE}>
           <SectionHeader title="Просроченные платежи" linkTo="/billing" linkLabel="Все платежи" />
           <DataTable
             columns={overdueColumns}
@@ -287,6 +291,135 @@ export function DashboardPage() {
           />
         </div>
 
+      </div>
+
+      {/* Building breakdown section */}
+      <div style={{ ...CARD_STYLE, marginTop: 20 }}>
+        <SectionHeader title="Статистика по зданиям" />
+        {buildingLoading ? (
+          <div style={{ color: 'var(--color-gray-6)', fontSize: 13 }}>Загрузка...</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--color-gray-3)' }}>
+                <th style={{ textAlign: 'left', padding: '12px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Здание</th>
+                <th style={{ textAlign: 'right', padding: '12px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Жильцов</th>
+                <th style={{ textAlign: 'right', padding: '12px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Квартир</th>
+                <th style={{ textAlign: 'right', padding: '12px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Заполненность</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(buildingBreakdown ?? []).map((item, idx) => (
+                <tr key={item.building_id} style={{ borderBottom: idx < ((buildingBreakdown?.length ?? 0) - 1) ? '1px solid var(--color-gray-2)' : 'none' }}>
+                  <td style={{ padding: '12px 0', color: 'var(--color-gray-8)', fontWeight: 500 }}>{item.building_name}</td>
+                  <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.occupied_count}</td>
+                  <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.apartment_count}</td>
+                  <td style={{ padding: '12px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{item.occupancy_rate}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Ticket metrics section */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20,
+        marginTop: 20,
+      }}>
+        {/* Average closure time */}
+        <div style={CARD_STYLE}>
+          <SectionHeader title="Заявки" />
+          {ticketMetricsLoading ? (
+            <div style={{ color: 'var(--color-gray-6)', fontSize: 13 }}>Загрузка...</div>
+          ) : (
+            <div>
+              <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--color-gray-6)' }}>Среднее время закрытия</p>
+              <p style={{ margin: '0 0 20px', fontSize: 32, fontWeight: 700, color: 'var(--color-brand)' }}>
+                {ticketMetrics?.avg_resolution_time_hours ?? 0}
+                <span style={{ fontSize: 16, marginLeft: 4, fontWeight: 500, color: 'var(--color-gray-6)' }}>часов</span>
+              </p>
+              <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 600, color: 'var(--color-gray-8)' }}>По категориям</p>
+              {ticketMetrics && Object.entries(ticketMetrics.by_category).map(([category, count]) => (
+                <div key={category} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', fontSize: 13 }}>
+                  <span style={{ color: 'var(--color-gray-7)' }}>{category}</span>
+                  <span style={{ color: 'var(--color-gray-8)', fontWeight: 500 }}>{count}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Payment metrics */}
+        <div style={CARD_STYLE}>
+          <SectionHeader title="Платежи" />
+          {paymentMetricsLoading ? (
+            <div style={{ color: 'var(--color-gray-6)', fontSize: 13 }}>Загрузка...</div>
+          ) : (
+            <div>
+              <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--color-gray-6)' }}>Коэффициент сбора</p>
+              <div style={{
+                background: '#ECFDF5', borderRadius: 10, padding: '12px 16px',
+                marginBottom: 20, textAlign: 'center',
+              }}>
+                <p style={{ margin: 0, fontSize: 28, fontWeight: 700, color: '#10b981' }}>
+                  {paymentMetrics?.collection_rate ?? 0}%
+                </p>
+              </div>
+              <p style={{ margin: '0 0 12px', fontSize: 12, fontWeight: 600, color: 'var(--color-gray-8)' }}>Месячный тренд</p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <tbody>
+                  {paymentMetrics?.monthly_trend.map((trend, idx) => (
+                    <tr key={trend.month} style={{ borderBottom: idx < (paymentMetrics.monthly_trend.length - 1) ? '1px solid var(--color-gray-2)' : 'none' }}>
+                      <td style={{ padding: '8px 0', color: 'var(--color-gray-7)' }}>{trend.month}</td>
+                      <td style={{ padding: '8px 0', textAlign: 'right', color: 'var(--color-gray-8)', fontWeight: 500 }}>₺{Number(trend.collected).toLocaleString('ru-RU')}</td>
+                      <td style={{ padding: '8px 0 8px 12px', textAlign: 'right', color: 'var(--color-gray-6)', fontSize: 11 }}>/ ₺{Number(trend.total).toLocaleString('ru-RU')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Aidat timeseries */}
+      <div style={{ ...CARD_STYLE, marginTop: 20 }}>
+        <SectionHeader title="Тренд айдат по зданиям" />
+        {aidatTimeseriesLoading ? (
+          <div style={{ color: 'var(--color-gray-6)', fontSize: 13 }}>Загрузка...</div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--color-gray-3)' }}>
+                <th style={{ textAlign: 'left',  padding: '10px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Месяц</th>
+                <th style={{ textAlign: 'left',  padding: '10px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Здание</th>
+                <th style={{ textAlign: 'right', padding: '10px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Начислено</th>
+                <th style={{ textAlign: 'right', padding: '10px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Оплачено</th>
+                <th style={{ textAlign: 'right', padding: '10px 0', fontWeight: 600, color: 'var(--color-gray-8)' }}>Сбор</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(aidatTimeseries ?? []).flatMap((b, bi) =>
+                b.months.map((m, mi) => {
+                  const isLast = bi === (aidatTimeseries?.length ?? 0) - 1 && mi === b.months.length - 1;
+                  return (
+                    <tr key={`${b.building_id}-${m.month}`} style={{ borderBottom: isLast ? 'none' : '1px solid var(--color-gray-2)' }}>
+                      <td style={{ padding: '10px 0', color: 'var(--color-gray-7)' }}>{m.month}</td>
+                      <td style={{ padding: '10px 0', color: 'var(--color-gray-8)', fontWeight: 500 }}>{b.building_name}</td>
+                      <td style={{ padding: '10px 0', textAlign: 'right', color: 'var(--color-gray-7)' }}>{m.billed}</td>
+                      <td style={{ padding: '10px 0', textAlign: 'right', color: 'var(--color-gray-8)', fontWeight: 500 }}>{m.paid}</td>
+                      <td style={{ padding: '10px 0', textAlign: 'right', color: 'var(--color-gray-8)', fontWeight: 500 }}>{m.collection_rate}%</td>
+                    </tr>
+                  );
+                })
+              )}
+              {(aidatTimeseries?.length ?? 0) === 0 && (
+                <tr><td colSpan={5} style={{ padding: '14px 0', color: 'var(--color-gray-5)', textAlign: 'center' }}>Нет данных</td></tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
     </PageLayout>
   );

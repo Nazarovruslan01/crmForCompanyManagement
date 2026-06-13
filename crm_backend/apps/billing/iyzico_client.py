@@ -19,7 +19,11 @@ from typing import Any
 import requests
 from django.conf import settings
 
+from core.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
+
 logger = logging.getLogger(__name__)
+
+_iyzico_breaker = CircuitBreaker("iyzico_api", failure_threshold=3, recovery_timeout=60)
 
 
 class IyzicoError(Exception):
@@ -73,8 +77,12 @@ def _post(uri_path: str, payload: dict[str, Any]) -> dict[str, Any]:
     headers = _make_auth(uri_path, body)
 
     try:
-        response = requests.post(url, data=body.encode("utf-8"), headers=headers, timeout=30)
-        response.raise_for_status()
+        with _iyzico_breaker:
+            response = requests.post(url, data=body.encode("utf-8"), headers=headers, timeout=30)
+            response.raise_for_status()
+    except CircuitBreakerOpenError as exc:
+        logger.error("Iyzico circuit breaker open: %s", exc)
+        raise IyzicoError(f"Iyzico temporarily unavailable: {exc}") from exc
     except requests.RequestException as exc:
         logger.error("Iyzico request failed: %s", exc)
         raise IyzicoError(f"Iyzico request failed: {exc}") from exc

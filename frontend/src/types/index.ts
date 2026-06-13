@@ -389,3 +389,126 @@ export interface DashboardSummary {
   occupancy_rate: number;
   recent_tickets: Ticket[];
 }
+
+export interface BuildingBreakdownItem {
+  building_id: number;
+  building_name: string;
+  apartment_count: number;
+  occupied_count: number;
+  occupancy_rate: number;
+  pending_charges_count: number;
+  overdue_charges_count: number;
+  total_debt: string;
+  active_tickets_count: number;
+  resolved_tickets_count: number;
+}
+
+export type BuildingBreakdown = BuildingBreakdownItem[];
+
+export interface TicketMetricsCategory {
+  category: string;
+  count: number;
+  percentage: number;
+}
+
+export interface TicketMetrics {
+  avg_resolution_time_hours: number | null;
+  by_category: Record<string, number>;
+  by_status: Record<string, number>;
+}
+
+export interface PaymentMetricsTrend {
+  month: string;
+  collected: string;
+  total: string;
+}
+
+export interface PaymentMetrics {
+  total_collected: string;
+  total_billed: string;
+  total_due: string;
+  collection_rate: number;
+  monthly_trend: PaymentMetricsTrend[];
+}
+
+export interface AidatTimeseriesMonth {
+  month: string;
+  billed: number;
+  paid: number;
+  overdue: number;
+  collection_rate: number;
+}
+
+export interface AidatTimeseriesBuilding {
+  building_id: number;
+  building_name: string;
+  months: AidatTimeseriesMonth[];
+}
+
+export type AidatTimeseries = AidatTimeseriesBuilding[];
+
+// ─── Reports ──────────────────────────────────────────────────────────────────
+
+export type ExportReportType = 'payments' | 'aidat_charges' | 'meetings' | 'residents' | 'apartments';
+export type ExportFormat     = 'csv' | 'xlsx' | 'pdf';
+export type ExportStatus     = 'pending' | 'processing' | 'completed' | 'failed';
+
+export interface ExportReport {
+  id: number;
+  report_type: ExportReportType;
+  format: ExportFormat;
+  status: ExportStatus;
+  filters: Record<string, unknown>;
+  file: string | null;
+  error_message: string;
+  created_at: string;
+  completed_at: string | null;
+}
+
+// ─── Notification Templates ───────────────────────────────────────────────────
+
+export type NotificationChannel = 'push' | 'sms' | 'email' | 'telegram';
+export type NotificationEventType =
+  | 'aidat_reminder' | 'aidat_overdue' | 'payment_confirmation'
+  | 'ticket_created' | 'ticket_assigned' | 'ticket_resolved'
+  | 'meeting_reminder' | 'general';
+
+export interface NotificationTemplate {
+  id: number;
+  name: string;
+  notification_type: NotificationEventType;
+  notification_type_display: string;
+  channel: NotificationChannel;
+  channel_display: string;
+  subject: string;
+  body_template: string;
+  is_active: boolean;
+}
+
+// ─── Billing Receipts ─────────────────────────────────────────────────────────
+
+export interface Receipt {
+  id: number;
+  payment: number;
+  pdf_url: string | null;
+  generated_at: string;
+}
+
+// ─── Extraordinary Charges ────────────────────────────────────────────────
+
+export type ExtraordinaryChargeStatus = 'proposed' | 'approved' | 'rejected' | 'collecting' | 'collected';
+
+export interface ExtraordinaryCharge {
+  id: number;
+  building: number;
+  building_display: string;
+  description: string;
+  total_amount: string;
+  assembly_resolution_number: string | null;
+  approval_date: string | null;
+  status: ExtraordinaryChargeStatus;
+  status_display: string;
+  due_date: string | null;
+  created_at: string;
+  updated_at: string;
+}

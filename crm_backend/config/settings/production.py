@@ -26,6 +26,7 @@ DATABASES: dict[str, dict[str, Any]] = {  # type: ignore[no-redef]
         "HOST": _db_url.hostname,
         "PORT": _db_url.port or 5432,
         "CONN_MAX_AGE": 60,
+        "CONN_HEALTH_CHECKS": True,
         "DISABLE_SERVER_SIDE_CURSORS": True,
     }
 }
