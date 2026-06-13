@@ -263,6 +263,8 @@ class ApiClient {
 
   notificationLogs      = {
     list: (params?: Record<string, string>, signal?: AbortSignal) => this.list<NotificationLog>('/notifications/logs/', params, signal),
+    unread: (signal?: AbortSignal) => this.request<{ count: number }>('/notifications/logs/unread/', { signal }),
+    markRead: (id: number, signal?: AbortSignal) => this.request<void>(`/notifications/logs/${id}/mark_read/`, { method: 'POST', body: JSON.stringify({}), signal }),
   };
   notificationTemplates = this.crud<NotificationTemplate>('/notifications/templates');
 

@@ -2,6 +2,7 @@
 
 """Notifications app views for REST API."""
 
+from django.utils import timezone
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -41,7 +42,35 @@ class NotificationLogViewSet(AuditLogMixin, BasePermissionMixin, viewsets.ModelV
     queryset = NotificationLog.objects.select_related("recipient", "template").all()
     serializer_class = NotificationLogSerializer
     permission_classes = [permissions.IsAuthenticated, IsAdminOrManager]
-    filterset_fields = ["status", "channel", "recipient"]
+    filterset_fields = ["status", "channel", "recipient", "read_at"]
     search_fields = ["recipient__name", "external_id"]
     ordering_fields = ["created_at", "sent_at"]
     throttle_classes = [UserReadThrottle, UserWriteThrottle]
+
+    @action(detail=False, methods=["get"])
+    def unread(self, request: Request) -> Response:
+        """Get count of unread notifications for the current user.
+
+        Returns count of notifications where read_at is NULL for the current user's resident profile.
+        """
+        user = request.user
+        resident_qs = user.resident_profile.all() if hasattr(user, "resident_profile") else []
+
+        unread_count = NotificationLog.objects.filter(
+            recipient__in=resident_qs,
+            read_at__isnull=True,
+        ).count()
+
+        return Response({"count": unread_count}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"])
+    def mark_read(self, request: Request, pk: int | None = None) -> Response:
+        """Mark a notification as read.
+
+        Sets read_at timestamp to current time if not already read.
+        """
+        notification = self.get_object()
+        if notification.read_at is None:
+            notification.read_at = timezone.now()
+            notification.save(update_fields=["read_at"])
+        return Response(status=status.HTTP_204_NO_CONTENT)

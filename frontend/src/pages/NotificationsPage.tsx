@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { api } from '../lib/api';
 import { useList } from '../hooks/useList';
 import { PageLayout } from '../components/ui/PageLayout';
@@ -58,6 +58,30 @@ export function NotificationsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [channelFilter, setChannelFilter] = useState('');
+  // Mark unread notifications as read when page is opened
+  useEffect(() => {
+    const controller = new AbortController();
+
+    const markUnreadAsRead = async () => {
+      try {
+        const response = await api.notificationLogs.list({ 'read_at__isnull': 'True' });
+        if (response.results && response.results.length > 0) {
+          await Promise.all(
+            response.results.map(notification =>
+              api.notificationLogs.markRead(notification.id, controller.signal)
+            )
+          );
+        }
+      } catch (error) {
+        if ((error as { name?: string }).name !== 'AbortError') {
+          console.error('Failed to mark notifications as read:', error);
+        }
+      }
+    };
+
+    markUnreadAsRead();
+    return () => controller.abort();
+  }, []);
 
   const params = useMemo(() => {
     const p: Record<string, string> = {};
